@@ -51,8 +51,8 @@ export default function Competencies() {
           </p>
         </motion.div>
 
-        {/* Cards grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {/* Cards grid - 4 columns to avoid orphan */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {competencies.map((comp, i) => (
             <motion.div
               key={comp.title}
@@ -61,7 +61,7 @@ export default function Competencies() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.08 }}
               className={`relative group rounded-2xl p-6 text-center hover:scale-[1.03] transition-all duration-300 glass overflow-hidden ${
-                i === 6 ? 'sm:col-span-2 lg:col-span-1 sm:max-w-sm sm:mx-auto lg:max-w-none' : ''
+                i >= 4 ? 'sm:col-span-1' : ''
               }`}
             >
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/15 to-accent/15 flex items-center justify-center mx-auto mb-4">
