@@ -7,7 +7,7 @@ html {
 }
 
 body {
-  background: #030014;
+  background: #0B1120;
   color: #ffffff;
   font-family: 'Inter', system-ui, sans-serif;
   overflow-x: hidden;
@@ -17,23 +17,23 @@ body {
 @layer components {
   .gradient-text {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, #E6195B, #FF3D7F, #06B6D4, #22D3EE);
+    background-image: linear-gradient(135deg, #2563EB, #0D9488);
     background-size: 200% 200%;
-    animation: gradient-shift 4s ease infinite;
+    animation: gradient-shift 6s ease infinite;
   }
 
   .glass {
-    background: rgba(26, 26, 62, 0.4);
+    background: rgba(17, 24, 39, 0.6);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   .glass-strong {
-    background: rgba(26, 26, 62, 0.7);
+    background: rgba(17, 24, 39, 0.85);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.08);
   }
 }
 
@@ -62,18 +62,24 @@ body {
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #030014;
+  background: #0B1120;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(230, 25, 91, 0.4);
-  border-radius: 4px;
+  background: rgba(37, 99, 235, 0.3);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(230, 25, 91, 0.6);
+  background: rgba(37, 99, 235, 0.5);
+}
+
+/* Professional select styling */
+select option {
+  background: #111827;
+  color: #fff;
 }
