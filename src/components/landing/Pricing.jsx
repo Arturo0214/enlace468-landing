@@ -44,6 +44,23 @@ const productLines = [
         ],
         recommended: true,
       },
+      {
+        name: 'Enterprise Partner',
+        price: '$59,000',
+        unit: 'MXN/mes',
+        setup: '+ $75,000 setup',
+        idealPara: 'Área formal de RH o varias unidades de negocio',
+        features: [
+          'Todo Growth incluido',
+          'Vacantes ampliadas e ilimitadas',
+          'Configuración por perfiles de puesto',
+          'Tableros ejecutivos personalizados',
+          'Acompañamiento estratégico mensual',
+          'Calibración mensual con Ingrid/Propulsa',
+          'Soporte prioritario dedicado',
+        ],
+        recommended: false,
+      },
     ],
   },
   {
@@ -80,6 +97,21 @@ const productLines = [
           'Reporte ejecutivo de vacante',
         ],
         recommended: true,
+      },
+      {
+        name: 'Talent Desk Premium',
+        price: '$24,900',
+        unit: 'MXN por vacante',
+        setup: null,
+        idealPara: 'Empresa que quiere acompañamiento mayor',
+        features: [
+          'Short list curada de candidatos',
+          'Contacto inicial con candidatos',
+          'Validación básica de interés',
+          'Agenda sugerida de entrevistas',
+          'Reporte ejecutivo final detallado',
+        ],
+        recommended: false,
       },
     ],
   },
@@ -118,6 +150,36 @@ const productLines = [
         ],
         recommended: true,
       },
+      {
+        name: 'Recruiter Elite',
+        price: '$1,499',
+        unit: 'MXN/mes',
+        setup: null,
+        idealPara: 'Reclutador senior o freelance',
+        features: [
+          'Todo Pro incluido',
+          'Reportes mensuales de productividad',
+          'Mejores prácticas actualizadas',
+          'Sesiones grupales mensuales',
+          'Recursos y templates avanzados',
+        ],
+        recommended: false,
+      },
+      {
+        name: 'Recruiter + Acompañamiento',
+        price: '$2,900',
+        unit: 'MXN/mes',
+        setup: null,
+        idealPara: 'Reclutador que quiere elevar productividad',
+        features: [
+          'Todo Elite incluido',
+          'Sesión mensual de calibración 1:1',
+          'Revisión de vacantes personalizada',
+          'Prompts personalizados por industria',
+          'Seguimiento y feedback continuo',
+        ],
+        recommended: false,
+      },
     ],
   },
   {
@@ -153,6 +215,36 @@ const productLines = [
           'Recursos descargables exclusivos',
         ],
         recommended: true,
+      },
+      {
+        name: 'Academy Plus',
+        price: '$499',
+        unit: 'MXN/mes',
+        setup: null,
+        idealPara: 'Reclutador que aprende de forma continua',
+        features: [
+          'Todo Founder incluido',
+          'Biblioteca extendida de contenido',
+          'Casos prácticos reales',
+          'Clases grabadas on-demand',
+          'Nuevos prompts mensuales',
+        ],
+        recommended: false,
+      },
+      {
+        name: 'Academy Pro',
+        price: '$799',
+        unit: 'MXN/mes',
+        setup: null,
+        idealPara: 'Consultor o reclutador que quiere profesionalizarse',
+        features: [
+          'Todo Plus incluido',
+          'Sesiones mensuales en vivo',
+          'Playbooks ejecutivos',
+          'Formatos ejecutivos descargables',
+          'Guías especializadas por industria',
+        ],
+        recommended: false,
       },
     ],
   },
@@ -190,6 +282,36 @@ const productLines = [
         ],
         recommended: true,
       },
+      {
+        name: 'Tu Marca Vende Pro',
+        price: '$2,900',
+        unit: 'MXN (one-time)',
+        setup: null,
+        idealPara: 'Profesional que busca mejores oportunidades',
+        features: [
+          'Todo Perfil IA incluido',
+          'Simulación de entrevista con IA',
+          'Narrativa profesional completa',
+          'Estrategia de visibilidad digital',
+          'Perfil listo para marketplace',
+        ],
+        recommended: false,
+      },
+      {
+        name: 'Acompañamiento 30 días',
+        price: '$5,900',
+        unit: 'MXN (one-time)',
+        setup: null,
+        idealPara: 'Persona en transición laboral o búsqueda activa',
+        features: [
+          'Todo Pro incluido',
+          'Seguimiento semanal personalizado',
+          'Ajustes continuos de perfil',
+          'Preparación de entrevistas reales',
+          'Estrategia de aplicaciones activa',
+        ],
+        recommended: false,
+      },
     ],
   },
 ]
@@ -206,8 +328,9 @@ function parseSetupFee(setupStr) {
 }
 
 function tierToPlan(tier, product) {
+  const tierIndex = product.tiers.indexOf(tier)
   return {
-    id: `${product.id}-${tier.name.toLowerCase().replace(/\s+/g, '-')}`,
+    id: `${product.id}-${tierIndex}`,
     name: tier.name,
     product_line: product.id,
     product_line_label: product.label,
@@ -230,7 +353,8 @@ export default function Pricing() {
   }
 
   function isInCart(tier, product) {
-    const planId = `${product.id}-${tier.name.toLowerCase().replace(/\s+/g, '-')}`
+    const tierIndex = product.tiers.indexOf(tier)
+    const planId = `${product.id}-${tierIndex}`
     return items.some((item) => item.plan.id === planId)
   }
 
@@ -310,7 +434,13 @@ export default function Pricing() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.4 }}
-            className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 max-w-4xl mx-auto"
+            className={`grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 ${
+              activeProduct.tiers.length >= 4
+                ? 'lg:grid-cols-4'
+                : activeProduct.tiers.length === 3
+                ? 'lg:grid-cols-3'
+                : 'max-w-4xl mx-auto'
+            }`}
           >
             {activeProduct.tiers.map((tier, i) => (
               <div

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Sparkles, Search, Wand2, ArrowRight, CheckCircle } from 'lucide-react'
+import { Sparkles, Search, Wand2, ArrowRight, CheckCircle, Mic, Eye } from 'lucide-react'
 import { usePlan } from '../../lib/planContext'
 import UpgradePrompt from '../ui/UpgradePrompt'
 
@@ -70,6 +70,68 @@ export default function MarcaVendeDashboard() {
           Herramientas inteligentes para mejorar tu CV, perfil de LinkedIn y pitch profesional. Destaca ante reclutadores y consigue mejores oportunidades.
         </p>
       </motion.div>
+
+      {/* Pro Tools Section */}
+      <div className="mb-8">
+        <div className="flex items-baseline gap-3 mb-4">
+          <h2 className="text-lg font-display font-semibold text-white">Herramientas Pro</h2>
+          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400">Pro</span>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {[
+            {
+              id: 'entrevista',
+              name: 'Simulador de Entrevista',
+              description: 'Practica con preguntas reales, recibe retroalimentacion sobre tus respuestas y mejora tu desempeno.',
+              icon: Mic,
+              gradient: 'from-accent/20 to-primary/10',
+              iconColor: 'text-accent-light',
+              borderHover: 'hover:border-accent-light/30',
+              cta: 'Iniciar simulacion',
+              to: '/dashboard/marca-vende/entrevista',
+            },
+            {
+              id: 'visibilidad',
+              name: 'Estrategia de Visibilidad',
+              description: 'Genera un plan completo de visibilidad en LinkedIn: calendario, plantillas, hashtags y networking.',
+              icon: Eye,
+              gradient: 'from-gold/20 to-primary/10',
+              iconColor: 'text-gold',
+              borderHover: 'hover:border-gold/30',
+              cta: 'Generar estrategia',
+              to: '/dashboard/marca-vende/visibilidad',
+            },
+          ].map((tool, i) => {
+            const Icon = tool.icon
+            return (
+              <motion.div
+                key={tool.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+              >
+                <Link
+                  to={tool.to}
+                  className={`block glass rounded-xl p-6 transition-all group ${tool.borderHover}`}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center ${tool.iconColor} group-hover:scale-110 transition-transform`}>
+                      <Icon size={24} />
+                    </div>
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-500/10 text-purple-400">Pro</span>
+                  </div>
+                  <h2 className="text-lg font-display font-bold text-white mb-2">{tool.name}</h2>
+                  <p className="text-sm text-gray-400 mb-5 leading-relaxed">{tool.description}</p>
+                  <div className="flex items-center gap-2 text-sm font-semibold text-primary-light group-hover:gap-3 transition-all">
+                    {tool.cta}
+                    <ArrowRight size={16} />
+                  </div>
+                </Link>
+              </motion.div>
+            )
+          })}
+        </div>
+      </div>
 
       {/* Product Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

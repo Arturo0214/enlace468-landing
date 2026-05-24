@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   BookOpen, FileText, Video, Download, Users, Lock,
-  GraduationCap, Sparkles, ArrowRight, Star
+  GraduationCap, Sparkles, ArrowRight, Star, Tv, BookMarked
 } from 'lucide-react'
 import { useAuth } from '../../lib/auth'
 
@@ -186,6 +186,66 @@ export default function AcademyDashboard() {
             {label}
           </button>
         ))}
+      </div>
+
+      {/* Pro Features Section */}
+      <div className="mb-8">
+        <div className="flex items-baseline gap-3 mb-4">
+          <h2 className="text-lg font-display font-semibold text-white">Academy Pro</h2>
+          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400">Pro</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[
+            {
+              id: 'live-sessions',
+              title: 'Sesiones en Vivo',
+              description: 'Sesiones en vivo con expertos en reclutamiento e IA. Preguntas en tiempo real y acceso a grabaciones.',
+              icon: Tv,
+              gradient: 'from-red-500/20 to-orange-500/10',
+              iconColor: 'text-red-400',
+              to: '/dashboard/academy/live-sessions',
+            },
+            {
+              id: 'playbooks',
+              title: 'Playbooks Ejecutivos',
+              description: 'Guias paso a paso para reclutamiento tech, headhunting C-Level, contratacion masiva y mas.',
+              icon: BookMarked,
+              gradient: 'from-violet-500/20 to-purple-500/10',
+              iconColor: 'text-violet-400',
+              to: '/dashboard/academy/playbooks',
+            },
+          ].map((item, i) => {
+            const Icon = item.icon
+            return (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.08 }}
+                whileHover={{ y: -4, transition: { duration: 0.2 } }}
+              >
+                <Link
+                  to={item.to}
+                  className="block glass rounded-xl p-5 group hover:border-primary-light/20 transition-all"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${item.gradient} flex items-center justify-center ${item.iconColor} group-hover:scale-110 transition-transform`}>
+                      <Icon size={20} />
+                    </div>
+                    <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border bg-purple-500/20 text-purple-400 border-purple-500/30">
+                      Pro
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-semibold text-white mb-1 group-hover:text-primary-light transition-colors">{item.title}</h3>
+                  <p className="text-xs text-gray-400 mb-3 leading-relaxed">{item.description}</p>
+                  <div className="flex items-center gap-1 text-xs text-primary-light font-medium group-hover:gap-2 transition-all">
+                    Explorar <ArrowRight size={12} />
+                  </div>
+                </Link>
+              </motion.div>
+            )
+          })}
+        </div>
       </div>
 
       {/* Free Resources */}

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Zap, Wand2, MessageSquare, Search, ClipboardList, ArrowRight } from 'lucide-react'
+import { Zap, Wand2, MessageSquare, Search, ClipboardList, ArrowRight, BarChart3 } from 'lucide-react'
 import { usePlan } from '../../lib/planContext'
 import UpgradePrompt from '../ui/UpgradePrompt'
 
@@ -48,6 +48,17 @@ const tools = [
     borderHover: 'hover:border-emerald-400/30',
     tier: 'Pro',
     to: '/dashboard/recruiter-tools/tracking',
+  },
+  {
+    id: 'reports',
+    name: 'Generador de Reportes',
+    description: 'Reportes de pipeline, productividad y cierre de vacantes listos para compartir',
+    icon: BarChart3,
+    gradient: 'from-amber-500/20 to-orange-500/10',
+    iconColor: 'text-amber-400',
+    borderHover: 'hover:border-amber-400/30',
+    tier: 'Elite',
+    to: '/dashboard/recruiter-tools/reports',
   },
 ]
 
@@ -97,6 +108,8 @@ export default function RecruiterToolsDashboard() {
                   <span className={`text-xs font-bold px-3 py-1 rounded-full ${
                     tool.tier === 'Basic'
                       ? 'bg-accent/10 text-accent-light'
+                      : tool.tier === 'Elite'
+                      ? 'bg-amber-500/10 text-amber-400'
                       : 'bg-gold/10 text-gold'
                   }`}>
                     {tool.tier}

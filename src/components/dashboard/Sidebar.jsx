@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Briefcase, Users, GraduationCap, Calendar, Settings, LogOut, ChevronsLeft, ChevronsRight, Shield, Sparkles, Zap } from 'lucide-react'
+import { LayoutDashboard, Briefcase, Users, GraduationCap, Calendar, Settings, LogOut, ChevronsLeft, ChevronsRight, Shield, Sparkles, Zap, CreditCard } from 'lucide-react'
 import { useAuth } from '../../lib/auth'
 
 const navItems = [
@@ -14,6 +14,7 @@ const navItems = [
 ]
 
 const adminItem = { to: '/dashboard/admin', icon: Shield, label: 'Admin Panel' }
+const subscriptionsItem = { to: '/dashboard/subscriptions', icon: CreditCard, label: 'Suscripciones' }
 
 export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }) {
   const { signOut, profile } = useAuth()
@@ -62,6 +63,15 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }) 
                 }>
                 <adminItem.icon size={18} />
                 {!collapsed && adminItem.label}
+              </NavLink>
+              <NavLink to={subscriptionsItem.to} onClick={onClose} title={collapsed ? subscriptionsItem.label : undefined}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-lg text-[13px] font-medium transition-all ${
+                    collapsed ? 'justify-center px-2 py-2' : 'px-3 py-2'
+                  } ${isActive ? 'bg-gold/10 text-gold' : 'text-gold/60 hover:text-gold hover:bg-gold/5'}`
+                }>
+                <subscriptionsItem.icon size={18} />
+                {!collapsed && subscriptionsItem.label}
               </NavLink>
             </>
           )}

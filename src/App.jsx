@@ -17,6 +17,7 @@ import ResourceViewer from './components/academy/ResourceViewer'
 import CalendarView from './components/dashboard/CalendarView'
 import SettingsPage from './components/dashboard/SettingsPage'
 import AdminPanel from './components/dashboard/AdminPanel'
+import SubscriptionsDashboard from './components/dashboard/SubscriptionsDashboard'
 import MarcaVendeDashboard from './components/marca-vende/MarcaVendeDashboard'
 import DiagnosticoPage from './components/marca-vende/DiagnosticoPage'
 import PerfilProPage from './components/marca-vende/PerfilProPage'
@@ -25,6 +26,11 @@ import PromptsGenerator from './components/recruiter-tools/PromptsGenerator'
 import OutreachTemplates from './components/recruiter-tools/OutreachTemplates'
 import SearchGuides from './components/recruiter-tools/SearchGuides'
 import TrackingFormats from './components/recruiter-tools/TrackingFormats'
+import ReportsGenerator from './components/recruiter-tools/ReportsGenerator'
+import EntrevistaSimulador from './components/marca-vende/EntrevistaSimulador'
+import VisibilidadStrategy from './components/marca-vende/VisibilidadStrategy'
+import LiveSessionsPage from './components/academy/LiveSessionsPage'
+import PlaybooksPage from './components/academy/PlaybooksPage'
 
 function App() {
   return (
@@ -58,6 +64,7 @@ function App() {
         <Route path="calendar" element={<CalendarView />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="admin" element={<AdminPanel />} />
+        <Route path="subscriptions" element={<SubscriptionsDashboard />} />
         <Route path="marca-vende" element={<MarcaVendeDashboard />} />
         <Route path="marca-vende/diagnostico" element={<DiagnosticoPage />} />
         <Route path="marca-vende/perfil-pro" element={<PerfilProPage />} />
@@ -66,6 +73,11 @@ function App() {
         <Route path="recruiter-tools/outreach" element={<OutreachTemplates />} />
         <Route path="recruiter-tools/search-guides" element={<SearchGuides />} />
         <Route path="recruiter-tools/tracking" element={<TrackingFormats />} />
+        <Route path="recruiter-tools/reports" element={<ReportsGenerator />} />
+        <Route path="marca-vende/entrevista" element={<EntrevistaSimulador />} />
+        <Route path="marca-vende/visibilidad" element={<VisibilidadStrategy />} />
+        <Route path="academy/live-sessions" element={<LiveSessionsPage />} />
+        <Route path="academy/playbooks" element={<PlaybooksPage />} />
       </Route>
     </Routes>
   )
