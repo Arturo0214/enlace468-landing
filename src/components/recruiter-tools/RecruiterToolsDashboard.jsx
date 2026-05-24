@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Zap, Wand2, MessageSquare, Search, ClipboardList, ArrowRight } from 'lucide-react'
+import { usePlan } from '../../lib/planContext'
+import UpgradePrompt from '../ui/UpgradePrompt'
 
 const tools = [
   {
@@ -50,6 +52,12 @@ const tools = [
 ]
 
 export default function RecruiterToolsDashboard() {
+  const { canDo } = usePlan()
+
+  if (!canDo('use_recruiter_tools')) {
+    return <UpgradePrompt action="use_recruiter_tools" />
+  }
+
   return (
     <div>
       <motion.div

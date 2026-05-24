@@ -2,6 +2,8 @@ import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Upload, Link2, FileText, AlertCircle, CheckCircle, ArrowRight, Loader2 } from 'lucide-react'
+import { usePlan } from '../../lib/planContext'
+import UpgradePrompt from '../ui/UpgradePrompt'
 
 // ── PDF text extraction using pdfjs-dist ──
 async function extractTextFromPDF(file) {
@@ -178,12 +180,17 @@ function PriorityBadge({ priority }) {
 }
 
 export default function DiagnosticoPage() {
+  const { canDo } = usePlan()
   const [linkedinUrl, setLinkedinUrl] = useState('')
   const [file, setFile] = useState(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [results, setResults] = useState(null)
   const [error, setError] = useState('')
   const fileRef = useRef()
+
+  if (!canDo('use_marca_vende')) {
+    return <UpgradePrompt action="use_marca_vende" />
+  }
 
   async function handleAnalyze() {
     setError('')

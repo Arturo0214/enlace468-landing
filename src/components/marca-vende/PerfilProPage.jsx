@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, ArrowRight, Check, Copy, CheckCircle, Wand2, User, Briefcase, Target, Sparkles } from 'lucide-react'
+import { usePlan } from '../../lib/planContext'
+import UpgradePrompt from '../ui/UpgradePrompt'
 
 // ── Industry keyword maps ──
 const INDUSTRY_KEYWORDS = {
@@ -98,6 +100,7 @@ function CopyButton({ text }) {
 }
 
 export default function PerfilProPage() {
+  const { canDo } = usePlan()
   const [step, setStep] = useState(0)
   const [output, setOutput] = useState(null)
   const [showConfetti, setShowConfetti] = useState(false)
@@ -146,6 +149,10 @@ export default function PerfilProPage() {
 
   const inputClass = 'w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-primary-light/50 transition-colors'
   const labelClass = 'block text-sm font-medium text-gray-300 mb-1.5'
+
+  if (!canDo('use_marca_vende')) {
+    return <UpgradePrompt action="use_marca_vende" />
+  }
 
   return (
     <div className="max-w-3xl mx-auto">

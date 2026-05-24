@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import FeatureGate from '../ui/FeatureGate'
 
 const steps = [
   { id: 'basic', title: 'Info basica' },
@@ -66,6 +67,7 @@ export default function VacancyForm() {
   }
 
   return (
+    <FeatureGate action="create_vacancy">
     <div className="max-w-3xl mx-auto">
       <button onClick={() => navigate('/dashboard/vacancies')} className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 text-sm transition-colors">
         <ArrowLeft size={16} /> Volver a vacantes
@@ -180,5 +182,6 @@ export default function VacancyForm() {
         </div>
       </div>
     </div>
+    </FeatureGate>
   )
 }

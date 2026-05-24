@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search, Globe, ExternalLink, Plus, Loader2, CheckCircle, Download, Users, X, Mail, Phone, MapPin, Tag, Star } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import FeatureGate from '../ui/FeatureGate'
 
 const CSE_ID = '234e26a7d970d4e6f'
 
@@ -238,6 +239,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const hasCards = googleResults.length > 0
 
   return (
+    <FeatureGate action="use_outreach">
     <div className="space-y-4">
       {/* Search bar */}
       <div className="glass rounded-xl p-5">
@@ -452,5 +454,6 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
         </div>
       )}
     </div>
+    </FeatureGate>
   )
 }

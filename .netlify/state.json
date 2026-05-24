@@ -1,3 +1,22 @@
 {
-	"siteId": "3647ba5c-993e-4ead-b842-1daf14e00516"
+	"siteId": "3647ba5c-993e-4ead-b842-1daf14e00516",
+	"geolocation": {
+		"data": {
+			"city": "Cuauhtémoc",
+			"country": {
+				"code": "MX",
+				"name": "Mexico"
+			},
+			"subdivision": {
+				"code": "CMX",
+				"name": "Mexico City"
+			},
+			"timezone": "America/Mexico_City",
+			"latitude": 19.4491,
+			"longitude": -99.1574,
+			"postalCode": "06400"
+		},
+		"timestamp": 1779573856615
+	},
+	"dbConnectionString": "postgres://localhost:58080/postgres"
 }

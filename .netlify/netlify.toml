@@ -1,16 +1,15 @@
+functionsDirectory = "/Users/arturosuarez/Desktop/Claude-Code/Propulsa/enlace468-app/netlify/functions"
+functionsDirectoryOrigin = "config"
 redirectsOrigin = "config"
 plugins = []
 headers = []
-
-[functions]
-
-[functions."*"]
 
 [build]
 publish = "/Users/arturosuarez/Desktop/Claude-Code/Propulsa/enlace468-app/dist"
 publishOrigin = "config"
 commandOrigin = "config"
 command = "npm run build"
+functions = "/Users/arturosuarez/Desktop/Claude-Code/Propulsa/enlace468-app/netlify/functions"
 
 [build.environment]
 
@@ -25,6 +24,22 @@ command = "npm run build"
 [build.processing.js]
 
 [build.services]
+
+[functions]
+
+[functions."*"]
+
+[[redirects]]
+from = "/api/*"
+to = "/.netlify/functions/:splat"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
 
 [[redirects]]
 from = "/*"

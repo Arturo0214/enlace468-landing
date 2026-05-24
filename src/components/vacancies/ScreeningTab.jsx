@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { FileText, Play, CheckCircle, ChevronDown, ChevronUp, ArrowRight, Loader2, BarChart3, Target, Briefcase, Upload, X, File, FlaskConical } from 'lucide-react'
 import { screenCandidate, DUMMY_CVS } from '../../lib/screeningEngine'
 import * as pdfjsLib from 'pdfjs-dist'
+import FeatureGate from '../ui/FeatureGate'
 
 // PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
@@ -105,6 +106,7 @@ export default function ScreeningTab({ vacancy, vacancyId }) {
   }
 
   return (
+    <FeatureGate action="use_screening">
     <div className="space-y-4">
       {/* Upload area */}
       <div className="glass rounded-xl p-5">
@@ -332,5 +334,6 @@ export default function ScreeningTab({ vacancy, vacancyId }) {
         </div>
       )}
     </div>
+    </FeatureGate>
   )
 }

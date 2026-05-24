@@ -7,6 +7,8 @@ const ACTION_DESCRIPTIONS = {
   use_outreach: 'El outreach esta disponible en planes Recruiter Pro+ o Talent Desk Pro.',
   view_reports: 'Los reportes avanzados estan disponibles en planes Enterprise Growth+ o Talent Desk Pro.',
   use_ai_prompts: 'Los prompts de IA estan disponibles en planes Recruiter Basic+ o Academy Founder+.',
+  use_marca_vende: 'Tu Marca Vende esta disponible en planes Tu Marca Vende Diagnostico o Perfil Pro.',
+  use_recruiter_tools: 'Las herramientas de reclutador estan disponibles en planes Recruiter Pro o Enterprise.',
 }
 
 export default function UpgradePrompt({ action }) {

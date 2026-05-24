@@ -2,15 +2,22 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, Search, User } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { usePlan } from '../../lib/planContext'
+import UpgradePrompt from '../ui/UpgradePrompt'
 import CandidateForm from './CandidateForm'
 
 export default function CandidateBank() {
+  const { canDo } = usePlan()
   const [candidates, setCandidates] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
 
-  useEffect(() => { loadCandidates() }, [])
+  useEffect(() => { if (canDo('access_candidate_bank')) loadCandidates() }, [])
+
+  if (!canDo('access_candidate_bank')) {
+    return <UpgradePrompt action="access_candidate_bank" />
+  }
 
   async function loadCandidates() {
     const { data } = await supabase.from('candidates').select('*, vacancy_candidates(vacancy_id, stage)').is('archived_at', null).order('created_at', { ascending: false })

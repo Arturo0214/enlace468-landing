@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Sparkles, Search, Wand2, ArrowRight, CheckCircle } from 'lucide-react'
+import { usePlan } from '../../lib/planContext'
+import UpgradePrompt from '../ui/UpgradePrompt'
 
 const products = [
   {
@@ -44,6 +46,12 @@ const products = [
 ]
 
 export default function MarcaVendeDashboard() {
+  const { canDo } = usePlan()
+
+  if (!canDo('use_marca_vende')) {
+    return <UpgradePrompt action="use_marca_vende" />
+  }
+
   return (
     <div>
       {/* Header */}
