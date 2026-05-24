@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { GraduationCap, Users, Mail, Phone, MessageSquare, Download, Search, ChevronDown, ChevronUp } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { GraduationCap, Users, Mail, Phone, MessageSquare, Download, Search, ChevronDown, ChevronUp, ArrowRight, BookOpen } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
 const CURSOS = {
@@ -60,6 +61,18 @@ export default function CursosList() {
           <Download size={16} /> Exportar CSV
         </button>
       </div>
+
+      {/* Academy Banner */}
+      <Link to="/dashboard/academy" className="flex items-center gap-4 glass rounded-xl p-5 mb-6 hover:border-primary/30 transition-all group">
+        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center text-primary-light group-hover:from-primary group-hover:to-accent group-hover:text-white transition-all flex-shrink-0">
+          <BookOpen size={24} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-white">TalentFlix / Enlace 468 Academy</div>
+          <div className="text-sm text-gray-400">Explora guias, plantillas y recursos para reclutadores</div>
+        </div>
+        <ArrowRight size={20} className="text-gray-500 group-hover:text-primary-light transition-colors flex-shrink-0" />
+      </Link>
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">

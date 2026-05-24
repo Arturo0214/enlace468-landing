@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Briefcase, Users, UserCheck, Clock } from 'lucide-react'
+import { Briefcase, Users, UserCheck, Clock, Sparkles } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import { usePlan } from '../../lib/planContext'
+import PlanBadge from '../ui/PlanBadge'
 
 const statCards = [
   { key: 'openVacancies', label: 'Vacantes abiertas', icon: Briefcase, gradient: 'from-primary/20 to-primary/5', iconColor: 'text-primary' },
@@ -13,6 +15,7 @@ const statCards = [
 
 export default function DashboardHome() {
   const { profile } = useAuth()
+  const { currentPlan } = usePlan()
   const [stats, setStats] = useState({ openVacancies: 0, totalCandidates: 0, inProcess: 0, hired: 0 })
   const [recentActivity, setRecentActivity] = useState([])
   const [loading, setLoading] = useState(true)
@@ -56,11 +59,30 @@ export default function DashboardHome() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-display font-bold text-white">
-          Hola, {profile?.full_name?.split(' ')[0]}
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-display font-bold text-white">
+            Hola, {profile?.full_name?.split(' ')[0]}
+          </h1>
+          <PlanBadge />
+        </div>
         <p className="text-gray-400 mt-1">Resumen de tu actividad de reclutamiento</p>
       </div>
+
+      {!currentPlan && (
+        <a
+          href="/#precios"
+          className="flex items-center gap-3 mb-6 px-5 py-3 rounded-xl transition-all hover:scale-[1.01]"
+          style={{
+            background: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(6,182,212,0.1))',
+            border: '1px solid rgba(99,102,241,0.15)',
+          }}
+        >
+          <Sparkles size={18} className="text-indigo-400 flex-shrink-0" />
+          <span className="text-sm text-gray-300">
+            Activa un plan para desbloquear todas las funciones
+          </span>
+        </a>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

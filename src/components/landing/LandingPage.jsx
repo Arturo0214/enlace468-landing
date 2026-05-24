@@ -6,6 +6,7 @@ import AITalentAdvisor from './AITalentAdvisor'
 import Modules from './Modules'
 import Deliverables from './Deliverables'
 import Competencies from './Competencies'
+import Pricing from './Pricing'
 import WhyThisCourse from './WhyThisCourse'
 import Contact from './Contact'
 import Footer from './Footer'
@@ -22,6 +23,7 @@ export default function LandingPage() {
         <Modules />
         <Deliverables />
         <Competencies />
+        <Pricing />
         <WhyThisCourse />
         <Contact />
       </main>

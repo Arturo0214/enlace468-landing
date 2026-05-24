@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Search, Globe, ExternalLink, Plus, Loader2, CheckCircle, Download, Users, X, Mail, Phone, MapPin, Tag, Star } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
-const CSE_ID = '75e20fd2329c04b05'
+const CSE_ID = '234e26a7d970d4e6f'
 
 export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, setAddedIds, addingId, setAddingId, setActiveTab }) {
   const [searchQuery, setSearchQuery] = useState('')

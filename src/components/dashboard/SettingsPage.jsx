@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Save, Building2, User, Shield } from 'lucide-react'
+import { Save, Building2, User, Shield, Package, Crown } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 
@@ -21,6 +21,7 @@ export default function SettingsPage() {
   })
 
   const [members, setMembers] = useState([])
+  const [subscriptions, setSubscriptions] = useState([])
 
   useEffect(() => {
     if (profile) {
@@ -29,12 +30,22 @@ export default function SettingsPage() {
         setOrgForm({ name: profile.organizations.name || '', logo_url: profile.organizations.logo_url || '' })
       }
       loadMembers()
+      loadSubscriptions()
     }
   }, [profile])
 
   async function loadMembers() {
     const { data } = await supabase.from('profiles').select('*').eq('organization_id', profile.organization_id).order('created_at')
     setMembers(data || [])
+  }
+
+  async function loadSubscriptions() {
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('*, plans(*)')
+      .or(`organization_id.eq.${profile.organization_id},profile_id.eq.${profile.id}`)
+      .eq('status', 'active')
+    setSubscriptions(data || [])
   }
 
   async function saveProfile() {
@@ -65,6 +76,7 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: 'profile', label: 'Mi perfil', icon: User },
+    { id: 'plan', label: 'Mi plan', icon: Package },
     { id: 'org', label: 'Organizacion', icon: Building2 },
     { id: 'team', label: 'Equipo', icon: Shield },
   ]
@@ -123,6 +135,73 @@ export default function SettingsPage() {
             </button>
             {saved && <span className="text-sm text-green-400">Guardado</span>}
           </div>
+        </div>
+      )}
+
+      {/* Plan */}
+      {activeTab === 'plan' && (
+        <div className="glass-strong rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent/20 to-primary/20 flex items-center justify-center">
+              <Crown size={20} className="text-accent" />
+            </div>
+            <div>
+              <h2 className="font-display font-semibold text-white">Plan activo</h2>
+              <p className="text-sm text-gray-400">Planes y suscripciones de tu cuenta</p>
+            </div>
+          </div>
+
+          {subscriptions.length === 0 ? (
+            <div className="text-center py-8">
+              <Package size={40} className="mx-auto text-gray-600 mb-3" />
+              <p className="text-gray-400 mb-1">Sin plan activo</p>
+              <p className="text-sm text-gray-500">Contacta a tu administrador para activar un plan.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {subscriptions.map(sub => (
+                <div key={sub.id} className="glass rounded-xl p-5 border border-accent/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-display font-bold text-white text-lg">{sub.plans?.name}</h3>
+                    <span className="text-xs px-3 py-1 rounded-full bg-green-500/15 text-green-400 font-medium">Activo</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-0.5">Precio</p>
+                      <p className="text-white font-semibold">
+                        ${sub.plans?.price_mxn?.toLocaleString()} MXN
+                        <span className="text-gray-400 text-sm font-normal ml-1">
+                          /{sub.plans?.billing_cycle === 'monthly' ? 'mes' : sub.plans?.billing_cycle === 'per_vacancy' ? 'vacante' : 'pago unico'}
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-0.5">Desde</p>
+                      <p className="text-white text-sm">{new Date(sub.started_at).toLocaleDateString('es-MX')}</p>
+                    </div>
+                  </div>
+                  {sub.plans?.features && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-2">Incluye:</p>
+                      <ul className="space-y-1.5">
+                        {(typeof sub.plans.features === 'string' ? JSON.parse(sub.plans.features) : sub.plans.features).map((f, i) => (
+                          <li key={i} className="flex items-center gap-2 text-sm text-gray-300">
+                            <div className="w-4 h-4 rounded-full bg-accent/15 flex items-center justify-center flex-shrink-0">
+                              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-accent"><path d="M20 6L9 17l-5-5"/></svg>
+                            </div>
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {sub.expires_at && (
+                    <p className="text-xs text-gray-500 mt-3">Expira: {new Date(sub.expires_at).toLocaleDateString('es-MX')}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

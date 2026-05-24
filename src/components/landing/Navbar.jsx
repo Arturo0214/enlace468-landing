@@ -5,6 +5,7 @@ const navLinks = [
   { name: 'Inicio', href: '#inicio' },
   { name: 'Servicios', href: '#servicios' },
   { name: 'AI Talent Advisor', href: '#ai-talent-advisor' },
+  { name: 'Precios', href: '#precios' },
   { name: 'Nosotros', href: '#por-que' },
   { name: 'Contacto', href: '#contacto' },
 ]
@@ -31,13 +32,12 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
-          <a href="#inicio" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center group-hover:scale-110 transition-transform">
-              <span className="text-white font-display font-bold text-sm">E</span>
-            </div>
-            <span className="font-display font-bold text-lg text-white">
-              Enlace <span className="gradient-text">468</span>
-            </span>
+          <a href="#inicio" className="flex items-center group">
+            <img
+              src="/logo-enlace468.jpeg"
+              alt="Enlace 468"
+              className="h-10 w-auto object-contain group-hover:scale-105 transition-transform"
+            />
           </a>
 
           {/* Desktop links */}

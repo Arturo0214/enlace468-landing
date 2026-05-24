@@ -42,52 +42,13 @@ export default function CandidateSourcing() {
     setAddedIds(new Set())
 
     try {
-      // In production (Netlify): use the serverless function
-      // In dev (localhost): fall back to showing instructions
-      const isProduction = !window.location.hostname.includes('localhost')
-
-      if (isProduction) {
-        const res = await fetch(`/api/search-candidates?q=${encodeURIComponent(q)}`)
-        const data = await res.json()
-        if (data.error) throw new Error(data.error)
-        setResults(data.results || [])
-        if (data.results?.length === 0) {
-          setSearchError('No se encontraron perfiles. Intenta con otros terminos.')
-        }
-      } else {
-        // Dev mode: search via Supabase candidates already in the bank that match
-        const { data } = await supabase
-          .from('candidates')
-          .select('*')
-          .or(`full_name.ilike.%${q.split('"').join('')}%,current_title.ilike.%${q.split('"').join('')}%,tags.cs.{${q.split('"').join('').split(' ')[0]}}`)
-          .limit(50)
-
-        if (data && data.length > 0) {
-          setResults(data.map(c => ({
-            full_name: c.full_name,
-            current_title: c.current_title,
-            current_company: c.current_company,
-            linkedin_url: c.linkedin_url,
-            snippet: c.notes,
-            _existing_id: c.id,
-          })))
-        } else {
-          // Fallback: show candidates tagged with xray-search
-          const { data: xray } = await supabase
-            .from('candidates')
-            .select('*')
-            .contains('tags', ['xray-search'])
-            .limit(50)
-
-          setResults((xray || []).map(c => ({
-            full_name: c.full_name,
-            current_title: c.current_title,
-            current_company: c.current_company,
-            linkedin_url: c.linkedin_url,
-            snippet: c.notes,
-            _existing_id: c.id,
-          })))
-        }
+      // Always use the serverless function (works in both dev via netlify dev proxy and production)
+      const res = await fetch(`/api/search-candidates?q=${encodeURIComponent(q)}`)
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setResults(data.results || [])
+      if (data.results?.length === 0) {
+        setSearchError('No se encontraron perfiles. Intenta con otros terminos.')
       }
     } catch (err) {
       setSearchError('Error en la busqueda: ' + err.message)
