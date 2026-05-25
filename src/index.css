@@ -316,9 +316,39 @@ select option {
 :root:not(.dark) .bg-primary\/15 { background: rgba(37,99,235,0.1) !important; }
 :root:not(.dark) .bg-accent\/15 { background: rgba(13,148,136,0.1) !important; }
 
-/* Hero section in light — subtle gradient bg */
+/* Hero section in light — bold vibrant gradient */
 :root:not(.dark) #inicio {
-  background: linear-gradient(180deg, #EFF6FF 0%, #F8FAFC 40%, #F0FDFA 100%);
+  background: linear-gradient(135deg, #1E3A5F 0%, #0F2B4A 25%, #0C3B3A 50%, #0D4A44 75%, #1A365D 100%);
+}
+:root:not(.dark) #inicio .text-white,
+:root:not(.dark) #inicio h1,
+:root:not(.dark) #inicio h2 {
+  color: #FFFFFF !important;
+}
+:root:not(.dark) #inicio .text-gray-300,
+:root:not(.dark) #inicio .text-gray-400,
+:root:not(.dark) #inicio p {
+  color: #CBD5E1 !important;
+}
+:root:not(.dark) #inicio .text-gray-500 {
+  color: #94A3B8 !important;
+}
+:root:not(.dark) #inicio .glass {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  box-shadow: none !important;
+}
+:root:not(.dark) #inicio .glass-strong,
+:root:not(.dark) #inicio .card-premium {
+  background: rgba(255,255,255,0.06) !important;
+  border-color: rgba(255,255,255,0.1) !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2) !important;
+}
+:root:not(.dark) #inicio a[class*="bg-gradient"] {
+  color: #FFFFFF !important;
+}
+:root:not(.dark) #inicio .gradient-text {
+  background-image: linear-gradient(135deg, #60A5FA, #2DD4BF) !important;
 }
 
 /* Product section — subtle warmth */
