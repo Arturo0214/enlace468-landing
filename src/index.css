@@ -224,22 +224,19 @@ select option {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   LIGHT MODE OVERRIDES — Key elements that need explicit light
+   LIGHT MODE — Rich, colorful overrides
    ══════════════════════════════════════════════════════════════ */
 
-/* Text colors that are hardcoded as text-white need light override */
-:root:not(.dark) .text-white { color: var(--text-primary); }
-:root:not(.dark) .text-gray-300 { color: #475569; }
-:root:not(.dark) .text-gray-400 { color: #64748B; }
-:root:not(.dark) .text-gray-500 { color: #94A3B8; }
+/* Text — strong contrast in light */
+:root:not(.dark) .text-white { color: #0F172A; }
+:root:not(.dark) .text-gray-200 { color: #1E293B; }
+:root:not(.dark) .text-gray-300 { color: #334155; }
+:root:not(.dark) .text-gray-400 { color: #475569; }
+:root:not(.dark) .text-gray-500 { color: #64748B; }
 :root:not(.dark) .text-gray-600 { color: #94A3B8; }
 
-/* But preserve white text on gradient/colored backgrounds */
-:root:not(.dark) .bg-gradient-to-r .text-white,
+/* Preserve white text on colored/gradient backgrounds */
 :root:not(.dark) [class*="bg-gradient"] .text-white,
-:root:not(.dark) [style*="background: linear-gradient"] .text-white,
-:root:not(.dark) [style*="background: rgb"] .text-white,
-:root:not(.dark) .rounded-full.bg-gradient-to-r .text-white,
 :root:not(.dark) [class*="from-primary"] .text-white,
 :root:not(.dark) [class*="from-accent"] .text-white,
 :root:not(.dark) [class*="from-purple"] .text-white,
@@ -250,35 +247,115 @@ select option {
 :root:not(.dark) [class*="from-amber"] .text-white,
 :root:not(.dark) [class*="bg-primary"] .text-white,
 :root:not(.dark) [class*="bg-accent"] .text-white,
-:root:not(.dark) button[class*="bg-gradient"] .text-white,
-:root:not(.dark) a[class*="bg-gradient"] .text-white,
 :root:not(.dark) button[class*="bg-gradient"],
-:root:not(.dark) a[class*="bg-gradient"] {
+:root:not(.dark) a[class*="bg-gradient"],
+:root:not(.dark) [style*="background: linear-gradient"] .text-white,
+:root:not(.dark) [style*="background: linear"] .text-white {
   color: #FFFFFF !important;
 }
 
-/* Backgrounds */
-:root:not(.dark) .bg-white\/5 { background: rgba(15,23,42,0.03); }
-:root:not(.dark) .bg-white\/\[0\.02\] { background: rgba(15,23,42,0.02); }
-:root:not(.dark) .bg-white\/\[0\.03\] { background: rgba(15,23,42,0.02); }
-:root:not(.dark) .bg-white\/\[0\.04\] { background: rgba(15,23,42,0.03); }
-:root:not(.dark) .bg-white\/10 { background: rgba(15,23,42,0.05); }
+/* Backgrounds — subtle color tints instead of plain white */
+:root:not(.dark) .bg-white\/5 { background: rgba(37,99,235,0.03); }
+:root:not(.dark) .bg-white\/\[0\.02\] { background: rgba(37,99,235,0.015); }
+:root:not(.dark) .bg-white\/\[0\.03\] { background: rgba(37,99,235,0.02); }
+:root:not(.dark) .bg-white\/\[0\.04\] { background: rgba(37,99,235,0.025); }
+:root:not(.dark) .bg-white\/10 { background: rgba(37,99,235,0.04); }
 
-/* Borders */
-:root:not(.dark) .border-white\/5 { border-color: rgba(15,23,42,0.06); }
-:root:not(.dark) .border-white\/10 { border-color: rgba(15,23,42,0.1); }
-:root:not(.dark) .border-white\/\[0\.05\] { border-color: rgba(15,23,42,0.05); }
-:root:not(.dark) .border-white\/\[0\.06\] { border-color: rgba(15,23,42,0.06); }
+/* Borders — slightly colored */
+:root:not(.dark) .border-white\/5 { border-color: rgba(37,99,235,0.08); }
+:root:not(.dark) .border-white\/10 { border-color: rgba(37,99,235,0.1); }
+:root:not(.dark) .border-white\/\[0\.05\] { border-color: rgba(37,99,235,0.06); }
+:root:not(.dark) .border-white\/\[0\.06\] { border-color: rgba(37,99,235,0.08); }
 
-/* Inputs */
+/* Glass in light mode — colored subtle tint with stronger shadow */
+:root:not(.dark) .glass {
+  background: rgba(255, 255, 255, 0.75) !important;
+  border-color: rgba(37,99,235,0.08) !important;
+  box-shadow: 0 1px 3px rgba(37,99,235,0.06), 0 4px 16px rgba(15,23,42,0.04) !important;
+}
+:root:not(.dark) .glass-strong {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(37,99,235,0.1) !important;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.06), 0 8px 24px rgba(15,23,42,0.06) !important;
+}
+
+/* Glass hover in light — gentle blue lift */
+:root:not(.dark) .glass:hover {
+  box-shadow: 0 2px 8px rgba(37,99,235,0.1), 0 8px 24px rgba(15,23,42,0.06) !important;
+}
+
+/* Inputs — light mode styling */
 :root:not(.dark) input,
 :root:not(.dark) textarea,
 :root:not(.dark) select {
-  color: var(--text-primary);
+  color: #0F172A;
+  background: rgba(241,245,249,0.8) !important;
+  border-color: rgba(37,99,235,0.12) !important;
+}
+:root:not(.dark) input:focus,
+:root:not(.dark) textarea:focus,
+:root:not(.dark) select:focus {
+  border-color: rgba(37,99,235,0.3) !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.08) !important;
 }
 :root:not(.dark) input::placeholder,
 :root:not(.dark) textarea::placeholder {
   color: #94A3B8;
+}
+
+/* Section alternating backgrounds for visual rhythm */
+:root:not(.dark) section:nth-child(even) {
+  background: linear-gradient(180deg, rgba(241,245,249,0.5) 0%, rgba(248,250,252,1) 100%);
+}
+
+/* Colored accent badges in light — more vibrant */
+:root:not(.dark) .bg-primary\/20 { background: rgba(37,99,235,0.12) !important; }
+:root:not(.dark) .bg-accent\/20 { background: rgba(13,148,136,0.12) !important; }
+:root:not(.dark) .bg-primary\/10 { background: rgba(37,99,235,0.08) !important; }
+:root:not(.dark) .bg-accent\/10 { background: rgba(13,148,136,0.08) !important; }
+:root:not(.dark) .bg-primary\/15 { background: rgba(37,99,235,0.1) !important; }
+:root:not(.dark) .bg-accent\/15 { background: rgba(13,148,136,0.1) !important; }
+
+/* Hero section in light — subtle gradient bg */
+:root:not(.dark) #inicio {
+  background: linear-gradient(180deg, #EFF6FF 0%, #F8FAFC 40%, #F0FDFA 100%);
+}
+
+/* Product section — subtle warmth */
+:root:not(.dark) #productos {
+  background: linear-gradient(180deg, #F8FAFC 0%, #FFF7ED 30%, #FDF2F8 60%, #F8FAFC 100%);
+}
+
+/* Pricing section — cool blue tint */
+:root:not(.dark) #precios {
+  background: linear-gradient(180deg, #F8FAFC 0%, #EFF6FF 50%, #F8FAFC 100%);
+}
+
+/* How it works — teal tint */
+:root:not(.dark) #como-funciona {
+  background: linear-gradient(180deg, #F8FAFC 0%, #F0FDFA 50%, #F8FAFC 100%);
+}
+
+/* Card premium in light — clean with colored shadow */
+:root:not(.dark) .card-premium {
+  background: white !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(37,99,235,0.06) !important;
+}
+:root:not(.dark) .card-premium:hover {
+  box-shadow: 0 4px 12px rgba(37,99,235,0.1), 0 16px 40px rgba(15,23,42,0.08) !important;
+}
+:root:not(.dark) .card-premium::before {
+  background: linear-gradient(135deg, rgba(37,99,235,0.15), rgba(13,148,136,0.1), rgba(37,99,235,0.05)) !important;
+}
+
+/* Stat glow off in light mode */
+:root:not(.dark) .stat-glow {
+  text-shadow: none;
+}
+
+/* Sidebar in light — clean white with colored left accent */
+:root:not(.dark) aside {
+  box-shadow: 1px 0 0 rgba(37,99,235,0.06);
 }
 
 /* ══════════════════════════════════════════════════════════════
