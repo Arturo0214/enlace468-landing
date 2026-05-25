@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
+import { useTheme } from '../../lib/themeContext'
 
 export default function ParticleBackground() {
   const canvasRef = useRef(null)
+  const { isDark } = useTheme()
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -9,9 +11,14 @@ export default function ParticleBackground() {
     let animationId
     let mouse = { x: null, y: null }
     const particles = []
-    const particleCount = 80
+    const particleCount = 100
     const connectionDistance = 150
     const mouseRadius = 200
+
+    // Colors adapt to theme
+    const darkColors = ['#E6195B', '#06B6D4', '#FF3D7F', '#22D3EE']
+    const lightColors = ['#2563EB', '#0D9488', '#8B5CF6', '#D97706', '#EC4899']
+    const colors = isDark ? darkColors : lightColors
 
     function resize() {
       canvas.width = window.innerWidth
@@ -20,22 +27,18 @@ export default function ParticleBackground() {
     resize()
     window.addEventListener('resize', resize)
 
-    window.addEventListener('mousemove', (e) => {
-      mouse.x = e.clientX
-      mouse.y = e.clientY
-    })
-
-    const colors = ['#E6195B', '#06B6D4', '#FF3D7F', '#22D3EE']
+    const handleMouse = (e) => { mouse.x = e.clientX; mouse.y = e.clientY }
+    window.addEventListener('mousemove', handleMouse)
 
     for (let i = 0; i < particleCount; i++) {
       particles.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        radius: Math.random() * 2 + 1,
+        vx: (Math.random() - 0.5) * 0.6,
+        vy: (Math.random() - 0.5) * 0.6,
+        radius: Math.random() * 2.5 + 0.8,
         color: colors[Math.floor(Math.random() * colors.length)],
-        alpha: Math.random() * 0.5 + 0.2,
+        alpha: isDark ? (Math.random() * 0.5 + 0.2) : (Math.random() * 0.4 + 0.15),
       })
     }
 
@@ -43,15 +46,12 @@ export default function ParticleBackground() {
       ctx.clearRect(0, 0, canvas.width, canvas.height)
 
       particles.forEach((p, i) => {
-        // Move
         p.x += p.vx
         p.y += p.vy
 
-        // Bounce
         if (p.x < 0 || p.x > canvas.width) p.vx *= -1
         if (p.y < 0 || p.y > canvas.height) p.vy *= -1
 
-        // Mouse interaction
         if (mouse.x !== null) {
           const dx = mouse.x - p.x
           const dy = mouse.y - p.y
@@ -63,7 +63,6 @@ export default function ParticleBackground() {
           }
         }
 
-        // Speed limit
         const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
         if (speed > 1.5) {
           p.vx = (p.vx / speed) * 1.5
@@ -88,8 +87,8 @@ export default function ParticleBackground() {
             ctx.moveTo(p.x, p.y)
             ctx.lineTo(p2.x, p2.y)
             ctx.strokeStyle = p.color
-            ctx.globalAlpha = (1 - dist / connectionDistance) * 0.15
-            ctx.lineWidth = 0.5
+            ctx.globalAlpha = (1 - dist / connectionDistance) * (isDark ? 0.15 : 0.12)
+            ctx.lineWidth = isDark ? 0.5 : 0.6
             ctx.stroke()
           }
         }
@@ -104,14 +103,15 @@ export default function ParticleBackground() {
     return () => {
       cancelAnimationFrame(animationId)
       window.removeEventListener('resize', resize)
+      window.removeEventListener('mousemove', handleMouse)
     }
-  }, [])
+  }, [isDark])
 
   return (
     <canvas
       ref={canvasRef}
       className="fixed inset-0 z-0 pointer-events-none"
-      style={{ opacity: 0.6 }}
+      style={{ opacity: isDark ? 0.6 : 0.45 }}
     />
   )
 }
