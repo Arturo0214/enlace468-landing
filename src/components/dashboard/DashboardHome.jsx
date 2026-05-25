@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Briefcase, Users, Clock, AlertTriangle, Sparkles, ExternalLink } from 'lucide-react'
+import { Briefcase, Users, Clock, AlertTriangle, Sparkles, ExternalLink, Package, Zap, GraduationCap, Star, Building2, UserCircle, ArrowRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
@@ -307,6 +307,108 @@ export default function DashboardHome() {
             <div className="text-sm text-gray-400">Explorar y gestionar candidatos</div>
           </div>
         </Link>
+      </div>
+
+      {/* ── Product Banners ────────────────────────────────────── */}
+      <div className="mb-8">
+        <h2 className="font-display font-semibold text-white mb-4">Explora el ecosistema Enlace 468</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[
+            {
+              to: '/dashboard/talent-desk',
+              icon: Package,
+              title: 'Talent Desk',
+              desc: 'Candidatos mapeados, filtrados y rankeados para tu vacante',
+              gradient: 'from-purple-600/20 to-purple-400/5',
+              iconColor: 'text-purple-400',
+              border: 'hover:border-purple-500/30',
+              badge: 'Desde $4,900/vacante',
+              badgeColor: 'bg-purple-500/15 text-purple-300',
+            },
+            {
+              to: '/dashboard/recruiter-tools',
+              icon: Zap,
+              title: 'Recruiter Pro',
+              desc: 'Prompts IA, outreach templates, guías y reportes',
+              gradient: 'from-teal-600/20 to-teal-400/5',
+              iconColor: 'text-teal-400',
+              border: 'hover:border-teal-500/30',
+              badge: '14 prompts + 11 templates',
+              badgeColor: 'bg-teal-500/15 text-teal-300',
+            },
+            {
+              to: '/dashboard/academy',
+              icon: GraduationCap,
+              title: 'Academy',
+              desc: 'Recursos, playbooks, sesiones en vivo y comunidad',
+              gradient: 'from-amber-600/20 to-amber-400/5',
+              iconColor: 'text-amber-400',
+              border: 'hover:border-amber-500/30',
+              badge: '20+ recursos',
+              badgeColor: 'bg-amber-500/15 text-amber-300',
+            },
+            {
+              to: '/dashboard/marca-vende',
+              icon: Star,
+              title: 'Tu Marca Vende',
+              desc: 'Diagnóstico CV/LinkedIn, perfil IA, simulador de entrevista',
+              gradient: 'from-rose-600/20 to-rose-400/5',
+              iconColor: 'text-rose-400',
+              border: 'hover:border-rose-500/30',
+              badge: '5 herramientas',
+              badgeColor: 'bg-rose-500/15 text-rose-300',
+            },
+            {
+              to: '/dashboard/enterprise',
+              icon: Building2,
+              title: 'Enterprise',
+              desc: 'KPIs ejecutivos, configuración estratégica y tableros',
+              gradient: 'from-blue-600/20 to-blue-400/5',
+              iconColor: 'text-blue-400',
+              border: 'hover:border-blue-500/30',
+              badge: '6 KPIs + SLA',
+              badgeColor: 'bg-blue-500/15 text-blue-300',
+              adminOnly: true,
+            },
+            {
+              to: '/dashboard/candidate-profile',
+              icon: UserCircle,
+              title: 'Perfil Profesional',
+              desc: 'Construye tu perfil y hazte visible para reclutadores',
+              gradient: 'from-green-600/20 to-green-400/5',
+              iconColor: 'text-green-400',
+              border: 'hover:border-green-500/30',
+              badge: 'Gratis',
+              badgeColor: 'bg-green-500/15 text-green-300',
+            },
+          ]
+            .filter(b => !b.adminOnly || ['admin', 'super_admin'].includes(profile?.role))
+            .map((banner, idx) => (
+            <motion.div
+              key={banner.to}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 + idx * 0.05 }}
+            >
+              <Link
+                to={banner.to}
+                className={`block glass rounded-xl p-5 transition-all hover:scale-[1.02] group ${banner.border}`}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${banner.gradient} flex items-center justify-center ${banner.iconColor} group-hover:scale-110 transition-transform`}>
+                    <banner.icon size={22} />
+                  </div>
+                  <ArrowRight size={16} className="text-gray-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                </div>
+                <h3 className="font-display font-bold text-white mb-1">{banner.title}</h3>
+                <p className="text-gray-400 text-sm mb-3 line-clamp-2">{banner.desc}</p>
+                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${banner.badgeColor}`}>
+                  {banner.badge}
+                </span>
+              </Link>
+            </motion.div>
+          ))}
+        </div>
       </div>
 
       {/* ── Recent Activity ───────────────────────────────────── */}
