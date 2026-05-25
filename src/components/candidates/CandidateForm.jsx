@@ -2,9 +2,18 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import { logActivity } from '../../lib/auditLog'
+import ComplianceBanner from '../ui/ComplianceBanner'
 
 const inputClass = "w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-primary/50 outline-none text-white placeholder-gray-500 text-sm"
 const labelClass = "block text-sm font-medium text-gray-400 mb-1"
+
+const purposeOptions = [
+  { value: 'recruitment', label: 'Reclutamiento y seleccion' },
+  { value: 'talent_pool', label: 'Conformacion de banco de talento' },
+  { value: 'internal_mobility', label: 'Movilidad interna' },
+  { value: 'succession_planning', label: 'Planificacion de sucesion' },
+]
 
 export default function CandidateForm({ onClose, onSaved, initial }) {
   const { profile } = useAuth()
@@ -15,6 +24,11 @@ export default function CandidateForm({ onClose, onSaved, initial }) {
     current_title: initial?.current_title || '', current_company: initial?.current_company || '',
     years_experience: initial?.years_experience || '', salary_expectation: initial?.salary_expectation || '',
     source: initial?.source || '', tags: initial?.tags?.join(', ') || '', notes: initial?.notes || '',
+    // Compliance fields
+    data_obtained_at: initial?.data_obtained_at || new Date().toISOString().split('T')[0],
+    data_purpose: initial?.data_purpose || 'recruitment',
+    consent_contact: initial?.consent_contact ?? false,
+    consent_talent_pool: initial?.consent_talent_pool ?? false,
   })
 
   function update(f, v) { setForm(prev => ({ ...prev, [f]: v })) }
@@ -33,9 +47,24 @@ export default function CandidateForm({ onClose, onSaved, initial }) {
         salary_expectation: form.salary_expectation ? Number(form.salary_expectation) : null,
         source: form.source || null, tags: form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
         notes: form.notes || null,
+        data_obtained_at: form.data_obtained_at || null,
+        data_purpose: form.data_purpose,
+        consent_contact: form.consent_contact,
+        consent_talent_pool: form.consent_talent_pool,
       }
-      if (initial?.id) await supabase.from('candidates').update(payload).eq('id', initial.id)
-      else await supabase.from('candidates').insert(payload)
+      let entityId = initial?.id
+      if (initial?.id) {
+        await supabase.from('candidates').update(payload).eq('id', initial.id)
+      } else {
+        const { data } = await supabase.from('candidates').insert(payload).select('id').single()
+        entityId = data?.id
+      }
+      if (entityId) {
+        await logActivity('candidate', entityId, initial ? 'Candidato actualizado' : 'Candidato creado', {
+          consent_contact: form.consent_contact,
+          consent_talent_pool: form.consent_talent_pool,
+        })
+      }
       onSaved()
     } catch (err) { alert('Error: ' + err.message) }
     finally { setSaving(false) }
@@ -75,6 +104,48 @@ export default function CandidateForm({ onClose, onSaved, initial }) {
             <div><label className={labelClass}>Tags (coma)</label><input type="text" value={form.tags} onChange={e => update('tags', e.target.value)} placeholder="ventas, senior" className={inputClass} /></div>
           </div>
           <div><label className={labelClass}>Notas</label><textarea value={form.notes} onChange={e => update('notes', e.target.value)} rows={3} className={inputClass + ' resize-none'} /></div>
+
+          {/* ── Compliance Section ────────────────────────────── */}
+          <div className="pt-2">
+            <ComplianceBanner type="consent">
+              Datos requeridos para el cumplimiento de proteccion de datos personales.
+            </ComplianceBanner>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass}>Fecha de obtencion</label>
+              <input type="date" value={form.data_obtained_at} onChange={e => update('data_obtained_at', e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Finalidad</label>
+              <select value={form.data_purpose} onChange={e => update('data_purpose', e.target.value)} className={inputClass}>
+                {purposeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={form.consent_contact}
+                onChange={e => update('consent_contact', e.target.checked)}
+                className="w-4 h-4 rounded border-white/20 bg-white/5 text-primary focus:ring-primary/30"
+              />
+              <span className="text-sm text-gray-300 group-hover:text-white transition-colors">Autorizacion para contacto</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={form.consent_talent_pool}
+                onChange={e => update('consent_talent_pool', e.target.checked)}
+                className="w-4 h-4 rounded border-white/20 bg-white/5 text-primary focus:ring-primary/30"
+              />
+              <span className="text-sm text-gray-300 group-hover:text-white transition-colors">Autorizacion para banco de talento futuro</span>
+            </label>
+          </div>
+
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancelar</button>
             <button type="submit" disabled={saving || !form.full_name.trim()} className="px-4 py-2.5 bg-gradient-to-r from-primary to-accent text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:opacity-90">
