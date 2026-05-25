@@ -77,7 +77,7 @@ export default function CheckoutPage() {
   // Success
   if (success) {
     return (
-      <div className="min-h-screen bg-[#0B1120] flex items-center justify-center px-4 py-12">
+      <div className="min-h-screen bg-theme flex items-center justify-center px-4 py-12">
         <div className="fixed inset-0 pointer-events-none overflow-hidden">
           {Array.from({ length: 20 }).map((_, i) => (
             <motion.div key={i}
@@ -117,7 +117,7 @@ export default function CheckoutPage() {
   // Empty
   if (itemCount === 0) {
     return (
-      <div className="min-h-screen bg-[#0B1120] flex items-center justify-center px-4 py-12">
+      <div className="min-h-screen bg-theme flex items-center justify-center px-4 py-12">
         <div className="glass-strong rounded-2xl p-8 sm:p-12 max-w-md w-full text-center border border-white/10">
           <ShoppingCart className="w-16 h-16 text-gray-600 mx-auto mb-4" />
           <h2 className="font-display font-bold text-xl text-white mb-2">Carrito vacio</h2>
@@ -135,7 +135,7 @@ export default function CheckoutPage() {
   const subtotalSetup = items.reduce((s, i) => s + (i.plan.setup_fee_mxn || 0), 0)
 
   return (
-    <div className="min-h-screen bg-[#0B1120]">
+    <div className="min-h-screen bg-theme">
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
       </div>

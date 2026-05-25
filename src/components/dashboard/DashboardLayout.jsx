@@ -8,7 +8,7 @@ export default function DashboardLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   return (
-    <div className="h-screen flex overflow-hidden" style={{ background: '#030014' }}>
+    <div className="h-screen flex overflow-hidden" style={{ background: 'var(--bg-body)' }}>
       <Sidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

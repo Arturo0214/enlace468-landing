@@ -355,11 +355,11 @@ export default function Hero() {
             </div>
 
             {/* Demo card */}
-            <div className="card-premium rounded-2xl min-h-[420px]" style={{ background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(20px)' }}>
+            <div className="card-premium rounded-2xl min-h-[420px]" style={{ background: 'var(--glass-bg)', backdropFilter: 'blur(20px)' }}>
               <div className="card-shimmer" />
 
               {/* Header */}
-              <div className="relative px-6 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="relative px-6 pt-5 pb-4" style={{ borderBottom: '1px solid var(--border-default)' }}>
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${step.color}, ${step.color}99)`, boxShadow: `0 4px 16px ${step.color}30` }}>
                     <step.icon size={18} className="text-white" />
@@ -420,7 +420,7 @@ export default function Hero() {
       </div>
 
       {/* Bottom fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0B1120] to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[var(--bg-body)] to-transparent" />
     </section>
   )
 }

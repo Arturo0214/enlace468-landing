@@ -171,7 +171,7 @@ export default function DashboardHome() {
 
       {/* ── Pipeline Funnel ───────────────────────────────────── */}
       <div className="glass rounded-xl mb-8">
-        <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-default)' }}>
           <h2 className="font-display font-semibold text-white">Pipeline de candidatos</h2>
         </div>
         <div className="p-5 space-y-3">
@@ -201,7 +201,7 @@ export default function DashboardHome() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* ── Active Vacancies Table ──────────────────────────── */}
         <div className="lg:col-span-2 glass rounded-xl">
-          <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-default)' }}>
             <h2 className="font-display font-semibold text-white">Vacantes activas</h2>
           </div>
           <div className="overflow-x-auto">
@@ -251,7 +251,7 @@ export default function DashboardHome() {
 
         {/* ── Aging Alerts ────────────────────────────────────── */}
         <div className="glass rounded-xl">
-          <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-default)' }}>
             <h2 className="font-display font-semibold text-white flex items-center gap-2">
               <AlertTriangle size={16} className="text-amber-400" /> Alertas de envejecimiento
             </h2>
@@ -350,7 +350,7 @@ export default function DashboardHome() {
                 Ver planes y precios
                 <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </a>
-              <Link to="/dashboard/talent-desk" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-semibold text-sm text-white/80 hover:text-white transition-all" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <Link to="/dashboard/talent-desk" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-semibold text-sm text-white/80 hover:text-white transition-all" style={{ background: 'var(--glass-bg)', border: '1px solid var(--border-strong)' }}>
                 Solicitar Talent Desk
               </Link>
             </motion.div>
@@ -365,7 +365,7 @@ export default function DashboardHome() {
               { val: '94%', label: 'Satisfacción\ncliente', color: 'text-amber-400' },
             ].map((s, i) => (
               <motion.div key={i} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.7 + i * 0.1 }}
-                className="rounded-2xl p-4 text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', backdropFilter: 'blur(8px)' }}>
+                className="rounded-2xl p-4 text-center" style={{ background: 'var(--glass-bg)', border: '1px solid var(--border-default)', backdropFilter: 'blur(8px)' }}>
                 <div className={`text-2xl font-extrabold font-display ${s.color} stat-glow`}>{s.val}</div>
                 <div className="text-[10px] text-gray-500 mt-1 leading-tight whitespace-pre-line">{s.label}</div>
               </motion.div>
@@ -553,7 +553,7 @@ export default function DashboardHome() {
 
       {/* ── Recent Activity ───────────────────────────────────── */}
       <div className="glass rounded-xl">
-        <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-default)' }}>
           <h2 className="font-display font-semibold text-white">Actividad reciente</h2>
         </div>
         <div className="p-5">

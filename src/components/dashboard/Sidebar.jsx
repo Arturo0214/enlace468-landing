@@ -29,9 +29,9 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }) 
         className={`fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-200 lg:static lg:translate-x-0 ${
           open ? 'translate-x-0' : '-translate-x-full'
         } ${collapsed ? 'w-16' : 'w-60'}`}
-        style={{ background: '#0F1729', borderRight: '1px solid rgba(255,255,255,0.06)' }}
+        style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--border-default)' }}
       >
-        <div className="h-14 flex items-center justify-between px-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="h-14 flex items-center justify-between px-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-default)' }}>
           {!collapsed && (
             <a href="/" className="flex items-center">
               <img src="/logo-enlace468.jpeg" alt="Enlace 468" className="h-8 w-auto object-contain" />
@@ -103,7 +103,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }) 
           )}
         </nav>
 
-        <div className="px-2 py-3 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="px-2 py-3 flex-shrink-0" style={{ borderTop: '1px solid var(--border-default)' }}>
           {profile && !collapsed && (
             <div className="flex items-center gap-2.5 px-3 py-2 mb-1">
               <div className="w-7 h-7 rounded-full bg-primary/30 flex items-center justify-center text-primary-light text-xs font-bold flex-shrink-0">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
+import ThemeToggle from '../ui/ThemeToggle'
 
 const navLinks = [
   { name: 'Inicio', href: '#inicio' },
@@ -64,6 +65,7 @@ export default function Navbar() {
             >
               Acceder
             </Link>
+            <ThemeToggle />
           </div>
 
           {/* Mobile hamburger */}
@@ -117,6 +119,9 @@ export default function Navbar() {
               >
                 Acceder
               </Link>
+              <div className="flex justify-center pt-2">
+                <ThemeToggle />
+              </div>
             </div>
           </motion.div>
         )}

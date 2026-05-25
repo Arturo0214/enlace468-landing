@@ -1,11 +1,12 @@
 import { Menu, Bell } from 'lucide-react'
 import { useAuth } from '../../lib/auth'
+import ThemeToggle from '../ui/ThemeToggle'
 
 export default function Topbar({ onMenuToggle }) {
   const { profile } = useAuth()
 
   return (
-    <header className="h-16 glass flex items-center justify-between px-4 lg:px-6" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+    <header className="h-16 glass flex items-center justify-between px-4 lg:px-6" style={{ borderBottom: '1px solid var(--border-default)' }}>
       <div className="flex items-center gap-4">
         <button
           onClick={onMenuToggle}
@@ -19,6 +20,7 @@ export default function Topbar({ onMenuToggle }) {
       </div>
 
       <div className="flex items-center gap-3">
+        <ThemeToggle />
         <button className="p-2 rounded-lg text-gray-400 hover:bg-white/5 hover:text-white relative transition-colors">
           <Bell size={20} />
         </button>

@@ -38,14 +38,14 @@ export default function LoginPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#030014' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-body)' }}>
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative" style={{ background: '#030014' }}>
+    <div className="min-h-screen flex items-center justify-center px-4 relative" style={{ background: 'var(--bg-body)' }}>
       {/* Background glow */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-gradient-to-b from-primary/20 via-accent/10 to-transparent blur-[120px] rounded-full pointer-events-none" />
 
