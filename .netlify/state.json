@@ -16,7 +16,7 @@
 			"longitude": -99.1574,
 			"postalCode": "06400"
 		},
-		"timestamp": 1779573856615
+		"timestamp": 1779733228381
 	},
 	"dbConnectionString": "postgres://localhost:58080/postgres"
 }
