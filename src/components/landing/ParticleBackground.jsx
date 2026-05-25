@@ -12,7 +12,11 @@ export default function ParticleBackground() {
     let mouse = { x: null, y: null }
     const particles = []
     const isMobile = window.innerWidth < 768
-    const particleCount = isMobile ? 30 : 100
+    if (isMobile) {
+      // No particles on mobile — just return empty canvas
+      return () => {}
+    }
+    const particleCount = 100
     const connectionDistance = isMobile ? 100 : 150
     const mouseRadius = 200
 
