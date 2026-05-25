@@ -11,8 +11,9 @@ export default function ParticleBackground() {
     let animationId
     let mouse = { x: null, y: null }
     const particles = []
-    const particleCount = 100
-    const connectionDistance = 150
+    const isMobile = window.innerWidth < 768
+    const particleCount = isMobile ? 30 : 100
+    const connectionDistance = isMobile ? 100 : 150
     const mouseRadius = 200
 
     // Colors adapt to theme
