@@ -1,7 +1,7 @@
 const navLinks = [
   { name: 'Inicio', href: '#inicio' },
-  { name: 'Servicios', href: '#servicios' },
-  { name: 'AI Talent Advisor', href: '#ai-talent-advisor' },
+  { name: 'Productos', href: '#productos' },
+  { name: 'Cómo funciona', href: '#como-funciona' },
   { name: 'Precios', href: '#precios' },
   { name: 'Contacto', href: '#contacto' },
 ]

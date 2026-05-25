@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import LandingPage from './components/landing/LandingPage'
+import CoursePage from './components/landing/CoursePage'
 import LoginPage from './components/auth/LoginPage'
 import CheckoutPage from './components/cart/CheckoutPage'
 import ProtectedRoute from './components/auth/ProtectedRoute'
@@ -46,6 +47,7 @@ function App() {
     <Routes>
       {/* Public */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/curso" element={<CoursePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/candidate" element={<CandidatePortal />} />
       <Route path="/checkout" element={<CheckoutPage />} />

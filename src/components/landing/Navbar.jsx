@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Link } from 'react-router-dom'
 
 const navLinks = [
   { name: 'Inicio', href: '#inicio' },
-  { name: 'Servicios', href: '#servicios' },
-  { name: 'AI Talent Advisor', href: '#ai-talent-advisor' },
+  { name: 'Productos', href: '#productos' },
+  { name: 'Cómo funciona', href: '#como-funciona' },
   { name: 'Precios', href: '#precios' },
-  { name: 'Nosotros', href: '#por-que' },
   { name: 'Contacto', href: '#contacto' },
 ]
 
@@ -58,6 +58,12 @@ export default function Navbar() {
             >
               Cont&aacute;ctanos
             </a>
+            <Link
+              to="/login"
+              className="px-5 py-2 rounded-full glass text-white text-sm font-semibold hover:bg-white/10 transition-all hover:scale-105 border border-white/10"
+            >
+              Acceder
+            </Link>
           </div>
 
           {/* Mobile hamburger */}
@@ -104,6 +110,13 @@ export default function Navbar() {
               >
                 Cont&aacute;ctanos
               </a>
+              <Link
+                to="/login"
+                onClick={() => setMobileOpen(false)}
+                className="block w-full text-center px-5 py-2.5 rounded-full glass text-white font-semibold border border-white/10"
+              >
+                Acceder
+              </Link>
             </div>
           </motion.div>
         )}
