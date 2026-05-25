@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Zap, Wand2, MessageSquare, Search, ClipboardList, ArrowRight, BarChart3 } from 'lucide-react'
+import { Zap, Wand2, MessageSquare, Search, ClipboardList, ArrowRight, BarChart3, Award } from 'lucide-react'
 import { usePlan } from '../../lib/planContext'
 import UpgradePrompt from '../ui/UpgradePrompt'
 
@@ -59,6 +59,17 @@ const tools = [
     borderHover: 'hover:border-amber-400/30',
     tier: 'Elite',
     to: '/dashboard/recruiter-tools/reports',
+  },
+  {
+    id: 'best-practices',
+    name: 'Mejores Practicas',
+    description: 'Frameworks, checklists y estrategias comprobadas para cada etapa del reclutamiento',
+    icon: Award,
+    gradient: 'from-rose-500/20 to-pink-500/10',
+    iconColor: 'text-rose-400',
+    borderHover: 'hover:border-rose-400/30',
+    tier: 'Elite',
+    to: '/dashboard/recruiter-tools/best-practices',
   },
 ]
 

@@ -188,6 +188,40 @@ export default function AcademyDashboard() {
         ))}
       </div>
 
+      {/* Plus Features Section */}
+      <div className="mb-8">
+        <div className="flex items-baseline gap-3 mb-4">
+          <h2 className="text-lg font-display font-semibold text-white">Academy Plus</h2>
+          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400">Plus</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+          >
+            <Link
+              to="/dashboard/academy/library"
+              className="block glass rounded-xl p-5 group hover:border-blue-400/20 transition-all"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/10 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
+                  <BookOpen size={20} />
+                </div>
+                <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border bg-blue-500/20 text-blue-400 border-blue-500/30">
+                  Plus
+                </span>
+              </div>
+              <h3 className="text-sm font-semibold text-white mb-1 group-hover:text-blue-400 transition-colors">Biblioteca Extendida</h3>
+              <p className="text-xs text-gray-400 mb-3 leading-relaxed">Casos practicos, clases grabadas y prompts mensuales avanzados para reclutadores.</p>
+              <div className="flex items-center gap-1 text-xs text-blue-400 font-medium group-hover:gap-2 transition-all">
+                Explorar <ArrowRight size={12} />
+              </div>
+            </Link>
+          </motion.div>
+        </div>
+      </div>
+
       {/* Pro Features Section */}
       <div className="mb-8">
         <div className="flex items-baseline gap-3 mb-4">

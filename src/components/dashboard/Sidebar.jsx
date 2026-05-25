@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Briefcase, Users, GraduationCap, Calendar, Settings, LogOut, ChevronsLeft, ChevronsRight, Shield, Sparkles, Zap, CreditCard } from 'lucide-react'
+import { LayoutDashboard, Briefcase, Users, GraduationCap, Calendar, Settings, LogOut, ChevronsLeft, ChevronsRight, Shield, Sparkles, Zap, CreditCard, Package, UserCircle, Building2 } from 'lucide-react'
 import { useAuth } from '../../lib/auth'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Inicio', end: true },
   { to: '/dashboard/vacancies', icon: Briefcase, label: 'Vacantes' },
+  { to: '/dashboard/talent-desk', icon: Package, label: 'Talent Desk' },
   { to: '/dashboard/candidates', icon: Users, label: 'Candidatos' },
   { to: '/dashboard/recruiter-tools', icon: Zap, label: 'Recruiter Pro' },
   { to: '/dashboard/academy', icon: GraduationCap, label: 'Academy' },
@@ -15,6 +16,7 @@ const navItems = [
 
 const adminItem = { to: '/dashboard/admin', icon: Shield, label: 'Admin Panel' }
 const subscriptionsItem = { to: '/dashboard/subscriptions', icon: CreditCard, label: 'Suscripciones' }
+const enterpriseItem = { to: '/dashboard/enterprise', icon: Building2, label: 'Enterprise' }
 
 export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }) {
   const { signOut, profile } = useAuth()
@@ -41,6 +43,16 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }) 
         </div>
 
         <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
+          <NavLink to="/dashboard/candidate-profile" onClick={onClose} title={collapsed ? 'Mi Perfil Pro' : undefined}
+            className={({ isActive }) =>
+              `flex items-center gap-3 rounded-lg text-[13px] font-medium transition-all ${
+                collapsed ? 'justify-center px-2 py-2' : 'px-3 py-2'
+              } ${isActive ? 'bg-accent/10 text-accent' : 'text-accent/60 hover:text-accent hover:bg-accent/5'}`
+            }>
+            <UserCircle size={18} />
+            {!collapsed && 'Mi Perfil Pro'}
+          </NavLink>
+          <div className="my-2 border-t border-white/5" />
           {navItems.map(({ to, icon: Icon, label, end }) => (
             <NavLink key={to} to={to} end={end} onClick={onClose} title={collapsed ? label : undefined}
               className={({ isActive }) =>
@@ -52,6 +64,20 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }) 
               {!collapsed && label}
             </NavLink>
           ))}
+          {(profile?.role === 'super_admin' || profile?.role === 'admin') && (
+            <>
+              <div className="my-2 border-t border-white/5" />
+              <NavLink to={enterpriseItem.to} onClick={onClose} title={collapsed ? enterpriseItem.label : undefined}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-lg text-[13px] font-medium transition-all ${
+                    collapsed ? 'justify-center px-2 py-2' : 'px-3 py-2'
+                  } ${isActive ? 'bg-primary-light/10 text-primary-light' : 'text-primary-light/60 hover:text-primary-light hover:bg-primary-light/5'}`
+                }>
+                <enterpriseItem.icon size={18} />
+                {!collapsed && enterpriseItem.label}
+              </NavLink>
+            </>
+          )}
           {profile?.role === 'super_admin' && (
             <>
               <div className="my-2 border-t border-white/5" />

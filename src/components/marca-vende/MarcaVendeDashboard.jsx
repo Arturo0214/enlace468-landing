@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Sparkles, Search, Wand2, ArrowRight, CheckCircle, Mic, Eye } from 'lucide-react'
+import { Sparkles, Search, Wand2, ArrowRight, CheckCircle, Mic, Eye, Trophy } from 'lucide-react'
 import { usePlan } from '../../lib/planContext'
 import UpgradePrompt from '../ui/UpgradePrompt'
 
@@ -131,6 +131,45 @@ export default function MarcaVendeDashboard() {
             )
           })}
         </div>
+      </div>
+
+      {/* Acompanamiento 30 dias */}
+      <div className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Link
+            to="/dashboard/marca-vende/acompanamiento"
+            className="block glass rounded-xl p-6 transition-all group hover:border-gold/30"
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold/20 to-amber-500/10 flex items-center justify-center text-gold group-hover:scale-110 transition-transform">
+                <Trophy size={24} />
+              </div>
+              <span className="text-sm font-bold text-white bg-gold/10 px-3 py-1 rounded-full text-gold">
+                $5,900 MXN
+              </span>
+            </div>
+            <h2 className="text-lg font-display font-bold text-white mb-2">Acompanamiento 30 dias</h2>
+            <p className="text-sm text-gray-400 mb-5 leading-relaxed">
+              Programa intensivo de 4 semanas: diagnostico, visibilidad, entrevistas y lanzamiento activo con coaching personalizado.
+            </p>
+            <ul className="space-y-2 mb-6">
+              {['4 semanas de coaching estructurado', 'Checklist semanal de actividades', 'Notas de sesion y seguimiento', 'Acceso a todas las herramientas'].map((f, fi) => (
+                <li key={fi} className="flex items-center gap-2 text-sm text-gray-300">
+                  <CheckCircle size={14} className="text-gold flex-shrink-0" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <div className="flex items-center gap-2 text-sm font-semibold text-gold group-hover:gap-3 transition-all">
+              Ver dashboard del programa
+              <ArrowRight size={16} />
+            </div>
+          </Link>
+        </motion.div>
       </div>
 
       {/* Product Cards */}

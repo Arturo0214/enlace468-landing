@@ -31,6 +31,15 @@ import EntrevistaSimulador from './components/marca-vende/EntrevistaSimulador'
 import VisibilidadStrategy from './components/marca-vende/VisibilidadStrategy'
 import LiveSessionsPage from './components/academy/LiveSessionsPage'
 import PlaybooksPage from './components/academy/PlaybooksPage'
+import TalentDeskDashboard from './components/talent-desk/TalentDeskDashboard'
+import TalentDeskDelivery from './components/talent-desk/TalentDeskDelivery'
+import CandidatePortal from './components/candidate-portal/CandidatePortal'
+import CandidateProfileBuilder from './components/candidate-portal/CandidateProfileBuilder'
+import AcompanamientoDashboard from './components/marca-vende/AcompanamientoDashboard'
+import ExtendedLibrary from './components/academy/ExtendedLibrary'
+import EnterpriseDashboard from './components/enterprise/EnterpriseDashboard'
+import StrategicConfig from './components/enterprise/StrategicConfig'
+import BestPractices from './components/recruiter-tools/BestPractices'
 
 function App() {
   return (
@@ -38,6 +47,7 @@ function App() {
       {/* Public */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/candidate" element={<CandidatePortal />} />
       <Route path="/checkout" element={<CheckoutPage />} />
       <Route path="/checkout/success" element={<CheckoutPage />} />
 
@@ -78,6 +88,14 @@ function App() {
         <Route path="marca-vende/visibilidad" element={<VisibilidadStrategy />} />
         <Route path="academy/live-sessions" element={<LiveSessionsPage />} />
         <Route path="academy/playbooks" element={<PlaybooksPage />} />
+        <Route path="talent-desk" element={<TalentDeskDashboard />} />
+        <Route path="talent-desk/delivery/:vacancyId" element={<TalentDeskDelivery />} />
+        <Route path="candidate-profile" element={<CandidateProfileBuilder />} />
+        <Route path="marca-vende/acompanamiento" element={<AcompanamientoDashboard />} />
+        <Route path="enterprise" element={<EnterpriseDashboard />} />
+        <Route path="enterprise/config" element={<StrategicConfig />} />
+        <Route path="academy/library" element={<ExtendedLibrary />} />
+        <Route path="recruiter-tools/best-practices" element={<BestPractices />} />
       </Route>
     </Routes>
   )

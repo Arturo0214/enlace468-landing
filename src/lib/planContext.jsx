@@ -36,6 +36,7 @@ const ACTION_PLAN_MAP = {
   ],
   use_marca_vende: [
     'tu_marca_vende_diagnostico', 'tu_marca_vende_perfil_pro',
+    'candidate_basic', 'candidate_plus', 'candidate_pro',
   ],
   use_recruiter_tools: [
     'recruiter_pro_basic', 'recruiter_pro_pro',
