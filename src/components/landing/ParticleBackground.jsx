@@ -38,7 +38,7 @@ export default function ParticleBackground() {
         vy: (Math.random() - 0.5) * 0.6,
         radius: Math.random() * 2.5 + 0.8,
         color: colors[Math.floor(Math.random() * colors.length)],
-        alpha: isDark ? (Math.random() * 0.5 + 0.2) : (Math.random() * 0.4 + 0.15),
+        alpha: isDark ? (Math.random() * 0.5 + 0.2) : (Math.random() * 0.6 + 0.3),
       })
     }
 
@@ -87,8 +87,8 @@ export default function ParticleBackground() {
             ctx.moveTo(p.x, p.y)
             ctx.lineTo(p2.x, p2.y)
             ctx.strokeStyle = p.color
-            ctx.globalAlpha = (1 - dist / connectionDistance) * (isDark ? 0.15 : 0.12)
-            ctx.lineWidth = isDark ? 0.5 : 0.6
+            ctx.globalAlpha = (1 - dist / connectionDistance) * (isDark ? 0.15 : 0.25)
+            ctx.lineWidth = isDark ? 0.5 : 0.8
             ctx.stroke()
           }
         }
@@ -111,7 +111,7 @@ export default function ParticleBackground() {
     <canvas
       ref={canvasRef}
       className="fixed inset-0 z-0 pointer-events-none"
-      style={{ opacity: isDark ? 0.6 : 0.45 }}
+      style={{ opacity: isDark ? 0.6 : 1 }}
     />
   )
 }

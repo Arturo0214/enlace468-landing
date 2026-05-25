@@ -316,9 +316,15 @@ select option {
 :root:not(.dark) .bg-primary\/15 { background: rgba(37,99,235,0.1) !important; }
 :root:not(.dark) .bg-accent\/15 { background: rgba(13,148,136,0.1) !important; }
 
-/* Hero section in light — white with vibrant accents */
+/* Hero section in light — transparent so particles show through */
 :root:not(.dark) #inicio {
-  background: #FFFFFF;
+  background: transparent;
+}
+
+/* All landing sections transparent in light so particles are visible */
+:root:not(.dark) main > section {
+  background: transparent !important;
+  position: relative;
 }
 
 /* Product section — subtle warmth */
