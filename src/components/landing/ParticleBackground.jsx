@@ -1,26 +1,31 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTheme } from '../../lib/themeContext'
 
 export default function ParticleBackground() {
   const canvasRef = useRef(null)
   const { isDark } = useTheme()
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768
+  )
 
   useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  useEffect(() => {
+    if (isMobile || !canvasRef.current) return
+
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
     let animationId
     let mouse = { x: null, y: null }
     const particles = []
-    const isMobile = window.innerWidth < 768
-    if (isMobile) {
-      // No particles on mobile — just return empty canvas
-      return () => {}
-    }
     const particleCount = 100
-    const connectionDistance = isMobile ? 100 : 150
+    const connectionDistance = 150
     const mouseRadius = 200
 
-    // Colors adapt to theme
     const darkColors = ['#E6195B', '#06B6D4', '#FF3D7F', '#22D3EE']
     const lightColors = ['#2563EB', '#0D9488', '#8B5CF6', '#D97706', '#EC4899']
     const colors = isDark ? darkColors : lightColors
@@ -53,7 +58,6 @@ export default function ParticleBackground() {
       particles.forEach((p, i) => {
         p.x += p.vx
         p.y += p.vy
-
         if (p.x < 0 || p.x > canvas.width) p.vx *= -1
         if (p.y < 0 || p.y > canvas.height) p.vy *= -1
 
@@ -69,19 +73,14 @@ export default function ParticleBackground() {
         }
 
         const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy)
-        if (speed > 1.5) {
-          p.vx = (p.vx / speed) * 1.5
-          p.vy = (p.vy / speed) * 1.5
-        }
+        if (speed > 1.5) { p.vx = (p.vx / speed) * 1.5; p.vy = (p.vy / speed) * 1.5 }
 
-        // Draw particle
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2)
         ctx.fillStyle = p.color
         ctx.globalAlpha = p.alpha
         ctx.fill()
 
-        // Connections
         for (let j = i + 1; j < particles.length; j++) {
           const p2 = particles[j]
           const dx = p.x - p2.x
@@ -110,7 +109,10 @@ export default function ParticleBackground() {
       window.removeEventListener('resize', resize)
       window.removeEventListener('mousemove', handleMouse)
     }
-  }, [isDark])
+  }, [isDark, isMobile])
+
+  // Don't render canvas at all on mobile
+  if (isMobile) return null
 
   return (
     <canvas
