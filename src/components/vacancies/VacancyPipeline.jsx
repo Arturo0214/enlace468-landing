@@ -89,6 +89,24 @@ export default function VacancyPipeline({ vacancyId }) {
   const [addingNew, setAddingNew] = useState(false)
   const [cvFile, setCvFile] = useState(null)
   const [cvUploading, setCvUploading] = useState(false)
+  const [modalCvUploading, setModalCvUploading] = useState(false)
+
+  async function uploadCvForCandidate(candidateId, file) {
+    if (!file) return
+    setModalCvUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `cvs/${Date.now()}_${candidateId}.${ext}`
+    const { error: uploadError } = await supabase.storage.from('documents').upload(path, file)
+    if (!uploadError) {
+      const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
+      const cvUrl = urlData?.publicUrl || null
+      await supabase.from('candidates').update({ cv_url: cvUrl }).eq('id', candidateId)
+      // Update local state
+      setCandidates(prev => prev.map(vc => vc.candidate_id === candidateId ? { ...vc, candidates: { ...vc.candidates, cv_url: cvUrl } } : vc))
+      setSelectedVC(prev => prev ? { ...prev, candidates: { ...prev.candidates, cv_url: cvUrl } } : null)
+    }
+    setModalCvUploading(false)
+  }
 
   async function openAddModal() {
     setShowAddModal(true)
@@ -415,14 +433,33 @@ export default function VacancyPipeline({ vacancyId }) {
                     </div>
                   )}
 
-                  {/* CV */}
-                  {c.cv_url && (
-                    <a href={c.cv_url} target="_blank" rel="noopener" className="flex items-center gap-2 bg-accent/5 rounded-lg px-3 py-2 hover:bg-accent/10 border border-accent/15 transition-colors">
-                      <FileText size={14} className="text-accent" />
-                      <span className="text-xs text-accent font-medium">Ver CV</span>
-                      <ExternalLink size={10} className="text-accent/60 ml-auto" />
-                    </a>
-                  )}
+                  {/* CV — view or upload */}
+                  <div>
+                    <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Curriculum Vitae</p>
+                    {c.cv_url ? (
+                      <div className="flex items-center gap-2">
+                        <a href={c.cv_url} target="_blank" rel="noopener" className="flex-1 flex items-center gap-2 bg-accent/5 rounded-lg px-3 py-2.5 hover:bg-accent/10 border border-accent/15 transition-colors">
+                          <FileText size={14} className="text-accent" />
+                          <span className="text-xs text-accent font-medium">Ver CV</span>
+                          <ExternalLink size={10} className="text-accent/60 ml-auto" />
+                        </a>
+                        <label className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 cursor-pointer transition-colors text-xs text-gray-400">
+                          {modalCvUploading ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                          Reemplazar
+                          <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={e => e.target.files?.[0] && uploadCvForCandidate(selectedVC.candidate_id, e.target.files[0])} />
+                        </label>
+                      </div>
+                    ) : (
+                      <label className="flex items-center gap-3 px-3 py-3 rounded-lg border-2 border-dashed border-white/10 hover:border-accent/30 cursor-pointer transition-colors">
+                        {modalCvUploading ? <Loader2 size={18} className="text-accent animate-spin" /> : <FileText size={18} className="text-gray-600" />}
+                        <div className="flex-1">
+                          <p className="text-xs text-gray-400">{modalCvUploading ? 'Subiendo CV...' : 'Subir CV del candidato'}</p>
+                          <p className="text-[10px] text-gray-600">PDF, DOC o DOCX</p>
+                        </div>
+                        <input type="file" accept=".pdf,.doc,.docx" className="hidden" disabled={modalCvUploading} onChange={e => e.target.files?.[0] && uploadCvForCandidate(selectedVC.candidate_id, e.target.files[0])} />
+                      </label>
+                    )}
+                  </div>
 
                   {/* Tags */}
                   {c.tags?.length > 0 && <div className="flex flex-wrap gap-1.5">{c.tags.map(t => <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-gray-400"><Tag size={8} className="inline mr-1" />{t}</span>)}</div>}
