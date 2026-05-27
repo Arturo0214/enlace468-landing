@@ -359,6 +359,7 @@ export default function VacancyPipeline({ vacancyId }) {
                             <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
                               onClick={() => !snapshot.isDragging && openCandidateModal(vc)}
                               style={{
+                                ...provided.draggableProps.style,
                                 ...(vc._interactions?.inbound > 0
                                   ? { borderColor: 'rgba(34,197,94,0.5)', background: 'rgba(34,197,94,0.08)', boxShadow: '0 0 0 1px rgba(34,197,94,0.15)' }
                                   : vc._interactions?.pending
