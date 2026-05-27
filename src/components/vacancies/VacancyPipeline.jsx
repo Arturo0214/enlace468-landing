@@ -76,9 +76,10 @@ export default function VacancyPipeline({ vacancyId }) {
     if (!result.destination) return
     const newStage = result.destination.droppableId
     const vcId = result.draggableId
-    setCandidates(prev => prev.map(c => c.id === vcId ? { ...c, stage: newStage } : c))
+    if (result.source.droppableId === newStage) return // same column
+    setCandidates(prev => prev.map(c => c.id === vcId ? { ...c, stage: newStage, stage_changed_at: new Date().toISOString() } : c))
     const { error } = await supabase.from('vacancy_candidates').update({ stage: newStage, stage_changed_at: new Date().toISOString() }).eq('id', vcId)
-    if (error) loadPipeline()
+    if (error) { console.error('Drag error:', error); alert('Error al mover: ' + error.message); loadPipeline() }
     else {
       const candidate = candidates.find(c => c.id === vcId)
       await supabase.from('activity_log').insert({ organization_id: profile.organization_id, entity_type: 'vacancy_candidate', entity_id: vcId, action: `${candidate?.candidates?.full_name} → ${stages.find(s => s.id === newStage)?.label}`, details: { vacancy_id: vacancyId, to_stage: newStage }, performed_by: profile.id })
