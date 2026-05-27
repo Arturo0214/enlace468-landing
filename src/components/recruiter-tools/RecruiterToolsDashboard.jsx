@@ -34,22 +34,68 @@ export default function RecruiterToolsDashboard() {
       {/* Hero Banner */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
         className="relative rounded-2xl overflow-hidden mb-8"
-        style={{ background: 'linear-gradient(135deg, rgba(37,99,235,0.12), rgba(13,148,136,0.08), rgba(217,119,6,0.06))' }}>
-        <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-[100px] -mr-20 -mt-20" style={{ background: 'radial-gradient(circle, rgba(37,99,235,0.1), transparent)' }} />
-        <div className="relative p-8">
-          <div className="flex items-center gap-2 mb-3">
-            <GraduationCap size={20} className="text-primary-light" />
-            <span className="text-xs font-bold uppercase tracking-wider text-primary-light">Curso de IA Avanzado</span>
+        style={{ background: 'linear-gradient(135deg, #0F1B2E 0%, #1A2F4A 40%, #0C3B3A 70%, #1A2332 100%)' }}>
+        {/* Particle dots */}
+        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.5) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+        {/* Glow orbs */}
+        <div className="absolute top-0 right-1/4 w-72 h-72 rounded-full blur-[120px]" style={{ background: 'radial-gradient(circle, rgba(37,99,235,0.2), transparent 70%)' }} />
+        <div className="absolute bottom-0 left-1/4 w-56 h-56 rounded-full blur-[100px]" style={{ background: 'radial-gradient(circle, rgba(13,148,136,0.15), transparent 70%)' }} />
+        <div className="absolute top-1/2 right-0 w-40 h-40 rounded-full blur-[80px]" style={{ background: 'radial-gradient(circle, rgba(217,119,6,0.1), transparent 70%)' }} />
+
+        <div className="relative flex flex-col lg:flex-row items-center gap-8 p-8 lg:p-10">
+          {/* Left — Text */}
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-light to-accent flex items-center justify-center">
+                <GraduationCap size={16} className="text-white" />
+              </div>
+              <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Curso de IA Avanzado</span>
+            </div>
+            <h1 className="font-display font-extrabold text-white mb-1" style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', lineHeight: 1.1 }}>
+              Recruiting{' '}
+              <span className="relative inline-block">
+                <span className="gradient-text">Lab</span>
+                <span className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-r from-primary-light to-accent rounded-full opacity-60" />
+              </span>
+            </h1>
+            <p className="text-gray-300 max-w-lg mb-5 text-sm leading-relaxed">
+              Programa intensivo de Inteligencia Artificial aplicada al reclutamiento. Domina las herramientas, prompts y metodologías que transforman tu productividad.
+            </p>
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}><Clock size={12} className="text-accent" /> 10 hrs</span>
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}><BookOpen size={12} className="text-primary-light" /> 6 módulos</span>
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}><Users size={12} className="text-gold" /> Intermedio-avanzado</span>
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-amber-300" style={{ background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.2)' }}><Star size={12} /> Certificación (costo adicional)</span>
+            </div>
           </div>
-          <h1 className="text-3xl font-display font-extrabold text-white mb-2">Recruiting Lab</h1>
-          <p className="text-gray-400 max-w-xl mb-5">
-            Programa intensivo de Inteligencia Artificial aplicada al reclutamiento. Domina las herramientas, prompts y metodologías que transforman tu productividad como reclutador.
-          </p>
-          <div className="flex flex-wrap items-center gap-4 text-sm">
-            <span className="flex items-center gap-1.5 text-gray-300"><Clock size={14} className="text-accent" /> 10 hrs de contenido</span>
-            <span className="flex items-center gap-1.5 text-gray-300"><BookOpen size={14} className="text-primary-light" /> 6 módulos</span>
-            <span className="flex items-center gap-1.5 text-gray-300"><Users size={14} className="text-gold" /> Nivel intermedio-avanzado</span>
-            <span className="flex items-center gap-1.5 text-gray-300"><Star size={14} className="text-amber-400" /> Certificación incluida</span>
+
+          {/* Right — Quick stats + progress */}
+          <div className="w-full lg:w-72 flex-shrink-0 space-y-3">
+            {/* Progress card */}
+            <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Tu progreso</span>
+                <span className="text-xs text-accent font-bold">0%</span>
+              </div>
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden mb-3">
+                <div className="h-full bg-gradient-to-r from-primary-light to-accent rounded-full" style={{ width: '0%' }} />
+              </div>
+              <p className="text-[10px] text-gray-500">Completa los 6 módulos para obtener tu certificación</p>
+            </div>
+            {/* Stats mini cards */}
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { val: '14', label: 'Prompts\nlistos', color: 'text-primary-light' },
+                { val: '11', label: 'Templates\noutreach', color: 'text-accent' },
+                { val: '5', label: 'Guías\nsourcing', color: 'text-gold' },
+                { val: '4', label: 'Formatos\nseguimiento', color: 'text-emerald-400' },
+              ].map((s, i) => (
+                <div key={i} className="rounded-lg p-3 text-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div className={`text-xl font-extrabold font-display ${s.color}`}>{s.val}</div>
+                  <div className="text-[9px] text-gray-500 leading-tight whitespace-pre-line mt-0.5">{s.label}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </motion.div>
