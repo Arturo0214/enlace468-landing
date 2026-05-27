@@ -7,7 +7,7 @@ const navItems = [
   { to: '/dashboard/vacancies', icon: Briefcase, label: 'Vacantes' },
   { to: '/dashboard/talent-desk', icon: Package, label: 'Talent Desk' },
   { to: '/dashboard/candidates', icon: Users, label: 'Candidatos' },
-  { to: '/dashboard/recruiter-tools', icon: Zap, label: 'Recruiter Pro' },
+  { to: '/dashboard/recruiter-tools', icon: Zap, label: 'Recruiting Lab' },
   { to: '/dashboard/academy', icon: GraduationCap, label: 'Academy' },
   { to: '/dashboard/calendar', icon: Calendar, label: 'Calendario' },
   { to: '/dashboard/marca-vende', icon: Sparkles, label: 'Tu Marca Vende' },
