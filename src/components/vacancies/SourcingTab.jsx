@@ -271,7 +271,15 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
         </div>
         <div className="flex gap-1.5">
           {Object.entries(platforms).map(([id, p]) => (
-            <button key={id} onClick={() => { setPlatform(id); if (searchQuery) { setPlatform(id); setTimeout(() => doSearch(), 0) } }}
+            <button key={id} onClick={() => {
+              setPlatform(id)
+              if (searchQuery.trim()) {
+                const prefix = platforms[id].prefix
+                const fullQuery = prefix ? `${prefix} ${searchQuery}` : searchQuery
+                setActiveSearch(fullQuery)
+                handleLocalSearch(searchQuery)
+              }
+            }}
               className={`text-[11px] px-3 py-1.5 rounded-lg font-medium transition-all border ${
                 platform === id ? p.color + ' bg-white/[0.05]' : 'border-transparent text-gray-500 hover:text-white hover:bg-white/[0.03]'
               }`}>
