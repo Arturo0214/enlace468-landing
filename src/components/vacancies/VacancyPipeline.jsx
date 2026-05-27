@@ -82,11 +82,37 @@ export default function VacancyPipeline({ vacancyId }) {
     }
   }
 
+  const [newCandidate, setNewCandidate] = useState({ full_name: '', current_title: '', current_company: '', linkedin_url: '', email: '', phone: '' })
+  const [addingNew, setAddingNew] = useState(false)
+
   async function openAddModal() {
     setShowAddModal(true)
+    setNewCandidate({ full_name: '', current_title: '', current_company: '', linkedin_url: '', email: '', phone: '' })
     const existingIds = candidates.map(c => c.candidate_id)
     const { data } = await supabase.from('candidates').select('*').order('full_name')
     setBankCandidates((data || []).filter(c => !existingIds.includes(c.id)))
+  }
+
+  async function addNewRecommended() {
+    if (!newCandidate.full_name.trim()) return
+    setAddingNew(true)
+    const { data } = await supabase.from('candidates').insert({
+      organization_id: profile.organization_id,
+      full_name: newCandidate.full_name.trim(),
+      current_title: newCandidate.current_title || null,
+      current_company: newCandidate.current_company || null,
+      linkedin_url: newCandidate.linkedin_url || null,
+      email: newCandidate.email || null,
+      phone: newCandidate.phone || null,
+      source: 'referral',
+      tags: ['recomendado'],
+    }).select().single()
+    if (data) {
+      await supabase.from('vacancy_candidates').insert({ vacancy_id: vacancyId, candidate_id: data.id, stage: 'sourced', assigned_to: profile.id })
+    }
+    setAddingNew(false)
+    setShowAddModal(false)
+    loadPipeline()
   }
 
   async function addCandidate(candidateId) {
@@ -532,27 +558,111 @@ export default function VacancyPipeline({ vacancyId }) {
         )
       })()}
 
-      {/* Add candidate modal */}
+      {/* Add candidate modal — two panels */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowAddModal(false)}>
-          <div className="glass-strong rounded-2xl w-full max-w-md max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="p-4" style={{ borderBottom: '1px solid var(--border-default)' }}>
-              <h3 className="font-display font-semibold text-white">Agregar candidato</h3>
-              <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Buscar por nombre..." className="w-full mt-3 px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-primary/50 outline-none text-white placeholder-gray-500 text-sm" autoFocus />
-            </div>
-            <div className="flex-1 overflow-y-auto p-2">
-              {bankCandidates.filter(c => c.full_name.toLowerCase().includes(searchTerm.toLowerCase())).map(c => (
-                <button key={c.id} onClick={() => addCandidate(c.id)} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 text-left transition-colors">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-gray-300"><User size={14} /></div>
-                  <div><div className="text-sm font-medium text-white">{c.full_name}</div><div className="text-xs text-gray-400">{c.current_title || c.email || 'Sin titulo'}</div></div>
+          <div className="bg-theme-surface rounded-2xl w-full max-w-4xl max-h-[80vh] border border-white/10 flex overflow-hidden" onClick={e => e.stopPropagation()}>
+
+            {/* LEFT: Agregar recomendado */}
+            <div className="w-1/2 flex flex-col" style={{ borderRight: '1px solid var(--border-default)' }}>
+              <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-default)' }}>
+                <div className="flex items-center gap-2">
+                  <UserPlus size={16} className="text-accent" />
+                  <h3 className="font-display font-semibold text-white text-sm">Agregar recomendado</h3>
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1">Agrega un candidato nuevo manualmente</p>
+              </div>
+              <div className="flex-1 overflow-y-auto p-5 space-y-3">
+                <div>
+                  <label className="text-[11px] text-gray-500 mb-1 block">Nombre completo *</label>
+                  <input type="text" value={newCandidate.full_name} onChange={e => setNewCandidate(p => ({ ...p, full_name: e.target.value }))}
+                    placeholder="Nombre del candidato" className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-primary/50 outline-none text-white placeholder-gray-500 text-sm" autoFocus />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] text-gray-500 mb-1 block">Puesto actual</label>
+                    <input type="text" value={newCandidate.current_title} onChange={e => setNewCandidate(p => ({ ...p, current_title: e.target.value }))}
+                      placeholder="Título" className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-primary/50 outline-none text-white placeholder-gray-500 text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-gray-500 mb-1 block">Empresa</label>
+                    <input type="text" value={newCandidate.current_company} onChange={e => setNewCandidate(p => ({ ...p, current_company: e.target.value }))}
+                      placeholder="Empresa" className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-primary/50 outline-none text-white placeholder-gray-500 text-sm" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] text-gray-500 mb-1 block">LinkedIn URL</label>
+                  <input type="url" value={newCandidate.linkedin_url} onChange={e => setNewCandidate(p => ({ ...p, linkedin_url: e.target.value }))}
+                    placeholder="https://linkedin.com/in/..." className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-primary/50 outline-none text-white placeholder-gray-500 text-sm" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] text-gray-500 mb-1 block">Email</label>
+                    <input type="email" value={newCandidate.email} onChange={e => setNewCandidate(p => ({ ...p, email: e.target.value }))}
+                      placeholder="email@ejemplo.com" className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-primary/50 outline-none text-white placeholder-gray-500 text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-gray-500 mb-1 block">Teléfono</label>
+                    <input type="tel" value={newCandidate.phone} onChange={e => setNewCandidate(p => ({ ...p, phone: e.target.value }))}
+                      placeholder="+52 55 1234 5678" className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-primary/50 outline-none text-white placeholder-gray-500 text-sm" />
+                  </div>
+                </div>
+              </div>
+              <div className="px-5 py-3" style={{ borderTop: '1px solid var(--border-default)' }}>
+                <button onClick={addNewRecommended} disabled={!newCandidate.full_name.trim() || addingNew}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent to-accent-light text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-40">
+                  {addingNew ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                  Agregar recomendado
                 </button>
-              ))}
-              {bankCandidates.filter(c => c.full_name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-8">No hay candidatos disponibles.</p>
-              )}
+              </div>
             </div>
-            <div className="p-3" style={{ borderTop: '1px solid var(--border-default)' }}>
-              <button onClick={() => setShowAddModal(false)} className="w-full py-2 text-sm text-gray-400 hover:text-white transition-colors">Cancelar</button>
+
+            {/* RIGHT: Top candidatos del banco */}
+            <div className="w-1/2 flex flex-col">
+              <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-default)' }}>
+                <div className="flex items-center gap-2">
+                  <Star size={16} className="text-gold" />
+                  <h3 className="font-display font-semibold text-white text-sm">Top candidatos del banco</h3>
+                </div>
+                <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                  placeholder="Buscar por nombre o puesto..."
+                  className="w-full mt-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-primary/50 outline-none text-white placeholder-gray-500 text-sm" />
+              </div>
+              <div className="flex-1 overflow-y-auto p-2">
+                {bankCandidates
+                  .filter(c => {
+                    const q = searchTerm.toLowerCase()
+                    return c.full_name.toLowerCase().includes(q) || (c.current_title || '').toLowerCase().includes(q) || (c.current_company || '').toLowerCase().includes(q)
+                  })
+                  .sort((a, b) => (b.years_experience || 0) - (a.years_experience || 0))
+                  .map(c => (
+                  <button key={c.id} onClick={() => addCandidate(c.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 text-left transition-colors group">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-gray-300 flex-shrink-0 text-xs font-bold">
+                      {c.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-white truncate">{c.full_name}</div>
+                      <div className="text-xs text-gray-400 truncate">{c.current_title || 'Sin título'}{c.current_company ? ` · ${c.current_company}` : ''}</div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {c.years_experience && <span className="text-[10px] text-gray-500">{c.years_experience} años exp.</span>}
+                        {c.source && <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500">{c.source}</span>}
+                      </div>
+                    </div>
+                    <Plus size={14} className="text-gray-600 group-hover:text-accent flex-shrink-0 transition-colors" />
+                  </button>
+                ))}
+                {bankCandidates.filter(c => c.full_name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                  <div className="text-center py-10">
+                    <User size={24} className="mx-auto text-gray-600 mb-2" />
+                    <p className="text-sm text-gray-500">No hay candidatos disponibles</p>
+                    <p className="text-[11px] text-gray-600 mt-1">Usa el panel izquierdo para agregar uno nuevo</p>
+                  </div>
+                )}
+              </div>
+              <div className="px-5 py-3" style={{ borderTop: '1px solid var(--border-default)' }}>
+                <button onClick={() => setShowAddModal(false)} className="w-full py-2 text-sm text-gray-400 hover:text-white transition-colors">Cerrar</button>
+              </div>
             </div>
           </div>
         </div>
