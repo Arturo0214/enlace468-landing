@@ -77,9 +77,9 @@ function HeroBanner() {
       <div className="absolute top-0 right-1/4 w-72 h-72 rounded-full blur-[120px] animate-pulse-glow" style={{ background: 'radial-gradient(circle, rgba(37,99,235,0.25), transparent 70%)' }} />
       <div className="absolute bottom-0 left-1/3 w-56 h-56 rounded-full blur-[100px] animate-pulse-glow" style={{ background: 'radial-gradient(circle, rgba(13,148,136,0.2), transparent 70%)', animationDelay: '1.5s' }} />
 
-      <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8 p-8 lg:p-10">
+      <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-6 p-8 lg:p-10 max-w-5xl mx-auto">
         {/* Left — Text */}
-        <div className="flex-1">
+        <div className="flex-1 max-w-2xl">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-light to-accent flex items-center justify-center shadow-lg shadow-primary-light/20">
               <GraduationCap size={16} className="text-white" />
