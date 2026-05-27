@@ -6,15 +6,15 @@ import { useAuth } from '../../lib/auth'
 import { getFirefliesEmails, matchEmailToCandidate, getCalendarEvents, matchEventToCandidate } from '../../lib/googleApi'
 
 const stages = [
-  { id: 'sourced', label: 'Sourced', color: 'border-gray-400' },
-  { id: 'contacted', label: 'Contactado', color: 'border-blue-400' },
-  { id: 'screening', label: 'Screening', color: 'border-cyan-400' },
-  { id: 'interviewing', label: 'Entrevista', color: 'border-purple-400' },
-  { id: 'evaluated', label: 'Evaluado', color: 'border-gold' },
-  { id: 'presented', label: 'Presentado', color: 'border-accent' },
-  { id: 'offer', label: 'Oferta', color: 'border-green-400' },
-  { id: 'hired', label: 'Contratado', color: 'border-green-500' },
-  { id: 'rejected', label: 'Rechazado', color: 'border-red-400' },
+  { id: 'sourced', label: 'Sourced', color: 'border-gray-400', bg: 'bg-gray-50 dark:bg-gray-900/30' },
+  { id: 'contacted', label: 'Contactado', color: 'border-blue-400', bg: 'bg-gray-100/60 dark:bg-gray-800/30' },
+  { id: 'screening', label: 'Screening', color: 'border-cyan-400', bg: 'bg-gray-100 dark:bg-gray-800/40' },
+  { id: 'interviewing', label: 'Entrevista', color: 'border-purple-400', bg: 'bg-gray-200/50 dark:bg-gray-700/30' },
+  { id: 'evaluated', label: 'Evaluado', color: 'border-gold', bg: 'bg-gray-200/70 dark:bg-gray-700/40' },
+  { id: 'presented', label: 'Presentado', color: 'border-accent', bg: 'bg-gray-200 dark:bg-gray-700/50' },
+  { id: 'offer', label: 'Oferta', color: 'border-green-400', bg: 'bg-gray-300/50 dark:bg-gray-600/30' },
+  { id: 'hired', label: 'Contratado', color: 'border-green-500', bg: 'bg-gray-300/70 dark:bg-gray-600/40' },
+  { id: 'rejected', label: 'Rechazado', color: 'border-red-400', bg: 'bg-gray-300 dark:bg-gray-600/50' },
 ]
 
 export default function VacancyPipeline({ vacancyId }) {
@@ -232,7 +232,7 @@ export default function VacancyPipeline({ vacancyId }) {
               <Droppable key={stage.id} droppableId={stage.id}>
                 {(provided, snapshot) => (
                   <div ref={provided.innerRef} {...provided.droppableProps}
-                    className={`flex-shrink-0 w-56 rounded-xl p-3 border-t-2 ${stage.color} ${snapshot.isDraggingOver ? 'bg-primary/5' : 'bg-white/5'}`}
+                    className={`flex-shrink-0 w-56 rounded-xl p-3 border-t-2 ${stage.color} ${snapshot.isDraggingOver ? 'bg-primary/10' : stage.bg}`}
                     style={{ border: '1px solid var(--border-default)', borderTopWidth: '2px' }}>
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{stage.label}</h3>
