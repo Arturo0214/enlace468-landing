@@ -1,6 +1,7 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Zap, Wand2, MessageSquare, Search, ClipboardList, ArrowRight, BarChart3, Award, GraduationCap, BookOpen, Clock, Users, CheckCircle, Star } from 'lucide-react'
+import { Zap, Wand2, MessageSquare, Search, ClipboardList, ArrowRight, BarChart3, Award, GraduationCap, BookOpen, Clock, Users, CheckCircle, Star, Play, TrendingUp } from 'lucide-react'
 import { usePlan } from '../../lib/planContext'
 import UpgradePrompt from '../ui/UpgradePrompt'
 
@@ -22,6 +23,142 @@ const tools = [
   { id: 'best-practices', name: 'Mejores Prácticas', description: 'Frameworks y estrategias comprobadas', icon: Award, gradient: 'from-rose-500/20 to-pink-500/10', iconColor: 'text-rose-400', borderHover: 'hover:border-rose-400/30', to: '/dashboard/recruiter-tools/best-practices' },
 ]
 
+function HeroBanner() {
+  const canvasRef = useRef(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    let animId
+    const particles = []
+    const colors = ['#2563EB', '#0D9488', '#D97706', '#8B5CF6', '#EC4899']
+
+    function resize() { canvas.width = canvas.parentElement.offsetWidth; canvas.height = canvas.parentElement.offsetHeight }
+    resize()
+    window.addEventListener('resize', resize)
+
+    for (let i = 0; i < 50; i++) {
+      particles.push({
+        x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
+        r: Math.random() * 2 + 0.5, color: colors[Math.floor(Math.random() * colors.length)],
+        alpha: Math.random() * 0.5 + 0.3,
+      })
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      particles.forEach((p, i) => {
+        p.x += p.vx; p.y += p.vy
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx.fillStyle = p.color; ctx.globalAlpha = p.alpha; ctx.fill()
+        for (let j = i + 1; j < particles.length; j++) {
+          const p2 = particles[j], dx = p.x - p2.x, dy = p.y - p2.y, d = Math.sqrt(dx * dx + dy * dy)
+          if (d < 120) { ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y); ctx.strokeStyle = p.color; ctx.globalAlpha = (1 - d / 120) * 0.2; ctx.lineWidth = 0.5; ctx.stroke() }
+        }
+      })
+      ctx.globalAlpha = 1
+      animId = requestAnimationFrame(draw)
+    }
+    draw()
+    return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize) }
+  }, [])
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
+      className="relative rounded-2xl overflow-hidden mb-8"
+      style={{ background: 'linear-gradient(135deg, #0F1B2E 0%, #1A2F4A 40%, #0C3B3A 70%, #1A2332 100%)' }}>
+      {/* Animated particles canvas */}
+      <canvas ref={canvasRef} className="absolute inset-0 z-0 pointer-events-none" />
+      {/* Glow orbs */}
+      <div className="absolute top-0 right-1/4 w-72 h-72 rounded-full blur-[120px] animate-pulse-glow" style={{ background: 'radial-gradient(circle, rgba(37,99,235,0.25), transparent 70%)' }} />
+      <div className="absolute bottom-0 left-1/3 w-56 h-56 rounded-full blur-[100px] animate-pulse-glow" style={{ background: 'radial-gradient(circle, rgba(13,148,136,0.2), transparent 70%)', animationDelay: '1.5s' }} />
+
+      <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8 p-8 lg:p-10">
+        {/* Left — Text */}
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-light to-accent flex items-center justify-center shadow-lg shadow-primary-light/20">
+              <GraduationCap size={16} className="text-white" />
+            </div>
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Curso de IA Avanzado</span>
+          </div>
+          <h1 className="font-display font-extrabold text-white mb-3" style={{ fontSize: 'clamp(2.2rem, 4.5vw, 3.2rem)', lineHeight: 1.05 }}>
+            Recruiting{' '}
+            <span className="relative inline-block">
+              <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #60A5FA, #2DD4BF, #FBBF24)', backgroundSize: '200% 200%', animation: 'gradient-shift 4s ease infinite' }}>Lab</span>
+              <span className="absolute -bottom-1 left-0 right-0 h-1.5 rounded-full opacity-80" style={{ background: 'linear-gradient(90deg, #2563EB, #0D9488, #D97706)' }} />
+            </span>
+          </h1>
+          <p className="text-white/90 max-w-lg mb-6 text-[15px] leading-relaxed">
+            Programa intensivo de <span className="text-accent font-semibold">Inteligencia Artificial</span> aplicada al reclutamiento. Domina herramientas, prompts y metodologías que transforman tu productividad.
+          </p>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            {[
+              { icon: Clock, text: '10 hrs', color: 'text-accent' },
+              { icon: BookOpen, text: '6 módulos', color: 'text-primary-light' },
+              { icon: Users, text: 'Intermedio-avanzado', color: 'text-gold' },
+            ].map((t, i) => (
+              <span key={i} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white font-medium" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                <t.icon size={12} className={t.color} /> {t.text}
+              </span>
+            ))}
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-amber-300 font-medium" style={{ background: 'rgba(217,119,6,0.15)', border: '1px solid rgba(217,119,6,0.25)' }}>
+              <Star size={12} /> Certificación (costo adicional)
+            </span>
+          </div>
+        </div>
+
+        {/* Right — Visual course preview */}
+        <div className="w-full lg:w-80 flex-shrink-0">
+          {/* Simulated course card */}
+          <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)' }}>
+            {/* Video preview placeholder */}
+            <div className="relative h-40 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(37,99,235,0.2), rgba(13,148,136,0.15))' }}>
+              <motion.div whileHover={{ scale: 1.1 }} className="w-16 h-16 rounded-full bg-white/20 backdrop-blur flex items-center justify-center cursor-pointer shadow-xl shadow-black/30">
+                <Play size={28} className="text-white ml-1" fill="white" />
+              </motion.div>
+              <span className="absolute bottom-3 right-3 text-[10px] text-white/60 px-2 py-0.5 rounded bg-black/40">Vista previa</span>
+            </div>
+            {/* Course info */}
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-white font-bold text-sm">6 módulos incluidos</span>
+                <div className="flex items-center gap-1 text-accent text-xs font-semibold">
+                  <TrendingUp size={12} /> 40% más productivo
+                </div>
+              </div>
+              {/* Mini module list */}
+              <div className="space-y-1.5 mb-4">
+                {['Prompts IA', 'Outreach', 'Boolean Search', 'Pipeline', 'Reportes', 'Best Practices'].map((m, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded-full border border-white/20 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[7px] text-white/50">{i + 1}</span>
+                    </div>
+                    <span className="text-xs text-white/70">{m}</span>
+                    <span className="flex-1 border-b border-dotted border-white/10" />
+                    <span className="text-[10px] text-white/40">●</span>
+                  </div>
+                ))}
+              </div>
+              {/* Stats row */}
+              <div className="flex items-center justify-between text-[10px] text-white/50 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <span>14 prompts</span>
+                <span>11 templates</span>
+                <span>7 guías</span>
+                <span>4 formatos</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
 export default function RecruiterToolsDashboard() {
   const { canDo } = usePlan()
 
@@ -31,74 +168,8 @@ export default function RecruiterToolsDashboard() {
 
   return (
     <div>
-      {/* Hero Banner */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-        className="relative rounded-2xl overflow-hidden mb-8"
-        style={{ background: 'linear-gradient(135deg, #0F1B2E 0%, #1A2F4A 40%, #0C3B3A 70%, #1A2332 100%)' }}>
-        {/* Particle dots */}
-        <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.6) 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
-        {/* Glow orbs */}
-        <div className="absolute top-0 right-1/4 w-72 h-72 rounded-full blur-[120px]" style={{ background: 'radial-gradient(circle, rgba(37,99,235,0.2), transparent 70%)' }} />
-        <div className="absolute bottom-0 left-1/4 w-56 h-56 rounded-full blur-[100px]" style={{ background: 'radial-gradient(circle, rgba(13,148,136,0.15), transparent 70%)' }} />
-        <div className="absolute top-1/2 right-0 w-40 h-40 rounded-full blur-[80px]" style={{ background: 'radial-gradient(circle, rgba(217,119,6,0.1), transparent 70%)' }} />
-
-        <div className="relative flex flex-col lg:flex-row items-center gap-8 p-8 lg:p-10">
-          {/* Left — Text */}
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-light to-accent flex items-center justify-center">
-                <GraduationCap size={16} className="text-white" />
-              </div>
-              <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Curso de IA Avanzado</span>
-            </div>
-            <h1 className="font-display font-extrabold text-white mb-1" style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', lineHeight: 1.1 }}>
-              Recruiting{' '}
-              <span className="relative inline-block">
-                <span className="gradient-text">Lab</span>
-                <span className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-r from-primary-light to-accent rounded-full opacity-60" />
-              </span>
-            </h1>
-            <p className="text-white/80 max-w-lg mb-5 text-sm leading-relaxed">
-              Programa intensivo de Inteligencia Artificial aplicada al reclutamiento. Domina las herramientas, prompts y metodologías que transforman tu productividad.
-            </p>
-            <div className="flex flex-wrap items-center gap-3 text-xs">
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}><Clock size={12} className="text-accent" /> 10 hrs</span>
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}><BookOpen size={12} className="text-primary-light" /> 6 módulos</span>
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}><Users size={12} className="text-gold" /> Intermedio-avanzado</span>
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-amber-300" style={{ background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.2)' }}><Star size={12} /> Certificación (costo adicional)</span>
-            </div>
-          </div>
-
-          {/* Right — Quick stats + progress */}
-          <div className="w-full lg:w-72 flex-shrink-0 space-y-3">
-            {/* Progress card */}
-            <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] text-white/60 uppercase tracking-wider font-semibold">Tu progreso</span>
-                <span className="text-xs text-accent font-bold">0%</span>
-              </div>
-              <div className="h-2 bg-white/5 rounded-full overflow-hidden mb-3">
-                <div className="h-full bg-gradient-to-r from-primary-light to-accent rounded-full" style={{ width: '0%' }} />
-              </div>
-              <p className="text-[10px] text-white/50">Completa los 6 módulos para obtener tu certificación (con costo adicional)</p>
-            </div>
-            {/* Stats mini cards */}
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { val: '14', label: 'Prompts\nlistos', color: 'text-primary-light' },
-                { val: '11', label: 'Templates\noutreach', color: 'text-accent' },
-                { val: '5', label: 'Guías\nsourcing', color: 'text-gold' },
-                { val: '4', label: 'Formatos\nseguimiento', color: 'text-emerald-400' },
-              ].map((s, i) => (
-                <div key={i} className="rounded-lg p-3 text-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div className={`text-xl font-extrabold font-display ${s.color}`}>{s.val}</div>
-                  <div className="text-[9px] text-white/50 leading-tight whitespace-pre-line mt-0.5">{s.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </motion.div>
+      {/* Hero Banner with animated particles */}
+      <HeroBanner />
 
       {/* Course Modules */}
       <div className="mb-10">
