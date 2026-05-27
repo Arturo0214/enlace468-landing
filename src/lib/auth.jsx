@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { supabase } from './supabase'
 
 const AuthContext = createContext(null)
@@ -7,6 +7,7 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const profileRef = useRef(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -15,12 +16,24 @@ export function AuthProvider({ children }) {
       else setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
-      if (session) fetchProfile(session.user.id)
-      else {
+
+      if (!session) {
         setProfile(null)
+        profileRef.current = null
         setLoading(false)
+        return
+      }
+
+      // Only fetch profile on actual sign in, not on token refresh or tab focus
+      if (event === 'SIGNED_IN') {
+        fetchProfile(session.user.id)
+      } else if (event === 'TOKEN_REFRESHED') {
+        // Token refreshed (tab focus, timer) — don't reload if we already have profile
+        if (!profileRef.current) {
+          fetchProfile(session.user.id)
+        }
       }
     })
 
@@ -35,6 +48,7 @@ export function AuthProvider({ children }) {
       .single()
 
     setProfile(data)
+    profileRef.current = data
     setLoading(false)
   }
 
@@ -57,6 +71,7 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut()
     setSession(null)
     setProfile(null)
+    profileRef.current = null
   }
 
   return (
