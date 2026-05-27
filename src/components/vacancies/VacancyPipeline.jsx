@@ -496,7 +496,7 @@ Enlace 468`)
       </div>
 
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex gap-3 overflow-x-auto pb-2" style={{ maxHeight: 'calc(100vh - 340px)', minHeight: '300px' }}>
+        <div className="flex gap-3 overflow-x-auto pb-2" style={{ height: 'calc(100vh - 330px)' }}>
           {stages.map(stage => {
             const items = candidates.filter(c => c.stage === stage.id)
             return (
