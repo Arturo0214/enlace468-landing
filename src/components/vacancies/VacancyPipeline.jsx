@@ -226,8 +226,8 @@ export default function VacancyPipeline({ vacancyId }) {
     })
 
     // Only show candidates with at least some match, sorted by score
-    // Only show candidates with strong match (>25% keywords)
-    const relevant = scored.filter(c => c._matchScore > 0.25).sort((a, b) => b._matchScore - a._matchScore).slice(0, 5)
+    // Show candidates with meaningful match (>10% keywords or 5+ keywords matched)
+    const relevant = scored.filter(c => c._matchScore > 0.10 || c._matchCount >= 5).sort((a, b) => b._matchScore - a._matchScore).slice(0, 10)
     setBankCandidates(relevant)
   }
 
