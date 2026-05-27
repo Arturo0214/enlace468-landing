@@ -87,9 +87,12 @@ export default function VacancyPipeline({ vacancyId }) {
 
   const [newCandidate, setNewCandidate] = useState({ full_name: '', current_title: '', current_company: '', linkedin_url: '', email: '', phone: '' })
   const [addingNew, setAddingNew] = useState(false)
+  const [cvFile, setCvFile] = useState(null)
+  const [cvUploading, setCvUploading] = useState(false)
 
   async function openAddModal() {
     setShowAddModal(true)
+    setCvFile(null)
     setNewCandidate({ full_name: '', current_title: '', current_company: '', linkedin_url: '', email: '', phone: '' })
     const existingIds = candidates.map(c => c.candidate_id)
     const { data } = await supabase.from('candidates').select('*').order('full_name')
@@ -99,6 +102,20 @@ export default function VacancyPipeline({ vacancyId }) {
   async function addNewRecommended() {
     if (!newCandidate.full_name.trim()) return
     setAddingNew(true)
+
+    let cvUrl = null
+    if (cvFile) {
+      setCvUploading(true)
+      const ext = cvFile.name.split('.').pop()
+      const path = `cvs/${Date.now()}_${newCandidate.full_name.trim().replace(/\s+/g, '_')}.${ext}`
+      const { data: uploadData, error: uploadError } = await supabase.storage.from('documents').upload(path, cvFile)
+      if (!uploadError && uploadData) {
+        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
+        cvUrl = urlData?.publicUrl || null
+      }
+      setCvUploading(false)
+    }
+
     const { data } = await supabase.from('candidates').insert({
       organization_id: profile.organization_id,
       full_name: newCandidate.full_name.trim(),
@@ -107,6 +124,7 @@ export default function VacancyPipeline({ vacancyId }) {
       linkedin_url: newCandidate.linkedin_url || null,
       email: newCandidate.email || null,
       phone: newCandidate.phone || null,
+      cv_url: cvUrl,
       source: 'referral',
       tags: ['recomendado'],
     }).select().single()
@@ -114,6 +132,7 @@ export default function VacancyPipeline({ vacancyId }) {
       await supabase.from('vacancy_candidates').insert({ vacancy_id: vacancyId, candidate_id: data.id, stage: 'sourced', assigned_to: profile.id })
     }
     setAddingNew(false)
+    setCvFile(null)
     setShowAddModal(false)
     loadPipeline()
   }
@@ -396,6 +415,15 @@ export default function VacancyPipeline({ vacancyId }) {
                     </div>
                   )}
 
+                  {/* CV */}
+                  {c.cv_url && (
+                    <a href={c.cv_url} target="_blank" rel="noopener" className="flex items-center gap-2 bg-accent/5 rounded-lg px-3 py-2 hover:bg-accent/10 border border-accent/15 transition-colors">
+                      <FileText size={14} className="text-accent" />
+                      <span className="text-xs text-accent font-medium">Ver CV</span>
+                      <ExternalLink size={10} className="text-accent/60 ml-auto" />
+                    </a>
+                  )}
+
                   {/* Tags */}
                   {c.tags?.length > 0 && <div className="flex flex-wrap gap-1.5">{c.tags.map(t => <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-gray-400"><Tag size={8} className="inline mr-1" />{t}</span>)}</div>}
 
@@ -611,12 +639,35 @@ export default function VacancyPipeline({ vacancyId }) {
                       placeholder="+52 55 1234 5678" className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-primary/50 outline-none text-white placeholder-gray-500 text-sm" />
                   </div>
                 </div>
+                {/* CV Upload */}
+                <div>
+                  <label className="text-[11px] text-gray-500 mb-1 block">CV (PDF, Word)</label>
+                  <label className="flex items-center gap-3 px-3 py-3 rounded-lg border-2 border-dashed border-white/10 hover:border-primary/30 cursor-pointer transition-colors">
+                    <FileText size={18} className={cvFile ? 'text-accent' : 'text-gray-600'} />
+                    <div className="flex-1 min-w-0">
+                      {cvFile ? (
+                        <div>
+                          <p className="text-xs text-white font-medium truncate">{cvFile.name}</p>
+                          <p className="text-[10px] text-gray-500">{(cvFile.size / 1024).toFixed(0)} KB</p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500">Click para seleccionar archivo</p>
+                      )}
+                    </div>
+                    {cvFile && (
+                      <button type="button" onClick={e => { e.preventDefault(); setCvFile(null) }} className="text-gray-500 hover:text-red-400 p-0.5">
+                        <X size={14} />
+                      </button>
+                    )}
+                    <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={e => setCvFile(e.target.files?.[0] || null)} />
+                  </label>
+                </div>
               </div>
               <div className="px-5 py-3" style={{ borderTop: '1px solid var(--border-default)' }}>
-                <button onClick={addNewRecommended} disabled={!newCandidate.full_name.trim() || addingNew}
+                <button onClick={addNewRecommended} disabled={!newCandidate.full_name.trim() || addingNew || cvUploading}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-accent to-accent-light text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-40">
-                  {addingNew ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                  Agregar recomendado
+                  {addingNew || cvUploading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                  {cvUploading ? 'Subiendo CV...' : 'Agregar recomendado'}
                 </button>
               </div>
             </div>
