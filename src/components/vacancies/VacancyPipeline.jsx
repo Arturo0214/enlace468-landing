@@ -113,8 +113,30 @@ export default function VacancyPipeline({ vacancyId }) {
     setCvFile(null)
     setNewCandidate({ full_name: '', current_title: '', current_company: '', linkedin_url: '', email: '', phone: '' })
     const existingIds = candidates.map(c => c.candidate_id)
-    const { data } = await supabase.from('candidates').select('*').order('full_name')
-    setBankCandidates((data || []).filter(c => !existingIds.includes(c.id)))
+
+    // Get vacancy details for matching
+    const { data: vac } = await supabase.from('vacancies').select('title, description, competencies, department').eq('id', vacancyId).single()
+    const { data: allCandidates } = await supabase.from('candidates').select('*').order('full_name')
+    const available = (allCandidates || []).filter(c => !existingIds.includes(c.id))
+
+    if (!vac) { setBankCandidates(available); return }
+
+    // Build vacancy keywords
+    const stopwords = new Set(['de','en','el','la','los','las','y','o','a','para','con','del','al','un','una','que','por','su','es','se','no','lo','como','más','pero','sin','sobre','ser'])
+    const vacText = [vac.title, vac.description, vac.department, ...(vac.competencies || []).map(c => c.name + ' ' + (c.description || ''))].join(' ').toLowerCase()
+    const vacKeywords = [...new Set(vacText.split(/[\s,;.:()\-\/]+/).filter(w => w.length > 3 && !stopwords.has(w)))]
+
+    // Score each candidate
+    const scored = available.map(c => {
+      const cText = [c.full_name, c.current_title, c.current_company, c.notes, (c.tags || []).join(' ')].join(' ').toLowerCase()
+      const matched = vacKeywords.filter(kw => cText.includes(kw))
+      const score = vacKeywords.length > 0 ? matched.length / vacKeywords.length : 0
+      return { ...c, _matchScore: score, _matchCount: matched.length }
+    })
+
+    // Only show candidates with at least some match, sorted by score
+    const relevant = scored.filter(c => c._matchScore > 0).sort((a, b) => b._matchScore - a._matchScore)
+    setBankCandidates(relevant)
   }
 
   async function addNewRecommended() {
@@ -714,7 +736,7 @@ export default function VacancyPipeline({ vacancyId }) {
               <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--border-default)' }}>
                 <div className="flex items-center gap-2">
                   <Star size={16} className="text-gold" />
-                  <h3 className="font-display font-semibold text-white text-sm">Top candidatos del banco</h3>
+                  <h3 className="font-display font-semibold text-white text-sm">Candidatos relevantes del banco</h3>
                   {!hasBankAccess && <span className="text-[9px] px-2 py-0.5 rounded-full bg-gold/15 text-gold font-bold uppercase tracking-wider">Premium</span>}
                 </div>
                 {hasBankAccess && (
@@ -744,7 +766,7 @@ export default function VacancyPipeline({ vacancyId }) {
                           <div className="text-xs text-gray-400 truncate">{c.current_title || 'Sin título'}{c.current_company ? ` · ${c.current_company}` : ''}</div>
                           <div className="flex items-center gap-2 mt-0.5">
                             {c.years_experience && <span className="text-[10px] text-gray-500">{c.years_experience} años exp.</span>}
-                            {c.source && <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-500">{c.source}</span>}
+                            {c._matchCount > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/10 text-accent font-medium">{c._matchCount} keywords</span>}
                           </div>
                         </div>
                         <Plus size={14} className="text-gray-600 group-hover:text-accent flex-shrink-0 transition-colors" />
@@ -753,7 +775,8 @@ export default function VacancyPipeline({ vacancyId }) {
                     {bankCandidates.filter(c => c.full_name.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
                       <div className="text-center py-10">
                         <User size={24} className="mx-auto text-gray-600 mb-2" />
-                        <p className="text-sm text-gray-500">No hay candidatos disponibles</p>
+                        <p className="text-sm text-gray-500">No hay candidatos en el banco que hagan match con esta vacante</p>
+                        <p className="text-[11px] text-gray-600 mt-1">Usa el panel izquierdo para agregar un recomendado</p>
                       </div>
                     )}
                   </div>
