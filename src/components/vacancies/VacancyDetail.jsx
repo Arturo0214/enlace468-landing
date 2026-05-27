@@ -118,7 +118,20 @@ export default function VacancyDetail() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-xl font-display font-bold text-white">{vacancy.title}</h1>
-            <span className={`text-[11px] px-2 py-0.5 rounded font-medium ${statusColors[vacancy.status] || ''}`}>{statusLabels[vacancy.status]}</span>
+            <select
+              value={vacancy.status}
+              onChange={async (e) => {
+                const newStatus = e.target.value
+                await supabase.from('vacancies').update({ status: newStatus, closed_at: newStatus.startsWith('closed') ? new Date().toISOString() : null }).eq('id', id)
+                setVacancy(prev => ({ ...prev, status: newStatus }))
+              }}
+              className={`text-[11px] px-2 py-0.5 rounded font-medium cursor-pointer outline-none ${statusColors[vacancy.status] || ''}`}
+              style={{ background: 'transparent', border: 'none', WebkitAppearance: 'none', appearance: 'none', paddingRight: '14px', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'8\' height=\'8\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'3\'%3E%3Cpath d=\'M6 9l6 6 6-6\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 2px center' }}
+            >
+              {Object.entries(statusLabels).map(([val, label]) => (
+                <option key={val} value={val}>{label}</option>
+              ))}
+            </select>
           </div>
           {vacancy.company_name && <p className="text-sm text-gray-400">{vacancy.company_name}{vacancy.location ? ` · ${vacancy.location}` : ''}</p>}
         </div>
