@@ -34,6 +34,8 @@ export default function VacancyPipeline({ vacancyId }) {
   const [loadingInteractions, setLoadingInteractions] = useState(false)
   const [newMessage, setNewMessage] = useState('')
   const [messageType, setMessageType] = useState('linkedin_message')
+  const [interviewNotes, setInterviewNotes] = useState([])
+  const [loadingNotes, setLoadingNotes] = useState(false)
   const [messageDirection, setMessageDirection] = useState('outbound')
   const [firefliesNotes, setFirefliesNotes] = useState([])
   const [calendarEvents, setCalendarEvents] = useState([])
@@ -317,13 +319,22 @@ export default function VacancyPipeline({ vacancyId }) {
   }
 
   // Load interactions when modal opens
+  async function loadInterviewNotes(vcId) {
+    setLoadingNotes(true)
+    const { data } = await supabase.from('interview_notes').select('*').eq('vacancy_candidate_id', vcId).order('interview_date', { ascending: false })
+    setInterviewNotes(data || [])
+    setLoadingNotes(false)
+  }
+
   function openCandidateModal(vc) {
     setSelectedVC(vc)
     setContactNote('')
     setNewMessage('')
     setFirefliesNotes([])
     setCalendarEvents([])
+    setInterviewNotes([])
     loadInteractions(vc.id)
+    loadInterviewNotes(vc.id)
     loadGoogleData(vc.candidates?.full_name)
   }
 
@@ -404,10 +415,10 @@ export default function VacancyPipeline({ vacancyId }) {
         const currentStage = stages.find(s => s.id === selectedVC.stage)
         return (
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setSelectedVC(null)}>
-            <div className="bg-theme-surface rounded-2xl w-full max-w-4xl max-h-[85vh] border border-white/10 flex" onClick={e => e.stopPropagation()}>
+            <div className="bg-theme-surface rounded-2xl w-full max-w-6xl max-h-[85vh] border border-white/10 flex" onClick={e => e.stopPropagation()}>
 
               {/* Left side — Candidate info */}
-              <div className="w-[55%] overflow-y-auto" style={{ borderRight: '1px solid var(--border-default)' }}>
+              <div className="w-[38%] overflow-y-auto" style={{ borderRight: '1px solid var(--border-default)' }}>
                 {/* Header */}
                 <div className="flex items-start justify-between p-5" style={{ borderBottom: '1px solid var(--border-default)' }}>
                   <div className="flex items-center gap-4">
@@ -570,8 +581,8 @@ export default function VacancyPipeline({ vacancyId }) {
                 </div>
               </div>
 
-              {/* Right side — Conversation */}
-              <div className="w-[45%] flex flex-col">
+              {/* Middle — Conversation */}
+              <div className="w-[30%] flex flex-col" style={{ borderRight: '1px solid var(--border-default)' }}>
                 <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-default)' }}>
                   <p className="text-xs font-semibold text-white">Conversacion</p>
                 </div>
@@ -644,6 +655,96 @@ export default function VacancyPipeline({ vacancyId }) {
                       {savingContact ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
                     </button>
                   </div>
+                </div>
+              </div>
+
+              {/* Right side — Interview Notes */}
+              <div className="w-[32%] flex flex-col">
+                <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-default)' }}>
+                  <p className="text-xs font-semibold text-white">Notas de Entrevista</p>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4">
+                  {loadingNotes ? (
+                    <div className="text-center py-8"><Loader2 size={16} className="animate-spin mx-auto text-gray-500" /></div>
+                  ) : interviewNotes.length > 0 ? (
+                    <div className="space-y-3">
+                      {interviewNotes.map(note => {
+                        const verdictConfig = { advance: { label: 'Avanzar', color: 'bg-emerald-500/15 text-emerald-400', border: 'border-emerald-500/20' }, hold: { label: 'En espera', color: 'bg-amber-500/15 text-amber-400', border: 'border-amber-500/20' }, reject: { label: 'No avanzar', color: 'bg-red-500/15 text-red-400', border: 'border-red-500/20' } }
+                        const v = verdictConfig[note.verdict] || verdictConfig.hold
+                        const ratingStars = Array.from({ length: 5 }, (_, i) => i < (note.overall_rating || 0))
+                        const typeLabels = { phone_screen: 'Filtro telefónico', technical: 'Técnica', behavioral: 'Competencias', cultural: 'Cultural', final: 'Final', client: 'Con cliente' }
+
+                        return (
+                          <div key={note.id} className={`rounded-xl p-3.5 border ${v.border}`} style={{ background: note.verdict === 'reject' ? 'rgba(239,68,68,0.04)' : note.verdict === 'advance' ? 'rgba(34,197,94,0.04)' : 'rgba(245,158,11,0.04)' }}>
+                            {/* Header */}
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full" style={{ background: note.interview_type === 'technical' ? 'rgba(139,92,246,0.15)' : 'rgba(37,99,235,0.15)', color: note.interview_type === 'technical' ? '#A78BFA' : '#93C5FD' }}>
+                                  {typeLabels[note.interview_type] || note.interview_type}
+                                </span>
+                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${v.color}`}>{v.label}</span>
+                              </div>
+                            </div>
+
+                            {/* Rating */}
+                            <div className="flex items-center gap-1 mb-2">
+                              {ratingStars.map((filled, i) => (
+                                <Star key={i} size={12} className={filled ? 'text-amber-400' : 'text-gray-600'} fill={filled ? 'currentColor' : 'none'} />
+                              ))}
+                              <span className="text-[10px] text-gray-500 ml-1">{note.overall_rating}/5</span>
+                            </div>
+
+                            {/* Strengths */}
+                            {note.strengths?.length > 0 && (
+                              <div className="mb-2">
+                                <p className="text-[9px] text-gray-500 uppercase tracking-wider mb-1">Fortalezas</p>
+                                {note.strengths.map((s, i) => (
+                                  <div key={i} className="flex items-start gap-1.5 mb-0.5">
+                                    <CheckCircle size={9} className="text-emerald-400 mt-0.5 flex-shrink-0" />
+                                    <span className="text-[11px] text-gray-300">{s}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Concerns */}
+                            {note.concerns?.length > 0 && (
+                              <div className="mb-2">
+                                <p className="text-[9px] text-gray-500 uppercase tracking-wider mb-1">Preocupaciones</p>
+                                {note.concerns.map((c, i) => (
+                                  <div key={i} className="flex items-start gap-1.5 mb-0.5">
+                                    <AlertTriangle size={9} className="text-red-400 mt-0.5 flex-shrink-0" />
+                                    <span className="text-[11px] text-gray-300">{c}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Notes */}
+                            {note.notes && (
+                              <p className="text-[11px] text-gray-400 leading-relaxed mt-2 pt-2" style={{ borderTop: '1px solid var(--border-default)' }}>
+                                {note.notes}
+                              </p>
+                            )}
+
+                            {/* Footer */}
+                            <div className="flex items-center gap-2 mt-2 text-[9px] text-gray-600">
+                              <span>{note.interviewer}</span>
+                              <span>·</span>
+                              <span>{new Date(note.interview_date).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <FileText size={24} className="mx-auto text-gray-700 mb-2" />
+                      <p className="text-xs text-gray-600">Sin notas de entrevista</p>
+                      <p className="text-[10px] text-gray-700 mt-1">Las notas aparecerán aquí cuando se realicen entrevistas</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
