@@ -519,7 +519,7 @@ Enlace 468`)
                         <Heart size={12} /> Gracias por participar
                       </button>
                     )}
-                    <div className="space-y-2 flex-1">
+                    <div className="space-y-2 flex-1 overflow-y-auto pr-1">
                       {items.map((vc, index) => (
                         <Draggable key={vc.id} draggableId={vc.id} index={index}>
                           {(provided, snapshot) => (
