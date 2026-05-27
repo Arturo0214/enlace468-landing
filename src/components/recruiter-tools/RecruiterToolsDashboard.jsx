@@ -91,7 +91,7 @@ export default function RecruiterToolsDashboard() {
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center">
             <Zap size={20} className="text-primary-light" />
           </div>
-          <h1 className="text-2xl font-display font-bold text-white">Recruiter Pro Tools</h1>
+          <h1 className="text-2xl font-display font-bold text-white">Recruiting Lab</h1>
         </div>
         <p className="text-gray-400 mt-1 max-w-2xl">
           Herramientas para potenciar tu productividad como reclutador
