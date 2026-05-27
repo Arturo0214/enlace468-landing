@@ -192,7 +192,7 @@ export default function VacancyDetail() {
 
       {/* PIPELINE */}
       {activeTab === 'pipeline' && (
-        <PipelineKanban vacancyId={id} vacancyTitle={vacancy?.title} />
+        <VacancyPipeline vacancyId={id} vacancy={vacancy} />
       )}
 
       {/* OUTREACH */}
