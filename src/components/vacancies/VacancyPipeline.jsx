@@ -496,14 +496,14 @@ Enlace 468`)
       </div>
 
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex gap-3 overflow-x-auto pb-4">
+        <div className="flex gap-3 overflow-x-auto pb-2" style={{ minHeight: 'calc(100vh - 280px)' }}>
           {stages.map(stage => {
             const items = candidates.filter(c => c.stage === stage.id)
             return (
               <Droppable key={stage.id} droppableId={stage.id}>
                 {(provided, snapshot) => (
                   <div ref={provided.innerRef} {...provided.droppableProps}
-                    className={`flex-shrink-0 w-56 rounded-xl p-3 border-t-2 ${stage.color} ${snapshot.isDraggingOver ? 'bg-primary/10' : stage.bg}`}
+                    className={`flex-shrink-0 w-56 rounded-xl p-3 border-t-2 flex flex-col ${stage.color} ${snapshot.isDraggingOver ? 'bg-primary/10' : stage.bg}`}
                     style={{ border: '1px solid var(--border-default)', borderTopWidth: '2px' }}>
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{stage.label}</h3>
@@ -516,7 +516,7 @@ Enlace 468`)
                         <Heart size={12} /> Gracias por participar
                       </button>
                     )}
-                    <div className="space-y-2 min-h-[100px]">
+                    <div className="space-y-2 flex-1">
                       {items.map((vc, index) => (
                         <Draggable key={vc.id} draggableId={vc.id} index={index}>
                           {(provided, snapshot) => (
