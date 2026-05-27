@@ -535,29 +535,13 @@ Enlace 468`)
                                   : {}),
                               }}
                               className={`glass rounded-lg p-3 cursor-grab hover:border-primary/20 transition-all relative overflow-hidden ${snapshot.isDragging ? 'shadow-lg shadow-primary/10 rotate-2' : ''}`}>
-                              {/* Gift ribbon for offer stage */}
+                              {/* Red ribbon corner for offer stage */}
                               {stage.id === 'offer' && (
-                                <>
-                                  {/* Vertical ribbon */}
-                                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-full" style={{ background: 'linear-gradient(180deg, rgba(234,179,8,0.3), rgba(234,179,8,0.1))' }} />
-                                  {/* Horizontal ribbon */}
-                                  <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full h-3" style={{ background: 'linear-gradient(90deg, rgba(234,179,8,0.3), rgba(234,179,8,0.1))' }} />
-                                  {/* Bow center */}
-                                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                                    <div className="relative">
-                                      {/* Left loop */}
-                                      <div className="absolute -left-3 -top-1.5 w-4 h-3 rounded-full" style={{ background: 'rgba(234,179,8,0.35)', transform: 'rotate(-30deg)' }} />
-                                      {/* Right loop */}
-                                      <div className="absolute -right-3 -top-1.5 w-4 h-3 rounded-full" style={{ background: 'rgba(234,179,8,0.35)', transform: 'rotate(30deg)' }} />
-                                      {/* Center knot */}
-                                      <div className="w-3 h-3 rounded-full" style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)', boxShadow: '0 0 8px rgba(234,179,8,0.4)' }} />
-                                    </div>
+                                <div className="absolute -top-1 -right-1 w-12 h-12 overflow-hidden z-10">
+                                  <div className="absolute top-[6px] right-[-14px] w-16 text-center text-[7px] font-bold text-white uppercase tracking-wider py-[2px]" style={{ background: 'linear-gradient(90deg, #DC2626, #EF4444)', transform: 'rotate(45deg)', boxShadow: '0 2px 4px rgba(220,38,38,0.3)' }}>
+                                    Oferta
                                   </div>
-                                  {/* Tail left */}
-                                  <div className="absolute left-[calc(50%-12px)] top-[calc(50%+4px)] w-2 h-5" style={{ background: 'rgba(234,179,8,0.25)', transform: 'rotate(-15deg)', borderRadius: '0 0 4px 4px' }} />
-                                  {/* Tail right */}
-                                  <div className="absolute left-[calc(50%+4px)] top-[calc(50%+4px)] w-2 h-5" style={{ background: 'rgba(234,179,8,0.25)', transform: 'rotate(15deg)', borderRadius: '0 0 4px 4px' }} />
-                                </>
+                                </div>
                               )}
                               <div className="flex items-start gap-2">
                                 <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-gray-300 flex-shrink-0">
