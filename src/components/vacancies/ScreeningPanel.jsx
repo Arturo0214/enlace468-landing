@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { Search, SlidersHorizontal, ArrowUpDown, Users, Star, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, XCircle, HelpCircle, ThumbsUp, ThumbsDown, MessageSquare, X, Loader2 } from 'lucide-react'
+import { Search, SlidersHorizontal, ArrowUpDown, Users, Star, ChevronDown, ChevronUp, AlertTriangle, CheckCircle, XCircle, HelpCircle, ThumbsUp, ThumbsDown, MessageSquare, X, Loader2, Zap, FileText, Shield } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 
@@ -45,6 +45,8 @@ export default function ScreeningPanel({ vacancyId, scorecard }) {
   const [compareIds, setCompareIds] = useState([])
   const [showCompare, setShowCompare] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+  const [matching, setMatching] = useState(false)
+  const [matchResults, setMatchResults] = useState(null)
 
   const criteriaNames = scorecard?.criteria?.map(c => c.name) || []
 
@@ -54,7 +56,7 @@ export default function ScreeningPanel({ vacancyId, scorecard }) {
     setLoading(true)
     const { data, error } = await supabase
       .from('vacancy_candidates')
-      .select('*, candidates(full_name, current_title, current_company, email, linkedin_url)')
+      .select('*, candidates(full_name, current_title, current_company, email, linkedin_url, cv_url, cv_text, notes, years_experience, tags)')
       .eq('vacancy_id', vacancyId)
       .order('created_at')
 
@@ -78,10 +80,114 @@ export default function ScreeningPanel({ vacancyId, scorecard }) {
           gaps: (md.criteria || scorecard?.criteria || []).filter(c => (md.scores?.[c.name] || 0) <= 2 && md.scores?.[c.name] != null),
           pending: (md.criteria || scorecard?.criteria || []).filter(c => md.scores?.[c.name] == null),
           stage: vc.stage,
+          cvUrl: vc.candidates?.cv_url || null,
+          cvText: vc.candidates?.cv_text || null,
+          notes: vc.candidates?.notes || '',
+          yearsExp: vc.candidates?.years_experience || null,
+          tags: vc.candidates?.tags || [],
         }
       }))
     }
     setLoading(false)
+  }
+
+  // ── CV Match Engine ──────────────────────────────────────
+  async function matchAllCVs() {
+    setMatching(true)
+    const results = {}
+
+    // Get vacancy info for matching
+    const { data: vacancy } = await supabase.from('vacancies').select('title, description, competencies, requirements').eq('id', vacancyId).single()
+    if (!vacancy) { setMatching(false); return }
+
+    const vacancyText = [
+      vacancy.title, vacancy.description,
+      ...(vacancy.competencies || []).map(c => c.name + ' ' + (c.description || '')),
+      ...(vacancy.requirements || []),
+    ].join(' ').toLowerCase()
+
+    // Extract keywords from vacancy
+    const stopwords = new Set(['de','en','el','la','los','las','y','o','a','para','con','del','al','un','una','que','por','su','es','se','no','lo','como','más','pero','sus','le','ya','fue','este','son','entre','cuando','muy','sin','sobre','ser','también','me','hasta','hay','donde','quien','desde','todo','nos','durante','todos','uno','les','ni','contra','otros','ese','eso','ante','ellos','e','esto','mí','antes','algunos','qué','unos','yo','otro','otras','otra','él','tanto','esa','estos','mucho','quienes','nada','muchos','cual','poco','ella','estar','estas','algunas'])
+    const vacancyKeywords = [...new Set(vacancyText.split(/[\s,;.:()\-\/]+/).filter(w => w.length > 3 && !stopwords.has(w)))]
+
+    for (const c of candidates) {
+      // Build candidate text from all available info
+      let candidateText = [c.name, c.title, c.company, c.notes, (c.tags || []).join(' ')].join(' ')
+
+      // Fetch CV content if available
+      if (c.cvUrl) {
+        try {
+          const resp = await fetch(c.cvUrl)
+          if (resp.ok) {
+            const cvContent = await resp.text()
+            candidateText += ' ' + cvContent
+          }
+        } catch (e) { /* skip */ }
+      }
+
+      const candidateLower = candidateText.toLowerCase()
+
+      // Keyword matching
+      const matched = vacancyKeywords.filter(kw => candidateLower.includes(kw))
+      const keywordScore = vacancyKeywords.length > 0 ? Math.round((matched.length / vacancyKeywords.length) * 100) : 0
+
+      // Competency matching
+      const competencies = vacancy.competencies || []
+      const compScores = competencies.map(comp => {
+        const compWords = (comp.name + ' ' + (comp.description || '')).toLowerCase().split(/[\s,;.:()\-\/]+/).filter(w => w.length > 3 && !stopwords.has(w))
+        const compMatched = compWords.filter(w => candidateLower.includes(w))
+        const score = compWords.length > 0 ? Math.round((compMatched.length / compWords.length) * 100) : 0
+        return { name: comp.name, weight: comp.weight || 0, score, matchedKeywords: compMatched, totalKeywords: compWords.length }
+      })
+
+      // Weighted overall score
+      const totalWeight = compScores.reduce((s, c) => s + c.weight, 0) || 1
+      const weightedScore = Math.round(compScores.reduce((s, c) => s + (c.score * c.weight), 0) / totalWeight)
+
+      // Determine strengths and gaps
+      const strengths = compScores.filter(c => c.score >= 60).map(c => c.name)
+      const gaps = compScores.filter(c => c.score < 40).map(c => c.name)
+
+      // Experience match
+      const expMatch = c.yearsExp ? (c.yearsExp >= 3 ? 'Cumple' : 'Insuficiente') : 'No disponible'
+
+      // Has CV
+      const hasCv = !!c.cvUrl
+
+      // Recommendation
+      let recommendation = 'evaluate'
+      if (weightedScore >= 70 && strengths.length >= 2) recommendation = 'advance'
+      if (weightedScore < 35 || gaps.length >= 2) recommendation = 'reject'
+
+      results[c.id] = {
+        overallScore: weightedScore,
+        keywordScore,
+        keywordsMatched: matched.length,
+        keywordsTotal: vacancyKeywords.length,
+        competencyScores: compScores,
+        strengths, gaps,
+        experience: expMatch,
+        hasCv,
+        recommendation,
+        topKeywords: matched.slice(0, 10),
+      }
+
+      // Update in Supabase
+      await supabase.from('vacancy_candidates').update({
+        match_score: weightedScore,
+        match_details: {
+          overall_score: weightedScore,
+          strengths, gaps,
+          recommendation,
+          cv_analysis: { keywordScore, competencyScores: compScores, experience: expMatch },
+          pending_questions: gaps.map(g => `¿Tiene experiencia real en ${g}?`),
+        },
+      }).eq('id', c.id)
+    }
+
+    setMatchResults(results)
+    setMatching(false)
+    loadCandidates() // Reload with updated scores
   }
 
   // Filtered and sorted candidates
@@ -157,6 +263,92 @@ export default function ScreeningPanel({ vacancyId, scorecard }) {
           Analisis asistido por IA — La plataforma no decide. Requiere revision humana.
         </p>
       </motion.div>
+
+      {/* Match CVs Button */}
+      <div className="flex items-center gap-3">
+        <button onClick={matchAllCVs} disabled={matching || candidates.length === 0}
+          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 shadow-lg shadow-primary/15 transition-all hover:-translate-y-0.5">
+          {matching ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
+          {matching ? 'Analizando CVs...' : 'Analizar CVs vs Vacante'}
+        </button>
+        <span className="text-[11px] text-gray-500">{candidates.filter(c => c.cvUrl).length}/{candidates.length} candidatos con CV</span>
+      </div>
+
+      {/* Match Results Summary */}
+      {matchResults && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Shield size={16} className="text-amber-400" />
+            <h3 className="text-sm font-semibold text-white">Resultado del análisis — Requiere validación humana</h3>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            {[
+              { label: 'Avanzar', count: Object.values(matchResults).filter(r => r.recommendation === 'advance').length, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+              { label: 'Evaluar más', count: Object.values(matchResults).filter(r => r.recommendation === 'evaluate').length, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+              { label: 'No viable', count: Object.values(matchResults).filter(r => r.recommendation === 'reject').length, color: 'text-red-400', bg: 'bg-red-500/10' },
+              { label: 'Con CV', count: Object.values(matchResults).filter(r => r.hasCv).length, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+            ].map((s, i) => (
+              <div key={i} className={`${s.bg} rounded-xl p-3 text-center`}>
+                <div className={`text-xl font-bold font-display ${s.color}`}>{s.count}</div>
+                <div className="text-[10px] text-gray-500 mt-0.5">{s.label}</div>
+              </div>
+            ))}
+          </div>
+          {/* Per-candidate reports */}
+          <div className="space-y-2">
+            {candidates
+              .map(c => ({ ...c, result: matchResults[c.id] }))
+              .filter(c => c.result)
+              .sort((a, b) => (b.result?.overallScore || 0) - (a.result?.overallScore || 0))
+              .map(c => {
+                const r = c.result
+                const recBadge = RECOMMENDATION_BADGES[r.recommendation] || RECOMMENDATION_BADGES.evaluate
+                const RecIcon = recBadge.icon
+                return (
+                  <div key={c.id} className="glass rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-xs font-bold text-gray-300">
+                          {c.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-white">{c.name}</p>
+                          <p className="text-[11px] text-gray-500">{c.title}{c.company ? ` · ${c.company}` : ''}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-lg font-bold font-display ${matchColor(r.overallScore)}`}>{r.overallScore}%</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border flex items-center gap-1 ${recBadge.color}`}>
+                          <RecIcon size={10} /> {recBadge.label}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Competency bars */}
+                    <div className="space-y-1.5 mb-3">
+                      {r.competencyScores.map((cs, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="text-[10px] text-gray-400 w-36 truncate">{cs.name} ({cs.weight}%)</span>
+                          <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${matchBg(cs.score)}`} style={{ width: `${cs.score}%` }} />
+                          </div>
+                          <span className={`text-[10px] font-semibold w-8 text-right ${matchColor(cs.score)}`}>{cs.score}%</span>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Details row */}
+                    <div className="flex flex-wrap gap-2 text-[10px]">
+                      {r.hasCv && <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 flex items-center gap-1"><FileText size={8} /> CV analizado</span>}
+                      <span className="px-2 py-0.5 rounded bg-white/5 text-gray-400">Keywords: {r.keywordsMatched}/{r.keywordsTotal}</span>
+                      <span className="px-2 py-0.5 rounded bg-white/5 text-gray-400">Exp: {r.experience}</span>
+                      {r.strengths.map(s => <span key={s} className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400">✓ {s}</span>)}
+                      {r.gaps.map(g => <span key={g} className="px-2 py-0.5 rounded bg-red-500/10 text-red-400">✗ {g}</span>)}
+                    </div>
+                  </div>
+                )
+              })}
+          </div>
+        </motion.div>
+      )}
 
       {/* Controls bar */}
       <div className="glass rounded-xl p-4">
