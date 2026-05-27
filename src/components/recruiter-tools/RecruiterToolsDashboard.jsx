@@ -84,7 +84,7 @@ function HeroBanner() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-light to-accent flex items-center justify-center shadow-lg shadow-primary-light/20">
               <GraduationCap size={16} className="text-white" />
             </div>
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Curso de IA Avanzado</span>
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Curso de IA Avanzado para Especialistas de TA</span>
           </div>
           <h1 className="font-display font-extrabold text-white mb-3" style={{ fontSize: 'clamp(2.2rem, 4.5vw, 3.2rem)', lineHeight: 1.05 }}>
             Recruiting{' '}
@@ -113,7 +113,7 @@ function HeroBanner() {
         </div>
 
         {/* Right — Price */}
-        <div className="flex-shrink-0 text-center lg:text-right">
+        <div className="flex-shrink-0 text-center">
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3, type: 'spring' }}>
             <span className="font-display font-extrabold bg-clip-text text-transparent" style={{ fontSize: 'clamp(3rem, 6vw, 5rem)', backgroundImage: 'linear-gradient(135deg, #60A5FA, #2DD4BF, #FBBF24, #60A5FA)', backgroundSize: '300% 300%', animation: 'gradient-shift 4s ease infinite' }}>
               $2,999
