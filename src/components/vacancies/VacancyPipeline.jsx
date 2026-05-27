@@ -41,7 +41,19 @@ export default function VacancyPipeline({ vacancyId }) {
 
   async function loadPipeline() {
     const { data } = await supabase.from('vacancy_candidates').select('*, candidates(*)').eq('vacancy_id', vacancyId).order('created_at')
-    setCandidates(data || []); setLoading(false)
+    const vcs = data || []
+    // Load interaction summary per candidate to determine response status
+    if (vcs.length > 0) {
+      const vcIds = vcs.map(vc => vc.id)
+      const { data: ints } = await supabase.from('candidate_interactions').select('vacancy_candidate_id, direction').in('vacancy_candidate_id', vcIds)
+      const intMap = {}
+      ;(ints || []).forEach(i => {
+        if (!intMap[i.vacancy_candidate_id]) intMap[i.vacancy_candidate_id] = { outbound: 0, inbound: 0 }
+        intMap[i.vacancy_candidate_id][i.direction]++
+      })
+      vcs.forEach(vc => { vc._interactions = intMap[vc.id] || null })
+    }
+    setCandidates(vcs); setLoading(false)
   }
 
   async function handleDragEnd(result) {
@@ -244,7 +256,13 @@ export default function VacancyPipeline({ vacancyId }) {
                           {(provided, snapshot) => (
                             <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
                               onClick={() => !snapshot.isDragging && openCandidateModal(vc)}
-                              className={`glass rounded-lg p-3 cursor-grab hover:border-primary/20 transition-all ${snapshot.isDragging ? 'shadow-lg shadow-primary/10 rotate-2' : ''}`}>
+                              className={`glass rounded-lg p-3 cursor-grab hover:border-primary/20 transition-all ${snapshot.isDragging ? 'shadow-lg shadow-primary/10 rotate-2' : ''} ${
+                                vc._interactions?.inbound > 0
+                                  ? 'border-green-500/40 bg-green-500/5 dark:bg-green-500/5'
+                                  : vc._interactions?.outbound > 0 && vc._interactions?.inbound === 0
+                                  ? 'border-red-400/40 bg-red-500/5 dark:bg-red-500/5'
+                                  : ''
+                              }`}>
                               <div className="flex items-start gap-2">
                                 <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-gray-300 flex-shrink-0">
                                   <User size={14} />
