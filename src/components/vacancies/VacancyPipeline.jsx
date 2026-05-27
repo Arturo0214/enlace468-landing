@@ -155,6 +155,27 @@ export default function VacancyPipeline({ vacancyId }) {
       performed_by: profile.id,
     }).select().single()
     if (data) setInteractions(prev => [data, ...prev])
+
+    // Auto-move to "contacted" if first outbound message and still in sourced
+    const vc = candidates.find(c => c.id === vcId)
+    if (vc && messageDirection === 'outbound' && vc.stage === 'sourced') {
+      const now = new Date().toISOString()
+      await supabase.from('vacancy_candidates').update({
+        stage: 'contacted',
+        stage_changed_at: now,
+      }).eq('id', vcId)
+      setCandidates(prev => prev.map(c => c.id === vcId ? { ...c, stage: 'contacted', stage_changed_at: now } : c))
+      setSelectedVC(prev => prev ? { ...prev, stage: 'contacted', stage_changed_at: now } : null)
+      await supabase.from('activity_log').insert({
+        organization_id: profile.organization_id,
+        entity_type: 'vacancy_candidate',
+        entity_id: vcId,
+        action: `${vc.candidates?.full_name} → Contactado (mensaje registrado)`,
+        details: { vacancy_id: vacancyId, to_stage: 'contacted', via: messageType },
+        performed_by: profile.id,
+      })
+    }
+
     setNewMessage('')
     setSavingContact(false)
   }
