@@ -45,11 +45,24 @@ export default function VacancyPipeline({ vacancyId }) {
     // Load interaction summary per candidate to determine response status
     if (vcs.length > 0) {
       const vcIds = vcs.map(vc => vc.id)
-      const { data: ints } = await supabase.from('candidate_interactions').select('vacancy_candidate_id, direction').in('vacancy_candidate_id', vcIds)
+      const { data: ints } = await supabase.from('candidate_interactions').select('vacancy_candidate_id, direction, created_at').in('vacancy_candidate_id', vcIds)
       const intMap = {}
       ;(ints || []).forEach(i => {
-        if (!intMap[i.vacancy_candidate_id]) intMap[i.vacancy_candidate_id] = { outbound: 0, inbound: 0 }
+        if (!intMap[i.vacancy_candidate_id]) intMap[i.vacancy_candidate_id] = { outbound: 0, inbound: 0, lastOutbound: null }
         intMap[i.vacancy_candidate_id][i.direction]++
+        if (i.direction === 'outbound') {
+          const d = new Date(i.created_at)
+          if (!intMap[i.vacancy_candidate_id].lastOutbound || d > intMap[i.vacancy_candidate_id].lastOutbound) {
+            intMap[i.vacancy_candidate_id].lastOutbound = d
+          }
+        }
+      })
+      const now = Date.now()
+      Object.values(intMap).forEach(m => {
+        // pending = outbound exists, no inbound, last outbound < 3 days ago
+        m.pending = m.outbound > 0 && m.inbound === 0 && m.lastOutbound && (now - m.lastOutbound.getTime()) < 3 * 86400000
+        // noResponse = outbound exists, no inbound, last outbound >= 3 days ago
+        m.noResponse = m.outbound > 0 && m.inbound === 0 && (!m.lastOutbound || (now - m.lastOutbound.getTime()) >= 3 * 86400000)
       })
       vcs.forEach(vc => { vc._interactions = intMap[vc.id] || null })
     }
@@ -258,9 +271,11 @@ export default function VacancyPipeline({ vacancyId }) {
                               onClick={() => !snapshot.isDragging && openCandidateModal(vc)}
                               className={`glass rounded-lg p-3 cursor-grab hover:border-primary/20 transition-all ${snapshot.isDragging ? 'shadow-lg shadow-primary/10 rotate-2' : ''} ${
                                 vc._interactions?.inbound > 0
-                                  ? 'border-green-500/40 bg-green-500/5 dark:bg-green-500/5'
-                                  : vc._interactions?.outbound > 0 && vc._interactions?.inbound === 0
-                                  ? 'border-red-400/40 bg-red-500/5 dark:bg-red-500/5'
+                                  ? 'border-green-500/40 bg-green-500/5'
+                                  : vc._interactions?.pending
+                                  ? 'border-amber-400/40 bg-amber-400/5'
+                                  : vc._interactions?.noResponse
+                                  ? 'border-red-400/40 bg-red-500/5'
                                   : ''
                               }`}>
                               <div className="flex items-start gap-2">
