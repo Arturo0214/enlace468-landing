@@ -524,7 +524,9 @@ Enlace 468`)
                               onClick={() => !snapshot.isDragging && openCandidateModal(vc)}
                               style={{
                                 ...provided.draggableProps.style,
-                                ...(vc._interactions?.inbound > 0
+                                ...(stage.id === 'offer'
+                                  ? { borderColor: 'rgba(34,197,94,0.5)', background: 'linear-gradient(135deg, rgba(34,197,94,0.06), rgba(16,185,129,0.03))', boxShadow: '0 0 0 1px rgba(34,197,94,0.2), 0 4px 12px rgba(34,197,94,0.08)' }
+                                  : vc._interactions?.inbound > 0
                                   ? { borderColor: 'rgba(34,197,94,0.5)', background: 'rgba(34,197,94,0.08)', boxShadow: '0 0 0 1px rgba(34,197,94,0.15)' }
                                   : vc._interactions?.pending
                                   ? { borderColor: 'rgba(245,158,11,0.5)', background: 'rgba(245,158,11,0.08)', boxShadow: '0 0 0 1px rgba(245,158,11,0.15)' }
@@ -532,7 +534,31 @@ Enlace 468`)
                                   ? { borderColor: 'rgba(239,68,68,0.5)', background: 'rgba(239,68,68,0.08)', boxShadow: '0 0 0 1px rgba(239,68,68,0.15)' }
                                   : {}),
                               }}
-                              className={`glass rounded-lg p-3 cursor-grab hover:border-primary/20 transition-all ${snapshot.isDragging ? 'shadow-lg shadow-primary/10 rotate-2' : ''}`}>
+                              className={`glass rounded-lg p-3 cursor-grab hover:border-primary/20 transition-all relative overflow-hidden ${snapshot.isDragging ? 'shadow-lg shadow-primary/10 rotate-2' : ''}`}>
+                              {/* Gift ribbon for offer stage */}
+                              {stage.id === 'offer' && (
+                                <>
+                                  {/* Vertical ribbon */}
+                                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-full" style={{ background: 'linear-gradient(180deg, rgba(234,179,8,0.3), rgba(234,179,8,0.1))' }} />
+                                  {/* Horizontal ribbon */}
+                                  <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full h-3" style={{ background: 'linear-gradient(90deg, rgba(234,179,8,0.3), rgba(234,179,8,0.1))' }} />
+                                  {/* Bow center */}
+                                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                                    <div className="relative">
+                                      {/* Left loop */}
+                                      <div className="absolute -left-3 -top-1.5 w-4 h-3 rounded-full" style={{ background: 'rgba(234,179,8,0.35)', transform: 'rotate(-30deg)' }} />
+                                      {/* Right loop */}
+                                      <div className="absolute -right-3 -top-1.5 w-4 h-3 rounded-full" style={{ background: 'rgba(234,179,8,0.35)', transform: 'rotate(30deg)' }} />
+                                      {/* Center knot */}
+                                      <div className="w-3 h-3 rounded-full" style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)', boxShadow: '0 0 8px rgba(234,179,8,0.4)' }} />
+                                    </div>
+                                  </div>
+                                  {/* Tail left */}
+                                  <div className="absolute left-[calc(50%-12px)] top-[calc(50%+4px)] w-2 h-5" style={{ background: 'rgba(234,179,8,0.25)', transform: 'rotate(-15deg)', borderRadius: '0 0 4px 4px' }} />
+                                  {/* Tail right */}
+                                  <div className="absolute left-[calc(50%+4px)] top-[calc(50%+4px)] w-2 h-5" style={{ background: 'rgba(234,179,8,0.25)', transform: 'rotate(15deg)', borderRadius: '0 0 4px 4px' }} />
+                                </>
+                              )}
                               <div className="flex items-start gap-2">
                                 <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-gray-300 flex-shrink-0">
                                   <User size={14} />
