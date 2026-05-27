@@ -211,8 +211,8 @@ export default function VacancyPipeline({ vacancyId }) {
               <Droppable key={stage.id} droppableId={stage.id}>
                 {(provided, snapshot) => (
                   <div ref={provided.innerRef} {...provided.droppableProps}
-                    className={`flex-shrink-0 w-56 rounded-xl p-3 border-t-2 ${stage.color} ${snapshot.isDraggingOver ? 'bg-primary/5' : 'bg-white/[0.03]'}`}
-                    style={{ border: '1px solid rgba(255,255,255,0.05)', borderTopWidth: '2px' }}>
+                    className={`flex-shrink-0 w-56 rounded-xl p-3 border-t-2 ${stage.color} ${snapshot.isDraggingOver ? 'bg-primary/5' : 'bg-white/5'}`}
+                    style={{ border: '1px solid var(--border-default)', borderTopWidth: '2px' }}>
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">{stage.label}</h3>
                       <span className="text-xs text-gray-500 bg-white/5 px-1.5 py-0.5 rounded">{items.length}</span>
@@ -259,12 +259,12 @@ export default function VacancyPipeline({ vacancyId }) {
         const currentStage = stages.find(s => s.id === selectedVC.stage)
         return (
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setSelectedVC(null)}>
-            <div className="bg-[#111827] rounded-2xl w-full max-w-4xl max-h-[85vh] border border-white/[0.08] flex" onClick={e => e.stopPropagation()}>
+            <div className="bg-theme-surface rounded-2xl w-full max-w-4xl max-h-[85vh] border border-white/10 flex" onClick={e => e.stopPropagation()}>
 
               {/* Left side — Candidate info */}
-              <div className="w-[55%] overflow-y-auto" style={{ borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="w-[55%] overflow-y-auto" style={{ borderRight: '1px solid var(--border-default)' }}>
                 {/* Header */}
-                <div className="flex items-start justify-between p-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="flex items-start justify-between p-5" style={{ borderBottom: '1px solid var(--border-default)' }}>
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-primary-light text-base font-bold">
                       {c.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
@@ -281,7 +281,7 @@ export default function VacancyPipeline({ vacancyId }) {
                 <div className="p-5 space-y-4">
                   {/* Stage badge */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-lg border ${currentStage?.color} bg-white/[0.03]`}>
+                    <span className={`text-xs font-medium px-2.5 py-1 rounded-lg border ${currentStage?.color} bg-white/5`}>
                       {currentStage?.label}
                     </span>
                     {selectedVC.match_score != null && (
@@ -298,22 +298,22 @@ export default function VacancyPipeline({ vacancyId }) {
 
                   {/* Contact info */}
                   <div className="grid grid-cols-2 gap-2">
-                    {c.email && <a href={`mailto:${c.email}`} className="flex items-center gap-2 bg-white/[0.03] rounded-lg px-3 py-2 hover:bg-white/[0.06] transition-colors"><Mail size={12} className="text-gray-500" /><span className="text-[11px] text-gray-300 truncate">{c.email}</span></a>}
-                    {c.phone && <a href={`tel:${c.phone}`} className="flex items-center gap-2 bg-white/[0.03] rounded-lg px-3 py-2 hover:bg-white/[0.06] transition-colors"><Phone size={12} className="text-gray-500" /><span className="text-[11px] text-gray-300">{c.phone}</span></a>}
-                    {c.location && <div className="flex items-center gap-2 bg-white/[0.03] rounded-lg px-3 py-2"><MapPin size={12} className="text-gray-500" /><span className="text-[11px] text-gray-300">{c.location}</span></div>}
+                    {c.email && <a href={`mailto:${c.email}`} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2 hover:bg-white/10 transition-colors"><Mail size={12} className="text-gray-500" /><span className="text-[11px] text-gray-300 truncate">{c.email}</span></a>}
+                    {c.phone && <a href={`tel:${c.phone}`} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2 hover:bg-white/10 transition-colors"><Phone size={12} className="text-gray-500" /><span className="text-[11px] text-gray-300">{c.phone}</span></a>}
+                    {c.location && <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2"><MapPin size={12} className="text-gray-500" /><span className="text-[11px] text-gray-300">{c.location}</span></div>}
                     {c.linkedin_url && <a href={c.linkedin_url} target="_blank" rel="noopener" className="flex items-center gap-2 bg-primary-light/5 rounded-lg px-3 py-2 hover:bg-primary-light/10 border border-primary-light/10"><ExternalLink size={12} className="text-primary-light" /><span className="text-[11px] text-primary-light">LinkedIn</span></a>}
                   </div>
 
                   {/* Extra info */}
                   {(c.years_experience || c.salary_expectation) && (
                     <div className="grid grid-cols-2 gap-2">
-                      {c.years_experience && <div className="flex items-center gap-2 bg-white/[0.03] rounded-lg px-3 py-2"><Briefcase size={12} className="text-gray-500" /><span className="text-[11px] text-gray-300">{c.years_experience} años exp.</span></div>}
-                      {c.salary_expectation && <div className="flex items-center gap-2 bg-white/[0.03] rounded-lg px-3 py-2"><span className="text-gray-500 text-xs font-medium">$</span><span className="text-[11px] text-gray-300">{Number(c.salary_expectation).toLocaleString('es-MX')}</span></div>}
+                      {c.years_experience && <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2"><Briefcase size={12} className="text-gray-500" /><span className="text-[11px] text-gray-300">{c.years_experience} años exp.</span></div>}
+                      {c.salary_expectation && <div className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2"><span className="text-gray-500 text-xs font-medium">$</span><span className="text-[11px] text-gray-300">{Number(c.salary_expectation).toLocaleString('es-MX')}</span></div>}
                     </div>
                   )}
 
                   {/* Tags */}
-                  {c.tags?.length > 0 && <div className="flex flex-wrap gap-1.5">{c.tags.map(t => <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-white/[0.04] text-gray-400"><Tag size={8} className="inline mr-1" />{t}</span>)}</div>}
+                  {c.tags?.length > 0 && <div className="flex flex-wrap gap-1.5">{c.tags.map(t => <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-gray-400"><Tag size={8} className="inline mr-1" />{t}</span>)}</div>}
 
                   {/* Notes */}
                   {c.notes && <div><p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Notas</p><p className="text-xs text-gray-300 whitespace-pre-wrap">{c.notes}</p></div>}
@@ -388,7 +388,7 @@ export default function VacancyPipeline({ vacancyId }) {
                       { label: 'Google', url: `https://www.google.com/search?q=${encodeURIComponent(`"${c.full_name}" ${c.current_company || ''}`)}` },
                       { label: 'LinkedIn', url: c.linkedin_url || `https://www.google.com/search?q=site:linkedin.com/in+${encodeURIComponent(c.full_name || '')}` },
                       { label: 'Noticias', url: `https://www.google.com/search?q=${encodeURIComponent(`"${c.full_name}"`)}&tbm=nws` },
-                    ].map((s, i) => <a key={i} href={s.url} target="_blank" rel="noopener" className="text-[10px] px-2 py-1 rounded bg-white/[0.04] text-gray-400 hover:text-white hover:bg-white/[0.08]"><ExternalLink size={8} className="inline mr-0.5" />{s.label}</a>)}
+                    ].map((s, i) => <a key={i} href={s.url} target="_blank" rel="noopener" className="text-[10px] px-2 py-1 rounded bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"><ExternalLink size={8} className="inline mr-0.5" />{s.label}</a>)}
                   </div>
                   <div className="space-y-1">
                     {selectedVC.stage_changed_at && <div className="flex items-center gap-2 text-[10px] text-gray-500"><Clock size={9} />Movido a {currentStage?.label}: {new Date(selectedVC.stage_changed_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}</div>}
@@ -399,7 +399,7 @@ export default function VacancyPipeline({ vacancyId }) {
 
               {/* Right side — Conversation */}
               <div className="w-[45%] flex flex-col">
-                <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border-default)' }}>
                   <p className="text-xs font-semibold text-white">Conversacion</p>
                 </div>
 
@@ -443,7 +443,7 @@ export default function VacancyPipeline({ vacancyId }) {
                 </div>
 
                 {/* Input */}
-                <div className="p-3 space-y-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="p-3 space-y-2" style={{ borderTop: '1px solid var(--border-default)' }}>
                   <div className="flex gap-1">
                     {[
                       { id: 'linkedin_message', label: 'LinkedIn' },
@@ -465,7 +465,7 @@ export default function VacancyPipeline({ vacancyId }) {
                     <input type="text" value={newMessage} onChange={e => setNewMessage(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter' && newMessage.trim()) addInteraction(selectedVC.id) }}
                       placeholder={messageDirection === 'outbound' ? 'Que le dijiste...' : 'Que te respondio...'}
-                      className="flex-1 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] focus:border-primary-light/40 outline-none text-white placeholder-gray-500 text-xs" />
+                      className="flex-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-primary-light/40 outline-none text-white placeholder-gray-500 text-xs" />
                     <button onClick={() => addInteraction(selectedVC.id)} disabled={!newMessage.trim() || savingContact}
                       className="px-3 py-2 bg-primary-light/15 text-primary-light rounded-lg hover:bg-primary-light/25 disabled:opacity-40">
                       {savingContact ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
@@ -482,7 +482,7 @@ export default function VacancyPipeline({ vacancyId }) {
       {showAddModal && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowAddModal(false)}>
           <div className="glass-strong rounded-2xl w-full max-w-md max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="p-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="p-4" style={{ borderBottom: '1px solid var(--border-default)' }}>
               <h3 className="font-display font-semibold text-white">Agregar candidato</h3>
               <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Buscar por nombre..." className="w-full mt-3 px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-primary/50 outline-none text-white placeholder-gray-500 text-sm" autoFocus />
             </div>
@@ -497,7 +497,7 @@ export default function VacancyPipeline({ vacancyId }) {
                 <p className="text-sm text-gray-500 text-center py-8">No hay candidatos disponibles.</p>
               )}
             </div>
-            <div className="p-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="p-3" style={{ borderTop: '1px solid var(--border-default)' }}>
               <button onClick={() => setShowAddModal(false)} className="w-full py-2 text-sm text-gray-400 hover:text-white transition-colors">Cancelar</button>
             </div>
           </div>
