@@ -13,7 +13,7 @@ const stages = [
   { id: 'interviewing', label: 'Entrevista', color: 'border-purple-400', bg: 'bg-gray-200/50 dark:bg-gray-700/30' },
   { id: 'evaluated', label: 'Evaluado', color: 'border-gold', bg: 'bg-gray-200/70 dark:bg-gray-700/40' },
   { id: 'presented', label: 'Presentado', color: 'border-accent', bg: 'bg-gray-200 dark:bg-gray-700/50' },
-  { id: 'offer', label: 'Oferta', color: 'border-green-400', bg: 'bg-gray-300/50 dark:bg-gray-600/30' },
+  { id: 'offer', label: 'Oferta', color: 'border-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/30' },
   { id: 'hired', label: 'Contratado', color: 'border-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/40' },
   { id: 'rejected', label: 'Rechazado', color: 'border-red-500', bg: 'bg-red-50 dark:bg-red-950/30' },
 ]
@@ -226,7 +226,8 @@ export default function VacancyPipeline({ vacancyId }) {
     })
 
     // Only show candidates with at least some match, sorted by score
-    const relevant = scored.filter(c => c._matchScore > 0).sort((a, b) => b._matchScore - a._matchScore)
+    // Only show candidates with strong match (>25% keywords)
+    const relevant = scored.filter(c => c._matchScore > 0.25).sort((a, b) => b._matchScore - a._matchScore).slice(0, 5)
     setBankCandidates(relevant)
   }
 
