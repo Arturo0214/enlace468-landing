@@ -78,14 +78,84 @@ export default function VacancyPipeline({ vacancyId }) {
     if (!result.destination) return
     const newStage = result.destination.droppableId
     const vcId = result.draggableId
-    if (result.source.droppableId === newStage) return // same column
+    if (result.source.droppableId === newStage) return
     setCandidates(prev => prev.map(c => c.id === vcId ? { ...c, stage: newStage, stage_changed_at: new Date().toISOString() } : c))
     const { error } = await supabase.from('vacancy_candidates').update({ stage: newStage, stage_changed_at: new Date().toISOString() }).eq('id', vcId)
     if (error) { console.error('Drag error:', error); alert('Error al mover: ' + error.message); loadPipeline() }
     else {
       const candidate = candidates.find(c => c.id === vcId)
       await supabase.from('activity_log').insert({ organization_id: profile.organization_id, entity_type: 'vacancy_candidate', entity_id: vcId, action: `${candidate?.candidates?.full_name} → ${stages.find(s => s.id === newStage)?.label}`, details: { vacancy_id: vacancyId, to_stage: newStage }, performed_by: profile.id })
+
+      // Auto-evaluate when moved to "evaluated"
+      if (newStage === 'evaluated') {
+        await evaluateCandidate(vcId, candidate)
+      }
     }
+  }
+
+  async function evaluateCandidate(vcId, vc) {
+    const c = vc?.candidates || {}
+
+    // 1. Get interview notes
+    const { data: notes } = await supabase.from('interview_notes').select('*').eq('vacancy_candidate_id', vcId)
+
+    // 2. Get vacancy competencies
+    const { data: vac } = await supabase.from('vacancies').select('title, description, competencies').eq('id', vacancyId).single()
+
+    // 3. Interview score (avg of ratings, weighted 60%)
+    const ratings = (notes || []).filter(n => n.overall_rating).map(n => n.overall_rating)
+    const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0
+    const interviewScore = (avgRating / 5) * 100 // 0-100
+
+    // 4. CV keyword match (weighted 40%)
+    let cvScore = 0
+    if (c.cv_url) {
+      try {
+        const resp = await fetch(c.cv_url)
+        if (resp.ok) {
+          const cvText = (await resp.text()).toLowerCase()
+          const stopwords = new Set(['de','en','el','la','los','las','y','o','a','para','con','del','al','un','una','que','por','su','es','se','no'])
+          const vacText = [vac?.title, vac?.description, ...(vac?.competencies || []).map(c => c.name + ' ' + (c.description || ''))].join(' ').toLowerCase()
+          const keywords = [...new Set(vacText.split(/[\s,;.:()\-\/]+/).filter(w => w.length > 3 && !stopwords.has(w)))]
+          const matched = keywords.filter(kw => cvText.includes(kw))
+          cvScore = keywords.length > 0 ? (matched.length / keywords.length) * 100 : 0
+        }
+      } catch (e) { /* skip */ }
+    }
+
+    // 5. Combined score: 60% interview + 40% CV
+    const finalScore = Math.round(interviewScore * 0.6 + cvScore * 0.4)
+
+    // 6. Collect strengths/concerns from all notes
+    const allStrengths = [...new Set((notes || []).flatMap(n => n.strengths || []))]
+    const allConcerns = [...new Set((notes || []).flatMap(n => n.concerns || []))]
+
+    // 7. Determine verdict
+    const rejectCount = (notes || []).filter(n => n.verdict === 'reject').length
+    const advanceCount = (notes || []).filter(n => n.verdict === 'advance').length
+    let recommendation = 'evaluate'
+    if (rejectCount > advanceCount) recommendation = 'reject'
+    else if (advanceCount > 0 && rejectCount === 0 && finalScore >= 60) recommendation = 'advance'
+
+    // 8. Save
+    await supabase.from('vacancy_candidates').update({
+      match_score: finalScore,
+      match_details: {
+        overall_score: finalScore,
+        interview_score: Math.round(interviewScore),
+        cv_score: Math.round(cvScore),
+        interview_count: (notes || []).length,
+        avg_rating: avgRating ? Number(avgRating.toFixed(1)) : null,
+        strengths: allStrengths.slice(0, 5),
+        gaps: allConcerns.slice(0, 5),
+        recommendation,
+        evaluated_at: new Date().toISOString(),
+        pending_questions: allConcerns.length > 0 ? allConcerns.slice(0, 3).map(c => `Validar: ${c}`) : [],
+      },
+    }).eq('id', vcId)
+
+    // Reload to reflect new score
+    loadPipeline()
   }
 
   const [newCandidate, setNewCandidate] = useState({ full_name: '', current_title: '', current_company: '', linkedin_url: '', email: '', phone: '' })
