@@ -150,6 +150,88 @@ const guides = [
       ],
     },
   },
+  {
+    title: 'Entrevista por Competencias (STAR)',
+    tag: 'Entrevista',
+    content: {
+      intro: 'La entrevista por competencias es el método más objetivo para evaluar candidatos. Usando el framework STAR (Situación, Tarea, Acción, Resultado) puedes obtener evidencia real del desempeño pasado y predecir el comportamiento futuro.',
+      sections: [
+        {
+          subtitle: 'Estructura STAR',
+          text: 'Cada pregunta debe llevar al candidato a describir una situación específica, no respuestas generales. Si el candidato da una respuesta vaga, profundiza con follow-ups.',
+          bullets: [
+            'Situación: "Cuéntame de una vez que..." — establece el contexto',
+            'Tarea: "¿Cuál era tu responsabilidad específica?" — aclara el rol',
+            'Acción: "¿Qué hiciste exactamente tú?" — separa del equipo',
+            'Resultado: "¿Cuál fue el resultado medible?" — busca números y datos',
+          ],
+        },
+        {
+          subtitle: 'Preguntas por competencia',
+          text: 'Prepara 2-3 preguntas por competencia clave de la vacante. Nunca preguntes "¿eres bueno en X?" — siempre pide ejemplos reales.',
+          bullets: [
+            'Liderazgo: "Dame un ejemplo de cuando tuviste que convencer a tu equipo de cambiar de dirección"',
+            'Orientación a resultados: "Cuéntame de una meta que parecía imposible y cómo la lograste"',
+            'Resolución de problemas: "Describe una situación donde encontraste un problema que nadie más había detectado"',
+            'Trabajo bajo presión: "Háblame de la vez con mayor presión en tu carrera y cómo la manejaste"',
+            'Venta consultiva: "Dame un ejemplo de un cliente difícil que convertiste en una cuenta recurrente"',
+          ],
+        },
+        {
+          subtitle: 'Red flags en respuestas',
+          text: 'Identifica señales de alerta durante la entrevista para una evaluación más precisa.',
+          bullets: [
+            'Solo habla en plural ("nosotros hicimos") — no identifica su contribución individual',
+            'No puede dar números o métricas — posible exageración del impacto',
+            'Culpa a otros del fracaso sin asumir responsabilidad — falta de accountability',
+            'Respuestas demasiado genéricas — puede estar inventando o no tiene experiencia real',
+            'Inconsistencias entre CV y respuestas verbales — verificar referencias',
+          ],
+        },
+        {
+          subtitle: 'Scorecard de entrevista',
+          text: 'Evalúa cada competencia en una escala de 1-5 inmediatamente después de la entrevista. No esperes al final del día.',
+          bullets: [
+            '1 = No demuestra la competencia, sin evidencia',
+            '2 = Evidencia débil o parcial, requiere desarrollo significativo',
+            '3 = Cumple el estándar esperado, evidencia suficiente',
+            '4 = Supera expectativas, múltiples ejemplos fuertes',
+            '5 = Excepcional, evidencia contundente y diferenciadora',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    title: 'Entrevista Técnica y de Caso',
+    tag: 'Entrevista',
+    content: {
+      intro: 'Las entrevistas técnicas y de caso evalúan la capacidad del candidato para resolver problemas reales del puesto. Son esenciales para roles comerciales, técnicos y de liderazgo.',
+      sections: [
+        {
+          subtitle: 'Diseño del caso práctico',
+          text: 'El caso debe reflejar un escenario real que el candidato enfrentará en el puesto. No busques la respuesta "correcta" sino el proceso de pensamiento.',
+          bullets: [
+            'Para ventas: "Tienes una cartera de 30 clientes y una meta de $5M. ¿Cómo priorizas y qué estrategia usas?"',
+            'Para liderazgo: "Heredas un equipo de 5 personas con baja moral y un miembro tóxico. ¿Qué haces en los primeros 30 días?"',
+            'Para técnicos agro: "Un productor reporta rendimiento bajo en su parcela de maíz. ¿Qué diagnóstico haces y qué soluciones propones?"',
+            'Para finanzas: "Un cliente HNWI quiere diversificar $10M MXN. Diseña una estrategia de portafolio."',
+          ],
+        },
+        {
+          subtitle: 'Qué evaluar en la respuesta',
+          text: 'Más allá del contenido, evalúa cómo piensa el candidato y cómo estructura su razonamiento.',
+          bullets: [
+            'Claridad: ¿Organiza su respuesta de forma lógica?',
+            'Profundidad: ¿Va más allá de lo obvio?',
+            'Pragmatismo: ¿Sus propuestas son implementables?',
+            'Conocimiento: ¿Demuestra dominio del sector?',
+            'Comunicación: ¿Explica de forma convincente?',
+          ],
+        },
+      ],
+    },
+  },
 ]
 
 export default function SearchGuides() {
