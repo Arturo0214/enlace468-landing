@@ -112,47 +112,14 @@ function HeroBanner() {
           </div>
         </div>
 
-        {/* Right — Visual course preview */}
-        <div className="w-full lg:w-80 flex-shrink-0">
-          {/* Simulated course card */}
-          <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)' }}>
-            {/* Video preview placeholder */}
-            <div className="relative h-40 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(37,99,235,0.2), rgba(13,148,136,0.15))' }}>
-              <motion.div whileHover={{ scale: 1.1 }} className="w-16 h-16 rounded-full bg-white/20 backdrop-blur flex items-center justify-center cursor-pointer shadow-xl shadow-black/30">
-                <Play size={28} className="text-white ml-1" fill="white" />
-              </motion.div>
-              <span className="absolute bottom-3 right-3 text-[10px] text-white/60 px-2 py-0.5 rounded bg-black/40">Vista previa</span>
-            </div>
-            {/* Course info */}
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-white font-bold text-sm">6 módulos incluidos</span>
-                <div className="flex items-center gap-1 text-accent text-xs font-semibold">
-                  <TrendingUp size={12} /> 40% más productivo
-                </div>
-              </div>
-              {/* Mini module list */}
-              <div className="space-y-1.5 mb-4">
-                {['Prompts IA', 'Outreach', 'Boolean Search', 'Pipeline', 'Reportes', 'Best Practices'].map((m, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full border border-white/20 flex items-center justify-center flex-shrink-0">
-                      <span className="text-[7px] text-white/50">{i + 1}</span>
-                    </div>
-                    <span className="text-xs text-white/70">{m}</span>
-                    <span className="flex-1 border-b border-dotted border-white/10" />
-                    <span className="text-[10px] text-white/40">●</span>
-                  </div>
-                ))}
-              </div>
-              {/* Stats row */}
-              <div className="flex items-center justify-between text-[10px] text-white/50 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                <span>14 prompts</span>
-                <span>11 templates</span>
-                <span>7 guías</span>
-                <span>4 formatos</span>
-              </div>
-            </div>
-          </div>
+        {/* Right — Price */}
+        <div className="flex-shrink-0 text-center lg:text-right">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3, type: 'spring' }}>
+            <span className="font-display font-extrabold bg-clip-text text-transparent" style={{ fontSize: 'clamp(3rem, 6vw, 5rem)', backgroundImage: 'linear-gradient(135deg, #60A5FA, #2DD4BF, #FBBF24, #60A5FA)', backgroundSize: '300% 300%', animation: 'gradient-shift 4s ease infinite' }}>
+              $2,999
+            </span>
+            <p className="text-white/60 text-sm font-medium -mt-1">MXN / persona</p>
+          </motion.div>
         </div>
       </div>
     </motion.div>
