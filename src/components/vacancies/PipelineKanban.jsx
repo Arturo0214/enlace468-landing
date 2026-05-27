@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
-import { Users, Clock, AlertTriangle, TrendingUp, Star, Zap, ExternalLink, Globe, UserPlus, FileText } from 'lucide-react'
+import { Users, Clock, AlertTriangle, TrendingUp, Star, Zap, ExternalLink, Globe, UserPlus, FileText, X, Mail, Phone, MapPin, Briefcase } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
@@ -65,6 +65,7 @@ export default function PipelineKanban({ vacancyId, vacancyTitle }) {
   const { profile } = useAuth()
   const [candidates, setCandidates] = useState([])
   const [loading, setLoading] = useState(true)
+  const [selectedVC, setSelectedVC] = useState(null)
 
   const loadPipeline = useCallback(async () => {
     const { data } = await supabase
@@ -208,6 +209,7 @@ export default function PipelineKanban({ vacancyId, vacancyTitle }) {
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, scale: 0.95 }}
                                   transition={{ duration: 0.15 }}
+                                  onClick={() => !snapshot.isDragging && setSelectedVC(vc)}
                                   className={`glass rounded-lg p-2.5 cursor-grab active:cursor-grabbing hover:border-primary/20 transition-all ${
                                     snapshot.isDragging ? 'shadow-lg shadow-primary/20 rotate-1 scale-105' : ''
                                   }`}
@@ -265,6 +267,144 @@ export default function PipelineKanban({ vacancyId, vacancyTitle }) {
           })}
         </div>
       </DragDropContext>
+
+      {/* Candidate Detail Modal */}
+      <AnimatePresence>
+        {selectedVC && (() => {
+          const c = selectedVC.candidates || {}
+          const details = selectedVC.match_details || {}
+          const days = daysInStage(selectedVC.stage_changed_at)
+          const stageDef = STAGES.find(s => s.id === selectedVC.stage)
+
+          return (
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+              onClick={() => setSelectedVC(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                className="glass-strong rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="flex items-start justify-between p-5" style={{ borderBottom: '1px solid var(--border-default)' }}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center text-white text-lg font-bold">
+                      {initials(c.full_name)}
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-display font-bold text-white">{c.full_name}</h2>
+                      {c.current_title && <p className="text-sm text-gray-400 flex items-center gap-1"><Briefcase size={12} /> {c.current_title}</p>}
+                      {c.current_company && <p className="text-xs text-gray-500">{c.current_company}</p>}
+                    </div>
+                  </div>
+                  <button onClick={() => setSelectedVC(null)} className="text-gray-500 hover:text-white p-1"><X size={18} /></button>
+                </div>
+
+                <div className="p-5 space-y-4">
+                  {/* Stage + Score badges */}
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`text-xs px-3 py-1 rounded-full font-semibold border-2 ${stageDef?.color} ${stageDef?.bg}/20`} style={{ color: 'var(--text-primary)' }}>
+                      {stageDef?.label}
+                    </span>
+                    {selectedVC.match_score != null && (
+                      <span className={`text-xs px-3 py-1 rounded-full font-bold border ${scoreColor(selectedVC.match_score)}`}>
+                        Match: {Math.round(selectedVC.match_score)}%
+                      </span>
+                    )}
+                    <span className={`text-xs px-3 py-1 rounded-full flex items-center gap-1 ${agingBg(days, stageDef?.sla)} ${agingColor(days, stageDef?.sla)}`}>
+                      <Clock size={10} /> {days} días en etapa
+                    </span>
+                  </div>
+
+                  {/* Contact info */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {c.email && (
+                      <a href={`mailto:${c.email}`} className="flex items-center gap-2 glass rounded-lg px-3 py-2.5 hover:border-primary/20 transition-all">
+                        <Mail size={14} className="text-gray-500" /><span className="text-xs text-gray-300 truncate">{c.email}</span>
+                      </a>
+                    )}
+                    {c.phone && (
+                      <a href={`tel:${c.phone}`} className="flex items-center gap-2 glass rounded-lg px-3 py-2.5 hover:border-primary/20 transition-all">
+                        <Phone size={14} className="text-gray-500" /><span className="text-xs text-gray-300">{c.phone}</span>
+                      </a>
+                    )}
+                    {c.location && (
+                      <div className="flex items-center gap-2 glass rounded-lg px-3 py-2.5">
+                        <MapPin size={14} className="text-gray-500" /><span className="text-xs text-gray-300">{c.location}</span>
+                      </div>
+                    )}
+                    {c.linkedin_url && (
+                      <a href={c.linkedin_url} target="_blank" rel="noopener" className="flex items-center gap-2 glass rounded-lg px-3 py-2.5 hover:border-primary/20 transition-all border-primary-light/10">
+                        <ExternalLink size={14} className="text-primary-light" /><span className="text-xs text-primary-light">LinkedIn</span>
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Match details */}
+                  {details.strengths?.length > 0 && (
+                    <div>
+                      <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Fortalezas</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {details.strengths.map((s, i) => (
+                          <span key={i} className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/15">{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {details.gaps?.length > 0 && (
+                    <div>
+                      <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Brechas</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {details.gaps.map((g, i) => (
+                          <span key={i} className="text-xs px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 border border-red-500/15">{g}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {details.pending_questions?.length > 0 && (
+                    <div>
+                      <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Preguntas pendientes</p>
+                      <ul className="space-y-1.5">
+                        {details.pending_questions.map((q, i) => (
+                          <li key={i} className="text-xs text-gray-400 flex items-start gap-2">
+                            <span className="text-amber-400 mt-0.5">?</span> {q}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {selectedVC.notes && (
+                    <div>
+                      <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Notas</p>
+                      <p className="text-sm text-gray-300 whitespace-pre-wrap">{selectedVC.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Recommendation */}
+                  {details.recommendation && (
+                    <div className="flex items-center gap-2 pt-2" style={{ borderTop: '1px solid var(--border-default)' }}>
+                      <span className="text-[10px] text-gray-600 uppercase tracking-wider">Recomendación:</span>
+                      <span className={`text-xs px-3 py-1 rounded-full font-semibold ${
+                        details.recommendation === 'advance' ? 'bg-emerald-500/15 text-emerald-400' :
+                        details.recommendation === 'evaluate' ? 'bg-amber-500/15 text-amber-400' :
+                        'bg-red-500/15 text-red-400'
+                      }`}>
+                        {details.recommendation === 'advance' ? 'Avanzar' : details.recommendation === 'evaluate' ? 'Evaluar más' : 'No viable'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )
+        })()}
+      </AnimatePresence>
     </div>
   )
 }
