@@ -535,11 +535,19 @@ Enlace 468`)
                                   : {}),
                               }}
                               className={`glass rounded-lg p-3 cursor-grab hover:border-primary/20 transition-all relative overflow-hidden ${snapshot.isDragging ? 'shadow-lg shadow-primary/10 rotate-2' : ''}`}>
-                              {/* Red ribbon corner for offer stage */}
+                              {/* Red ribbon for offer */}
                               {stage.id === 'offer' && (
                                 <div className="absolute -top-1 -right-1 w-12 h-12 overflow-hidden z-10">
                                   <div className="absolute top-[6px] right-[-14px] w-16 text-center text-[7px] font-bold text-white uppercase tracking-wider py-[2px]" style={{ background: 'linear-gradient(90deg, #DC2626, #EF4444)', transform: 'rotate(45deg)', boxShadow: '0 2px 4px rgba(220,38,38,0.3)' }}>
                                     Oferta
+                                  </div>
+                                </div>
+                              )}
+                              {/* Green ribbon for hired */}
+                              {stage.id === 'hired' && (
+                                <div className="absolute -top-1 -right-1 w-14 h-14 overflow-hidden z-10">
+                                  <div className="absolute top-[8px] right-[-12px] w-[72px] text-center text-[7px] font-bold text-white uppercase tracking-wider py-[2px]" style={{ background: 'linear-gradient(90deg, #059669, #10B981)', transform: 'rotate(45deg)', boxShadow: '0 2px 4px rgba(5,150,105,0.3)' }}>
+                                    Hired
                                   </div>
                                 </div>
                               )}
@@ -548,7 +556,7 @@ Enlace 468`)
                                   <User size={14} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-medium text-white truncate">{vc.candidates?.full_name}</div>
+                                  <div className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{vc.candidates?.full_name}</div>
                                   {vc.candidates?.current_title && <div className="text-xs text-gray-400 truncate">{vc.candidates.current_title}</div>}
                                 </div>
                               </div>
