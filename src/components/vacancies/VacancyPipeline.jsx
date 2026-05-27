@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
-import { Plus, User, Star, X, Mail, Phone, MapPin, ExternalLink, Briefcase, Calendar, Tag, Clock, MessageCircle, Send, Loader2, CheckCircle, ArrowUpRight, ArrowDownLeft, FileText, Video, Link2, UserPlus, Lock, Crown, AlertTriangle, Heart, Copy } from 'lucide-react'
+import { Plus, User, Star, X, Mail, Phone, MapPin, ExternalLink, Briefcase, Calendar, Tag, Clock, MessageCircle, Send, Loader2, CheckCircle, ArrowUpRight, ArrowDownLeft, FileText, Video, Link2, UserPlus, Lock, Crown, AlertTriangle, Heart, Copy, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { usePlan } from '../../lib/planContext'
@@ -36,6 +36,8 @@ export default function VacancyPipeline({ vacancyId }) {
   const [messageType, setMessageType] = useState('linkedin_message')
   const [interviewNotes, setInterviewNotes] = useState([])
   const [loadingNotes, setLoadingNotes] = useState(false)
+  const [deleting, setDeleting] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null)
   const [showThankYouModal, setShowThankYouModal] = useState(false)
   const [thankYouSubject, setThankYouSubject] = useState('Agradecimiento por tu participación en nuestro proceso')
   const [thankYouBody, setThankYouBody] = useState('')
@@ -535,7 +537,7 @@ Enlace 468`)
                                   ? { borderColor: 'rgba(239,68,68,0.5)', background: 'rgba(239,68,68,0.08)', boxShadow: '0 0 0 1px rgba(239,68,68,0.15)' }
                                   : {}),
                               }}
-                              className={`glass rounded-lg p-3 cursor-grab hover:border-primary/20 transition-all relative overflow-hidden ${snapshot.isDragging ? 'shadow-lg shadow-primary/10 rotate-2' : ''}`}>
+                              className={`glass rounded-lg p-3 cursor-grab hover:border-primary/20 transition-all relative overflow-hidden group ${snapshot.isDragging ? 'shadow-lg shadow-primary/10 rotate-2' : ''}`}>
                               {/* Red ribbon for offer */}
                               {stage.id === 'offer' && (
                                 <div className="absolute -top-1 -right-1 w-12 h-12 overflow-hidden z-10">
@@ -561,12 +563,21 @@ Enlace 468`)
                                   {vc.candidates?.current_title && <div className="text-xs text-gray-400 truncate">{vc.candidates.current_title}</div>}
                                 </div>
                               </div>
-                              {vc.match_score != null && (
-                                <div className="mt-2 flex items-center gap-1">
-                                  <Star size={12} className="text-gold" />
-                                  <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${scoreColor(vc.match_score)}`}>{Math.round(vc.match_score)}%</span>
-                                </div>
-                              )}
+                              <div className="mt-2 flex items-center gap-1">
+                                {vc.match_score != null && (
+                                  <>
+                                    <Star size={12} className="text-gold" />
+                                    <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${scoreColor(vc.match_score)}`}>{Math.round(vc.match_score)}%</span>
+                                  </>
+                                )}
+                                <div className="flex-1" />
+                                <button
+                                  onClick={e => { e.stopPropagation(); setConfirmDelete(vc) }}
+                                  className="text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded p-0.5 transition-all opacity-0 group-hover:opacity-100"
+                                  title="Eliminar del pipeline">
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
                             </div>
                           )}
                         </Draggable>
@@ -923,6 +934,38 @@ Enlace 468`)
           </div>
         )
       })()}
+
+      {/* Confirm Delete Modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setConfirmDelete(null)}>
+          <div className="bg-theme-surface rounded-2xl w-full max-w-sm border border-white/10 p-6 text-center" onClick={e => e.stopPropagation()}>
+            <div className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+              <Trash2 size={24} className="text-red-400" />
+            </div>
+            <h3 className="font-display font-bold text-white text-lg mb-2">Eliminar candidato</h3>
+            <p className="text-sm text-gray-400 mb-6">
+              ¿Estás seguro que quieres eliminar a <span className="text-white font-semibold">{confirmDelete.candidates?.full_name}</span> del pipeline?
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDelete(null)}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-400 hover:text-white transition-colors" style={{ border: '1px solid var(--border-default)' }}>
+                Cancelar
+              </button>
+              <button onClick={async () => {
+                setDeleting(confirmDelete.id)
+                await supabase.from('vacancy_candidates').delete().eq('id', confirmDelete.id)
+                setCandidates(prev => prev.filter(c => c.id !== confirmDelete.id))
+                setConfirmDelete(null)
+                setDeleting(null)
+              }} disabled={deleting === confirmDelete.id}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all" style={{ background: 'linear-gradient(135deg, #DC2626, #EF4444)' }}>
+                {deleting === confirmDelete.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Thank You Modal */}
       {showThankYouModal && (() => {
