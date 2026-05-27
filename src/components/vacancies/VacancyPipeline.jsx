@@ -14,8 +14,8 @@ const stages = [
   { id: 'evaluated', label: 'Evaluado', color: 'border-gold', bg: 'bg-gray-200/70 dark:bg-gray-700/40' },
   { id: 'presented', label: 'Presentado', color: 'border-accent', bg: 'bg-gray-200 dark:bg-gray-700/50' },
   { id: 'offer', label: 'Oferta', color: 'border-green-400', bg: 'bg-gray-300/50 dark:bg-gray-600/30' },
-  { id: 'hired', label: 'Contratado', color: 'border-green-500', bg: 'bg-gray-300/70 dark:bg-gray-600/40' },
-  { id: 'rejected', label: 'Rechazado', color: 'border-red-400', bg: 'bg-gray-300 dark:bg-gray-600/50' },
+  { id: 'hired', label: 'Contratado', color: 'border-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/40' },
+  { id: 'rejected', label: 'Rechazado', color: 'border-red-500', bg: 'bg-red-50 dark:bg-red-950/30' },
 ]
 
 export default function VacancyPipeline({ vacancyId }) {
@@ -89,6 +89,18 @@ export default function VacancyPipeline({ vacancyId }) {
       // Auto-evaluate when moved to "evaluated"
       if (newStage === 'evaluated') {
         await evaluateCandidate(vcId, candidate)
+      }
+
+      // When someone is hired, reject all others
+      if (newStage === 'hired') {
+        const others = candidates.filter(c => c.id !== vcId && !['hired', 'rejected'].includes(c.stage))
+        if (others.length > 0) {
+          const now = new Date().toISOString()
+          const otherIds = others.map(c => c.id)
+          await supabase.from('vacancy_candidates').update({ stage: 'rejected', stage_changed_at: now }).in('id', otherIds)
+          await supabase.from('vacancies').update({ status: 'closed_filled', closed_at: now, closed_reason: `Candidato contratado: ${candidate?.candidates?.full_name}` }).eq('id', vacancyId)
+          loadPipeline()
+        }
       }
     }
   }
