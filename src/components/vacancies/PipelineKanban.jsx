@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
-import { Users, Clock, AlertTriangle, TrendingUp, Star, Zap, ExternalLink, Globe, UserPlus, FileText, X, Mail, Phone, MapPin, Briefcase } from 'lucide-react'
+import { Users, Clock, AlertTriangle, TrendingUp, Star, Zap, ExternalLink, Globe, UserPlus, FileText, X, Mail, Phone, MapPin, Briefcase, Trash2, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
@@ -66,6 +66,15 @@ export default function PipelineKanban({ vacancyId, vacancyTitle }) {
   const [candidates, setCandidates] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedVC, setSelectedVC] = useState(null)
+  const [deleting, setDeleting] = useState(null)
+
+  async function removeFromPipeline(vcId) {
+    setDeleting(vcId)
+    await supabase.from('vacancy_candidates').delete().eq('id', vcId)
+    setCandidates(prev => prev.filter(c => c.id !== vcId))
+    if (selectedVC?.id === vcId) setSelectedVC(null)
+    setDeleting(null)
+  }
 
   const loadPipeline = useCallback(async () => {
     const { data } = await supabase
@@ -210,7 +219,7 @@ export default function PipelineKanban({ vacancyId, vacancyTitle }) {
                                   exit={{ opacity: 0, scale: 0.95 }}
                                   transition={{ duration: 0.15 }}
                                   onClick={() => !snapshot.isDragging && setSelectedVC(vc)}
-                                  className={`glass rounded-lg p-2.5 cursor-grab active:cursor-grabbing hover:border-primary/20 transition-all ${
+                                  className={`glass rounded-lg p-2.5 cursor-grab active:cursor-grabbing hover:border-primary/20 transition-all group ${
                                     snapshot.isDragging ? 'shadow-lg shadow-primary/20 rotate-1 scale-105' : ''
                                   }`}
                                 >
@@ -251,6 +260,15 @@ export default function PipelineKanban({ vacancyId, vacancyTitle }) {
                                         <SourceIcon size={8} />
                                       </span>
                                     )}
+                                    <div className="flex-1" />
+                                    <button
+                                      onClick={e => { e.stopPropagation(); removeFromPipeline(vc.id) }}
+                                      disabled={deleting === vc.id}
+                                      className="text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded p-0.5 transition-all opacity-0 group-hover:opacity-100"
+                                      title="Eliminar del pipeline"
+                                    >
+                                      {deleting === vc.id ? <Loader2 size={10} className="animate-spin" /> : <Trash2 size={10} />}
+                                    </button>
                                   </div>
                                 </motion.div>
                               )}
@@ -399,6 +417,18 @@ export default function PipelineKanban({ vacancyId, vacancyTitle }) {
                       </span>
                     </div>
                   )}
+
+                  {/* Delete button */}
+                  <div className="pt-4" style={{ borderTop: '1px solid var(--border-default)' }}>
+                    <button
+                      onClick={() => removeFromPipeline(selectedVC.id)}
+                      disabled={deleting === selectedVC.id}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-red-400 hover:bg-red-500/10 transition-all disabled:opacity-40"
+                    >
+                      {deleting === selectedVC.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                      Eliminar del pipeline
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             </motion.div>
