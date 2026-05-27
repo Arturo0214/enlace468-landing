@@ -161,8 +161,7 @@ export default function RecruiterToolsDashboard() {
       {/* Tools included */}
       <div>
         <div className="flex items-center gap-2 mb-4">
-          <h2 className="font-display font-bold text-lg text-white">Herramientas incluidas</h2>
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/10 text-accent font-semibold">Acceso inmediato</span>
+          <h2 className="font-display font-bold text-lg text-white">Herramientas adicionales: <span className="gradient-text">TalentFlix</span><sup className="text-[9px] text-accent font-bold ml-0.5">®</sup></h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {tools.map((tool, i) => {
