@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Globe, ExternalLink, Plus, Loader2, CheckCircle, Download, Users, X, Mail, Phone, MapPin, Tag, Star, Bookmark, BookmarkPlus, Archive, Trash2 } from 'lucide-react'
+import { Search, Globe, ExternalLink, Plus, Loader2, CheckCircle, Download, Users, X, Mail, Phone, MapPin, Star, Archive, Trash2, Save } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import FeatureGate from '../ui/FeatureGate'
 
@@ -15,10 +15,9 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const [savingUrl, setSavingUrl] = useState(null)
   const [googleResults, setGoogleResults] = useState([])
   const [hasMore, setHasMore] = useState(false)
-  // Saved searches + sourcing bank (persistent, per vacancy)
-  const [savedSearches, setSavedSearches] = useState([])
+  // Sourcing bank (persistent collection of candidate cards, per vacancy)
   const [bankItems, setBankItems] = useState([])
-  const [savingSearch, setSavingSearch] = useState(false)
+  const [savingAll, setSavingAll] = useState(false)
   const [promotingId, setPromotingId] = useState(null)
   const [removingId, setRemovingId] = useState(null)
   const cseRendered = useRef(false)
@@ -36,18 +35,14 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
 
   const bankUrls = new Set(bankItems.map(b => b.url))
 
-  // Load saved searches + sourcing bank for this vacancy
+  // Load sourcing bank for this vacancy
   useEffect(() => {
     if (!vacancyId) return
     let cancelled = false
     ;(async () => {
-      const [s, b] = await Promise.all([
-        supabase.from('sourcing_searches').select('*').eq('vacancy_id', vacancyId).order('created_at', { ascending: false }),
-        supabase.from('sourcing_bank').select('*').eq('vacancy_id', vacancyId).order('created_at', { ascending: false }),
-      ])
+      const { data } = await supabase.from('sourcing_bank').select('*').eq('vacancy_id', vacancyId).order('created_at', { ascending: false })
       if (cancelled) return
-      setSavedSearches(s.data || [])
-      setBankItems(b.data || [])
+      setBankItems(data || [])
     })()
     return () => { cancelled = true }
   }, [vacancyId])
@@ -234,59 +229,55 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `sourcing_${vacancy?.title?.replace(/\s/g,'_')}.csv`; a.click()
   }
 
-  // ── Saved searches ───────────────────────────────────────
-  async function saveCurrentSearch() {
-    const q = searchQuery.trim()
-    if (!q) return
-    setSavingSearch(true)
-    try {
-      const label = `${q} · ${platforms[platform].label}`
-      const { data } = await supabase.from('sourcing_searches').upsert({
-        organization_id: profile.organization_id, vacancy_id: vacancyId,
-        query: q, platform, label, result_count: googleResults.length || null,
-        created_by: profile.id,
-      }, { onConflict: 'vacancy_id,query,platform' }).select().single()
-      if (data) setSavedSearches(prev => [data, ...prev.filter(s => s.id !== data.id)])
-    } catch (e) { console.error(e) }
-    finally { setSavingSearch(false) }
-  }
-
-  async function deleteSavedSearch(id) {
-    setSavedSearches(prev => prev.filter(s => s.id !== id))
-    try { await supabase.from('sourcing_searches').delete().eq('id', id) } catch (e) { console.error(e) }
-  }
-
-  function runSavedSearch(s) {
-    setPlatform(s.platform || 'all')
-    setSearchQuery(s.query)
-    doSearch(s.query, s.platform || 'all')
-  }
-
-  const currentSaved = savedSearches.some(s => s.query === searchQuery.trim() && s.platform === platform)
-
   // ── Sourcing bank ────────────────────────────────────────
+  // Turn a raw web result into a bank row (parses LinkedIn "Name - Title - Company")
+  function resultToBankRow(result) {
+    let name = result.title || '', title = null, company = null
+    const isLinkedin = result.url?.includes('linkedin.com')
+    if (isLinkedin) {
+      const match = name.match(/^(.+?)\s*[-–]\s*(.+?)\s*[-–]\s*(.+?)(?:\s*\|.*)?$/)
+      if (match) { name = match[1].trim(); title = match[2].trim(); company = match[3].trim() }
+      else { name = name.replace(/\s*\|.*$/, '').trim() }
+    }
+    return {
+      organization_id: profile.organization_id, vacancy_id: vacancyId,
+      title: result.title, url: result.url, display_url: result.displayUrl || null,
+      snippet: result.snippet || null, platform,
+      full_name: name || result.title, current_title: title, current_company: company,
+      source: isLinkedin ? 'linkedin' : 'web-sourced', created_by: profile.id,
+    }
+  }
+
   async function saveToBank(result) {
     if (bankUrls.has(result.url)) return
     setSavingUrl(result.url)
     try {
-      let name = result.title || '', title = null, company = null
-      const isLinkedin = result.url?.includes('linkedin.com')
-      if (isLinkedin) {
-        const match = name.match(/^(.+?)\s*[-–]\s*(.+?)\s*[-–]\s*(.+?)(?:\s*\|.*)?$/)
-        if (match) { name = match[1].trim(); title = match[2].trim(); company = match[3].trim() }
-        else { name = name.replace(/\s*\|.*$/, '').trim() }
-      }
-      const { data } = await supabase.from('sourcing_bank').insert({
-        organization_id: profile.organization_id, vacancy_id: vacancyId,
-        title: result.title, url: result.url, display_url: result.displayUrl || null,
-        snippet: result.snippet || null, platform,
-        full_name: name || result.title, current_title: title, current_company: company,
-        source: isLinkedin ? 'linkedin' : 'web-sourced', created_by: profile.id,
-      }).select().single()
+      const { data } = await supabase.from('sourcing_bank').insert(resultToBankRow(result)).select().single()
       if (data) setBankItems(prev => [data, ...prev])
     } catch (e) { console.error(e) }
     finally { setSavingUrl(null) }
   }
+
+  // Save every card from the current search into the bank at once
+  async function saveAllToBank() {
+    const fresh = googleResults.filter(r => !bankUrls.has(r.url))
+    if (!fresh.length) return
+    setSavingAll(true)
+    try {
+      const { data } = await supabase.from('sourcing_bank')
+        .upsert(fresh.map(resultToBankRow), { onConflict: 'vacancy_id,url', ignoreDuplicates: true })
+        .select()
+      if (data?.length) {
+        setBankItems(prev => {
+          const existing = new Set(prev.map(b => b.url))
+          return [...data.filter(d => !existing.has(d.url)), ...prev]
+        })
+      }
+    } catch (e) { console.error(e) }
+    finally { setSavingAll(false) }
+  }
+
+  const unsavedCount = googleResults.filter(r => !bankUrls.has(r.url)).length
 
   async function removeFromBank(id) {
     setRemovingId(id)
@@ -338,12 +329,6 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
               placeholder={`${vacancy.title} ${vacancy.location || 'México'}`}
               className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] focus:border-primary-light/40 outline-none text-white placeholder-gray-500 text-sm" />
           </div>
-          <button onClick={saveCurrentSearch} disabled={!searchQuery.trim() || savingSearch || currentSaved}
-            className="px-3.5 py-2.5 rounded-lg border border-white/[0.08] text-sm font-medium flex items-center gap-2 transition-all disabled:opacity-40 text-gray-300 hover:text-white hover:bg-white/[0.05]"
-            title={currentSaved ? 'Búsqueda ya guardada' : 'Guardar búsqueda'}>
-            {savingSearch ? <Loader2 size={14} className="animate-spin" /> : (currentSaved ? <Bookmark size={14} className="text-primary-light fill-primary-light" /> : <BookmarkPlus size={14} />)}
-            <span className="hidden sm:inline">{currentSaved ? 'Guardada' : 'Guardar'}</span>
-          </button>
           <button onClick={() => doSearch()} disabled={!searchQuery.trim()}
             className="px-5 py-2.5 bg-primary-light text-white rounded-lg hover:bg-primary-light/90 text-sm font-medium disabled:opacity-40 flex items-center gap-2">
             <Search size={14} /> Buscar
@@ -380,29 +365,6 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
             </button>
           ))}
         </div>
-
-        {/* Saved searches */}
-        {savedSearches.length > 0 && (
-          <div className="mt-4 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-            <div className="flex items-center gap-1.5 mb-2">
-              <Bookmark size={11} className="text-primary-light" />
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider">Búsquedas guardadas</p>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {savedSearches.map(s => (
-                <div key={s.id} className="group flex items-center gap-1 pl-2.5 pr-1 py-1 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:border-primary-light/25 transition-all">
-                  <button onClick={() => runSavedSearch(s)} className="text-[11px] text-gray-300 hover:text-white flex items-center gap-1.5">
-                    <span className="text-gray-600">{platforms[s.platform]?.label || s.platform}</span>
-                    <span>{s.query}</span>
-                  </button>
-                  <button onClick={() => deleteSavedSearch(s.id)} className="p-0.5 rounded text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all" title="Eliminar">
-                    <X size={11} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Banco de sourcing — persistent per-vacancy bank */}
@@ -469,10 +431,18 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
         <div className="glass rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-gray-400"><span className="font-semibold text-white">{googleResults.length}</span> resultados web</p>
-            <a href={`https://www.google.com/search?q=${encodeURIComponent(activeSearch)}`} target="_blank" rel="noopener"
-              className="text-[10px] text-primary-light hover:text-blue-300 flex items-center gap-1">
-              <ExternalLink size={9} /> Abrir en Google
-            </a>
+            <div className="flex items-center gap-3">
+              <a href={`https://www.google.com/search?q=${encodeURIComponent(activeSearch)}`} target="_blank" rel="noopener"
+                className="text-[10px] text-primary-light hover:text-blue-300 flex items-center gap-1">
+                <ExternalLink size={9} /> Abrir en Google
+              </a>
+              <button onClick={saveAllToBank} disabled={savingAll || unsavedCount === 0}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-400/15 text-amber-300 hover:bg-amber-400/25 disabled:opacity-40 transition-all"
+                title="Guardar todas las cards en el banco de esta vacante">
+                {savingAll ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                {unsavedCount === 0 ? 'Todo guardado' : `Guardar todos (${unsavedCount})`}
+              </button>
+            </div>
           </div>
           <div className="space-y-2">
             {googleResults.map((r, i) => {
