@@ -15,6 +15,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const [savingUrl, setSavingUrl] = useState(null)
   const [googleResults, setGoogleResults] = useState([])
   const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   // Sourcing bank (persistent collection of candidate cards, per vacancy)
   const [bankItems, setBankItems] = useState([])
   const [savingAll, setSavingAll] = useState(false)
@@ -24,6 +25,8 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const observerRef = useRef(null)
   const debounceRef = useRef(null)
   const isLoadingMore = useRef(false)
+  const seenUrls = useRef(new Set())
+  const loadMoreTimeout = useRef(null)
 
   const platforms = {
     linkedin: { label: 'LinkedIn', prefix: 'site:linkedin.com/in', color: 'border-blue-500/30 text-blue-400' },
@@ -128,19 +131,28 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
             }
           }).filter(r => r && r.title && r.url && !r.url.includes('google.com/search'))
 
-          if (parsed.length) {
-            if (isLoadingMore.current) {
-              setGoogleResults(prev => [...prev, ...parsed])
+          // Only keep results we haven't shown yet (dedupe by URL across pages)
+          const fresh = parsed.filter(r => !seenUrls.current.has(r.url))
+
+          if (isLoadingMore.current) {
+            // Waiting for the next page after "Mostrar más" — append only when new results arrive
+            if (fresh.length) {
+              fresh.forEach(r => seenUrls.current.add(r.url))
+              setGoogleResults(prev => [...prev, ...fresh])
               isLoadingMore.current = false
-            } else {
-              setGoogleResults(parsed)
+              setLoadingMore(false)
+              clearTimeout(loadMoreTimeout.current)
             }
+          } else if (parsed.length) {
+            // Fresh search render — replace
+            seenUrls.current = new Set(parsed.map(r => r.url))
+            setGoogleResults(parsed)
           }
 
           const pages = container.querySelectorAll('.gsc-cursor-page')
           const idx = Array.from(pages).findIndex(p => p.classList.contains('gsc-cursor-current-page'))
           setHasMore(idx >= 0 && idx + 1 < pages.length)
-        }, 500)
+        }, 400)
       })
       observerRef.current.observe(container, { childList: true, subtree: true })
     }, 300)
@@ -151,6 +163,8 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
     if (!activeSearch) { setGoogleResults([]); setHasMore(false); return }
     setGoogleResults([])
     isLoadingMore.current = false
+    setLoadingMore(false)
+    seenUrls.current = new Set()
     const tryExec = setInterval(() => {
       const el = window.google?.search?.cse?.element?.getElement('sourcing')
       if (el) { clearInterval(tryExec); el.execute(activeSearch) }
@@ -162,12 +176,17 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   function loadMore() {
     const container = document.getElementById('gcs-box')
     if (!container) return
-    const pages = container.querySelectorAll('.gsc-cursor-page')
-    const idx = Array.from(pages).findIndex(p => p.classList.contains('gsc-cursor-current-page'))
-    if (idx >= 0 && idx + 1 < pages.length) {
-      isLoadingMore.current = true
-      pages[idx + 1].click()
-    }
+    const pages = Array.from(container.querySelectorAll('.gsc-cursor-page'))
+    const idx = pages.findIndex(p => p.classList.contains('gsc-cursor-current-page'))
+    const next = idx >= 0 ? pages[idx + 1] : pages.find(p => !p.classList.contains('gsc-cursor-current-page'))
+    if (!next) { setHasMore(false); return }
+    isLoadingMore.current = true
+    setLoadingMore(true)
+    // Fallback: if no new results arrive, release the flag so the button can be retried
+    clearTimeout(loadMoreTimeout.current)
+    loadMoreTimeout.current = setTimeout(() => { isLoadingMore.current = false; setLoadingMore(false) }, 6000)
+    // CSE cursor pages respond to a real anchor click event
+    next.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }))
   }
 
   function doSearch(q, plat) {
@@ -477,8 +496,8 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
             })}
           </div>
           {hasMore && (
-            <button onClick={loadMore} className="w-full mt-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-gray-400 hover:text-white hover:bg-white/[0.06] transition-all flex items-center justify-center gap-2">
-              <Plus size={14} /> Mostrar mas resultados
+            <button onClick={loadMore} disabled={loadingMore} className="w-full mt-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-gray-400 hover:text-white hover:bg-white/[0.06] transition-all flex items-center justify-center gap-2 disabled:opacity-60">
+              {loadingMore ? <><Loader2 size={14} className="animate-spin" /> Cargando…</> : <><Plus size={14} /> Mostrar mas resultados</>}
             </button>
           )}
         </div>
