@@ -1,6 +1,10 @@
 // Netlify serverless function: searches LinkedIn profiles via multiple search engines
 // with fallback rotation, randomized User-Agents, retry logic, and pagination support
 
+// Company exclusion list (insurance / investment sector) — single source of truth
+// shared with the front-end sourcing surfaces. See src/lib/excludedCompanies.js.
+import { matchExcludedCompany, NEGATIVE_QUERY } from '../../src/lib/excludedCompanies.js'
+
 const USER_AGENTS = [
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -35,7 +39,7 @@ async function fetchWithRetry(url, options, maxRetries = 2) {
 }
 
 // Extract LinkedIn profile URLs and metadata from raw HTML
-function extractCandidatesFromHTML(html) {
+export function extractCandidatesFromHTML(html, stats = { excluded: 0 }) {
   const candidates = []
 
   // Clean HTML for text extraction
@@ -136,6 +140,17 @@ function extractCandidatesFromHTML(html) {
       if (locMatch) location = locMatch[1].trim()
     }
 
+    // Skip candidates from excluded firms (insurance / investment sector).
+    // Check every text signal we have, including the raw surrounding context,
+    // since company parsing from search HTML is unreliable.
+    const excludeContext = urlIdx > -1
+      ? cleanHtml.substring(Math.max(0, urlIdx - 400), Math.min(cleanHtml.length, urlIdx + 400)).replace(/<[^>]+>/g, ' ')
+      : ''
+    if (matchExcludedCompany(currentCompany, currentTitle, snippet, fullName, excludeContext)) {
+      stats.excluded++
+      continue
+    }
+
     candidates.push({
       full_name: fullName,
       current_title: currentTitle,
@@ -150,7 +165,7 @@ function extractCandidatesFromHTML(html) {
 }
 
 // Search engine definitions - each returns a URL to fetch
-function buildSearchEngines(searchQuery, offset = 0) {
+export function buildSearchEngines(searchQuery, offset = 0) {
   const encoded = encodeURIComponent(searchQuery)
   // Randomize order each time for rotation
   const engines = [
@@ -202,10 +217,11 @@ export async function handler(event) {
   }
 
   try {
-    const searchQuery = `site:linkedin.com/in ${query}`
+    const searchQuery = `site:linkedin.com/in ${query} ${NEGATIVE_QUERY}`.trim()
     const engines = buildSearchEngines(searchQuery, offset)
     let allCandidates = []
     const errors = []
+    const stats = { excluded: 0 }
 
     // Try each engine in order until we get results
     for (const engine of engines) {
@@ -224,7 +240,7 @@ export async function handler(event) {
           continue
         }
 
-        const candidates = extractCandidatesFromHTML(html)
+        const candidates = extractCandidatesFromHTML(html, stats)
 
         if (candidates.length > 0) {
           // Merge results, dedup by linkedin_url
@@ -254,6 +270,7 @@ export async function handler(event) {
       body: JSON.stringify({
         results: allCandidates.slice(0, 100),
         count: allCandidates.length,
+        excluded: stats.excluded,
         query: searchQuery,
         offset,
         ...(allCandidates.length === 0 && errors.length > 0 ? { debug: errors } : {}),

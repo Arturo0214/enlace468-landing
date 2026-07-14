@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Globe, ExternalLink, Plus, Loader2, CheckCircle, Download, Users, X, Mail, Phone, MapPin, Star, Archive, Trash2, Save } from 'lucide-react'
+import { Search, Globe, ExternalLink, Plus, Loader2, CheckCircle, Download, Users, X, Mail, Phone, MapPin, Star, Archive, Trash2, Save, Sparkles, SlidersHorizontal } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import FeatureGate from '../ui/FeatureGate'
+import { matchExcludedCompany, NEGATIVE_QUERY, EXCLUDED_LABELS_SHORT } from '../../lib/excludedCompanies'
 
 const CSE_ID = '234e26a7d970d4e6f'
 
@@ -21,6 +22,13 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const [savingAll, setSavingAll] = useState(false)
   const [promotingId, setPromotingId] = useState(null)
   const [removingId, setRemovingId] = useState(null)
+  // Auto-sourcing (server-side ranked prospects)
+  const [autoResults, setAutoResults] = useState([])
+  const [autoLoading, setAutoLoading] = useState(false)
+  const [autoRan, setAutoRan] = useState(false)
+  const [autoCounts, setAutoCounts] = useState(null)
+  const [autoError, setAutoError] = useState(null)
+  const [autoMinScore, setAutoMinScore] = useState(50)
   const cseRendered = useRef(false)
   const observerRef = useRef(null)
   const debounceRef = useRef(null)
@@ -130,6 +138,8 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
               snippet: sn?.textContent?.trim() || '',
             }
           }).filter(r => r && r.title && r.url && !r.url.includes('google.com/search'))
+            // Drop candidates from excluded firms (insurance / investment sector)
+            .filter(r => !matchExcludedCompany(r.title, r.snippet, r.displayUrl))
 
           // Only keep results we haven't shown yet (dedupe by URL across pages)
           const fresh = parsed.filter(r => !seenUrls.current.has(r.url))
@@ -193,7 +203,8 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
     const query = q || searchQuery
     if (!query.trim()) return
     const p = platforms[plat || platform]
-    const fullQuery = p.prefix ? `${p.prefix} ${query}` : query
+    const base = p.prefix ? `${p.prefix} ${query}` : query
+    const fullQuery = `${base} ${NEGATIVE_QUERY}`.trim()
     setActiveSearch(fullQuery)
     handleLocalSearch(query)
   }
@@ -205,11 +216,13 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
       if (terms.length > 0) {
         const orClauses = terms.flatMap(t => [`full_name.ilike.%${t}%`, `current_title.ilike.%${t}%`, `current_company.ilike.%${t}%`]).join(',')
         const { data } = await supabase.from('candidates').select('*').or(orClauses).limit(50)
-        setLocalResults((data || []).map(c => ({
-          full_name: c.full_name, current_title: c.current_title, current_company: c.current_company,
-          linkedin_url: c.linkedin_url, location: c.location, source: c.source,
-          snippet: c.notes, tags: c.tags, _existing_id: c.id, email: c.email, phone: c.phone,
-        })))
+        setLocalResults((data || [])
+          .filter(c => !matchExcludedCompany(c.current_company, c.current_title, c.full_name, c.notes))
+          .map(c => ({
+            full_name: c.full_name, current_title: c.current_title, current_company: c.current_company,
+            linkedin_url: c.linkedin_url, location: c.location, source: c.source,
+            snippet: c.notes, tags: c.tags, _existing_id: c.id, email: c.email, phone: c.phone,
+          })))
       }
     } catch(e) { console.error(e) }
     finally { setSearching(false) }
@@ -333,6 +346,65 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `banco_sourcing_${vacancy?.title?.replace(/\s/g,'_')}.csv`; a.click()
   }
 
+  // ── Sourcing automático ──────────────────────────────────
+  // Llama a la Netlify function que busca (Google CSE), excluye aseguradoras,
+  // puntúa cada perfil vs la vacante y devuelve solo los buenos, rankeados.
+  async function runAutoSource() {
+    setAutoLoading(true)
+    setAutoError(null)
+    setAutoRan(true)
+    try {
+      const res = await fetch('/api/auto-source', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vacancy: {
+            title: vacancy.title, location: vacancy.location, department: vacancy.department,
+            company_name: vacancy.company_name, description: vacancy.description,
+            challenges: vacancy.challenges, competencies: vacancy.competencies || [],
+          },
+          platform: platform === 'all' ? 'linkedin' : platform,
+          minScore: autoMinScore,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setAutoError(data.hint || data.error || 'No se pudo completar el sourcing automático.')
+        setAutoResults([])
+        setAutoCounts(null)
+        return
+      }
+      // Reordena en cliente con el umbral actual (permite mover el slider sin re-buscar)
+      setAutoResults(data.results || [])
+      setAutoCounts({ ...data.counts, quotaHit: data.quotaHit })
+    } catch (e) {
+      setAutoError('No se pudo conectar con el servicio de sourcing.')
+      setAutoResults([])
+    } finally {
+      setAutoLoading(false)
+    }
+  }
+
+  async function saveAllAuto() {
+    const fresh = autoResults.filter(r => !bankUrls.has(r.url))
+    if (!fresh.length) return
+    setSavingAll(true)
+    try {
+      const { data } = await supabase.from('sourcing_bank')
+        .upsert(fresh.map(resultToBankRow), { onConflict: 'vacancy_id,url', ignoreDuplicates: true })
+        .select()
+      if (data?.length) {
+        setBankItems(prev => {
+          const existing = new Set(prev.map(b => b.url))
+          return [...data.filter(d => !existing.has(d.url)), ...prev]
+        })
+      }
+    } catch (e) { console.error(e) }
+    finally { setSavingAll(false) }
+  }
+
+  const autoUnsaved = autoResults.filter(r => !bankUrls.has(r.url)).length
+
   const hasCards = googleResults.length > 0
 
   return (
@@ -372,8 +444,8 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
               setPlatform(id)
               if (searchQuery.trim()) {
                 const prefix = platforms[id].prefix
-                const fullQuery = prefix ? `${prefix} ${searchQuery}` : searchQuery
-                setActiveSearch(fullQuery)
+                const base = prefix ? `${prefix} ${searchQuery}` : searchQuery
+                setActiveSearch(`${base} ${NEGATIVE_QUERY}`.trim())
                 handleLocalSearch(searchQuery)
               }
             }}
@@ -384,7 +456,106 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
             </button>
           ))}
         </div>
+        {/* Sourcing automático */}
+        <div className="mt-3 pt-3 flex flex-wrap items-center gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <button onClick={runAutoSource} disabled={autoLoading}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-all"
+            style={{ background: 'linear-gradient(90deg, #00A99D, #071B49)' }}>
+            {autoLoading ? <Loader2 size={15} className="animate-spin" /> : <Sparkles size={15} />}
+            {autoLoading ? 'Buscando y rankeando…' : 'Sourcing automático'}
+          </button>
+          <div className="flex items-center gap-2 text-[11px] text-gray-400">
+            <SlidersHorizontal size={13} className="text-gray-500" />
+            <span>Score mínimo</span>
+            <input type="range" min="30" max="90" step="5" value={autoMinScore}
+              onChange={e => setAutoMinScore(Number(e.target.value))}
+              className="w-24 accent-[#00A99D]" />
+            <span className="font-semibold text-white w-6">{autoMinScore}</span>
+          </div>
+          <span className="text-[10px] text-gray-500">Encuentra, filtra aseguradoras y te deja solo los mejores por vacante.</span>
+        </div>
+        <p className="mt-2.5 text-[10px] text-gray-500 leading-relaxed">
+          Excluidas del sourcing: {EXCLUDED_LABELS_SHORT} y otras aseguradoras / casas de inversión.
+        </p>
       </div>
+
+      {/* Resultados del sourcing automático — rankeados por match */}
+      {autoRan && (
+        <div className="glass rounded-xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0,169,157,0.15)' }}>
+                <Sparkles size={14} style={{ color: '#00A99D' }} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white">Prospectos rankeados</p>
+                {autoCounts ? (
+                  <p className="text-[11px] text-gray-500">
+                    {autoCounts.returned} buenos · {autoCounts.excluded} aseguradoras excluidas · {autoCounts.belowThreshold} bajo umbral
+                    {autoCounts.quotaHit ? ' · ⚠ cuota diaria alcanzada' : ''}
+                  </p>
+                ) : <p className="text-[11px] text-gray-500">Score ≥ {autoMinScore}</p>}
+              </div>
+            </div>
+            {autoResults.length > 0 && (
+              <button onClick={saveAllAuto} disabled={savingAll || autoUnsaved === 0}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-400/15 text-amber-300 hover:bg-amber-400/25 disabled:opacity-40 transition-all">
+                {savingAll ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                {autoUnsaved === 0 ? 'Todo guardado' : `Guardar todos (${autoUnsaved})`}
+              </button>
+            )}
+          </div>
+
+          {autoLoading && <div className="text-center py-8"><Loader2 size={22} className="animate-spin mx-auto" style={{ color: '#00A99D' }} /></div>}
+          {autoError && !autoLoading && <p className="text-xs text-red-400 py-3">{autoError}</p>}
+          {!autoLoading && !autoError && autoResults.length === 0 && (
+            <p className="text-xs text-gray-500 py-3">Sin prospectos por encima del umbral. Baja el score mínimo y reintenta.</p>
+          )}
+
+          <div className="space-y-2">
+            {autoResults.filter(r => r.score >= autoMinScore).map((r, i) => {
+              const isSaved = bankUrls.has(r.url)
+              const badge = r.score >= 75 ? '#00A99D' : r.score >= 60 ? '#f59e0b' : '#9ca3af'
+              return (
+                <div key={i} className={`rounded-xl p-4 border transition-all ${isSaved ? 'bg-emerald-500/[0.03] border-emerald-500/20' : 'bg-white/[0.02] border-white/[0.05] hover:border-white/[0.12]'}`}>
+                  <div className="flex items-start gap-3">
+                    <div className="flex flex-col items-center flex-shrink-0 w-10">
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold text-white" style={{ background: badge }}>
+                        {r.score}
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <a href={r.url} target="_blank" rel="noopener" className="text-sm font-semibold text-white hover:text-primary-light transition-colors line-clamp-1 block">{r.full_name || r.title}</a>
+                      {(r.current_title || r.current_company) && (
+                        <p className="text-[11px] text-gray-400 truncate mt-0.5">{[r.current_title, r.current_company].filter(Boolean).join(' · ')}</p>
+                      )}
+                      {r.strengths?.length > 0 && (
+                        <p className="text-[11px] mt-1" style={{ color: 'rgba(0,169,157,0.85)' }}>✓ {r.strengths.join(' · ')}</p>
+                      )}
+                      {r.gaps?.length > 0 && (
+                        <p className="text-[11px] text-gray-500 mt-0.5">− {r.gaps.join(' · ')}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
+                      {isSaved ? (
+                        <span className="p-1.5 text-emerald-400" title="En el banco"><CheckCircle size={16} /></span>
+                      ) : (
+                        <button onClick={() => saveToBank(r)} disabled={savingUrl === r.url}
+                          className="p-1.5 rounded-lg text-gray-500 hover:text-amber-400 hover:bg-amber-400/10 transition-all disabled:opacity-40" title="Guardar en el banco">
+                          {savingUrl === r.url ? <Loader2 size={14} className="animate-spin" /> : <Star size={14} />}
+                        </button>
+                      )}
+                      <a href={r.url} target="_blank" rel="noopener" className="p-1.5 rounded-lg text-gray-600 hover:text-primary-light hover:bg-primary-light/10 transition-all">
+                        <ExternalLink size={14} />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Banco de sourcing — persistent per-vacancy bank */}
       {bankItems.length > 0 && (
