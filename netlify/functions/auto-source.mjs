@@ -36,6 +36,15 @@ function looksLikeCompany(name) {
   return COMPANY_HINTS.some(h => n.includes(h))
 }
 
+// La descripción a veces es una OFERTA DE EMPLEO que el perfil publicó, no su
+// bio → no debe inflar el score. Se detecta y se ignora para el matching.
+function looksLikeJobPosting(desc) {
+  const d = normalizeText(desc)
+  if (!d) return false
+  return /\bvacante\b|lo que haras|lo que buscamos|responsabilidades|requisitos|postulate|te ofrecemos|ofrecemos|buscamos|sueldo|prestaciones|contratacion|aplica ahora|configurar y dar soporte/.test(d)
+    || /\d{1,2} de \w+ de 20\d\d\s*-/.test(desc) // "18 de abril de 2023 - ..." (fecha de posteo)
+}
+
 const PLATFORM_PREFIX = {
   linkedin: 'site:linkedin.com/in',
   occ: 'site:occ.com.mx',
@@ -83,20 +92,69 @@ function cleanSerpTitle(rawHtml) {
   return t
 }
 
-/** Parse LinkedIn profiles (url + name + headline) from any SERP HTML. */
+/** Decode a handful of common HTML entities. */
+function decodeEntities(s) {
+  return String(s)
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+}
+
+/** Normalize the profile URL from a SERP href. */
+function normProfileUrl(href) {
+  return href.split('?')[0].split('#')[0].replace(/\/$/, '')
+    .replace(/https?:\/\/[a-z]{2,3}\.linkedin\.com/i, 'https://www.linkedin.com')
+}
+
+/** Strip LinkedIn boilerplate from a result description snippet. */
+function cleanDescription(raw) {
+  let d = decodeEntities(raw.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim()
+  d = d.replace(/View [^.]*?profile on LinkedIn[^.]*?\.?/i, '')
+  d = d.replace(/,?\s*(?:a|the world's largest) professional community[^.]*\.?/i, '')
+  d = d.replace(/\s*\d[\d.,]*\s*(?:billion|million|mil)\s*members\.?/i, '')
+  return d.replace(/\s+/g, ' ').trim()
+}
+
+/** Parse LinkedIn profiles from SERP HTML → { url, name, headline, description }.
+ *  Primary path parses Brave's result blocks (rich: clean title + description
+ *  with role/experience/location). Falls back to a generic anchor scan for
+ *  other engines. The description is the free "enrichment" that lets scores
+ *  reach 90+ for genuinely strong matches. */
 function parseSerpProfiles(html) {
-  const re = /<a[^>]+href="([^"]*linkedin\.com\/in\/[^"?#]*)[^"]*"[^>]*>([\s\S]*?)<\/a>/gi
   const out = []
   const seen = new Set()
+
+  // ── Primary: Brave result blocks ──────────────────────────────
+  const blocks = html.split(/<div class="snippet /)
+  for (let i = 1; i < blocks.length; i++) {
+    const b = blocks[i]
+    const hrefM = b.match(/href="([^"]*linkedin\.com\/in\/[^"]*)"/i)
+    if (!hrefM) continue
+    const url = normProfileUrl(hrefM[1])
+    if (!/\/in\/[^/]{3,}/.test(url) || seen.has(url)) continue
+
+    const titleM = b.match(/search-snippet-title[^"]*"[^>]*title="([^"]*)"/i)
+    const headline = titleM ? cleanSerpTitle(decodeEntities(titleM[1])) : ''
+    const descM = b.match(/class="content[^"]*line-clamp-dynamic[^"]*"[^>]*>([\s\S]*?)<\/div>/i)
+    const description = descM ? cleanDescription(descM[1]) : ''
+    const name = nameFromSlug(url) || (headline.split(/\s*[-–]\s*/)[0] || '').trim()
+    if (!name && !headline && !description) continue
+    seen.add(url)
+    out.push({ url, name, headline, description })
+  }
+  if (out.length) return out
+
+  // ── Fallback: generic anchor scan (Google/Bing/DDG) ───────────
+  const re = /<a[^>]+href="([^"]*linkedin\.com\/in\/[^"?#]*)[^"]*"[^>]*>([\s\S]*?)<\/a>/gi
   let m
   while ((m = re.exec(html)) !== null) {
-    const url = m[1].split('?')[0].split('#')[0].replace(/\/$/, '').replace(/https?:\/\/[a-z]{2,3}\.linkedin\.com/i, 'https://www.linkedin.com')
+    const url = normProfileUrl(m[1])
     if (!/\/in\/[^/]{3,}/.test(url) || seen.has(url)) continue
     seen.add(url)
     const headline = cleanSerpTitle(m[2])
     const name = nameFromSlug(url)
     if (!name && !headline) continue
-    out.push({ url, name, headline })
+    out.push({ url, name, headline, description: '' })
   }
   return out
 }
@@ -182,9 +240,12 @@ export async function handler(event) {
       const current_title = parts[1] || null
       const current_company = parts[2] || null
       const full_name = p.name || parts[0] || 'Perfil de LinkedIn'
+      // Ubicación desde la descripción ("... Location: Miguel Hidalgo ...")
+      const locM = (p.description || '').match(/(?:Location|Ubicaci[oó]n|Ubicaci[oó]n actual)\s*[:：]\s*([^.·|]{2,40})/i)
+      const location = locM ? locM[1].trim() : null
 
-      // Exclusión sector asegurador / inversiones
-      if (matchExcludedCompany(current_company, current_title, p.headline, full_name)) {
+      // Exclusión sector asegurador / inversiones (ahora también sobre la descripción)
+      if (matchExcludedCompany(current_company, current_title, p.headline, p.description, full_name)) {
         counts.excluded++
         continue
       }
@@ -195,13 +256,17 @@ export async function handler(event) {
         continue
       }
 
+      // El texto de scoring ahora incluye la descripción enriquecida,
+      // salvo que la descripción sea una oferta de empleo (ruido).
+      const usefulDesc = looksLikeJobPosting(p.description) ? '' : p.description
+      const enriched = [p.headline, usefulDesc].filter(Boolean).join(' · ')
       const prospect = {
         title: p.headline || full_name,
         url: p.url,
         linkedin_url: p.url,
         displayUrl: 'linkedin.com',
-        snippet: p.headline || '',
-        full_name, current_title, current_company, location: null,
+        snippet: enriched,
+        full_name, current_title, current_company, location,
       }
       const s = scoreProspect(vacancy, prospect, targets)
       if (s.score < minScore) { counts.belowThreshold++; continue }
