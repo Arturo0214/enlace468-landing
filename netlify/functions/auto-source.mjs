@@ -53,17 +53,25 @@ const PLATFORM_PREFIX = {
   computrabajo: 'site:computrabajo.com.mx',
 }
 
-/** Build up to 3 complementary queries from the vacancy (no negative operators —
- *  excluded firms are filtered post-fetch, keeping queries scraper-friendly). */
-function buildQueries(vacancy, prefix) {
+/** Build DIVERSE queries from the vacancy so el listado no se repite: variantes
+ *  por ubicación, seniority y cada competencia → más perfiles distintos. Sin
+ *  operadores negativos (las aseguradoras se filtran después). */
+function buildQueries(vacancy, prefix, max = 5) {
   const loc = vacancy.location || 'México'
+  const t = (vacancy.title || '').trim()
   const raw = []
-  if (vacancy.title) raw.push(`${vacancy.title} ${loc}`)
-  if (vacancy.department) raw.push(`${vacancy.title || ''} ${vacancy.department} ${loc}`.trim())
-  const comps = (vacancy.competencies || []).map(c => c?.name).filter(Boolean).slice(0, 2)
-  if (comps.length) raw.push(`${vacancy.title || ''} ${comps.join(' ')} ${loc}`.trim())
+  if (t) {
+    raw.push(`${t} ${loc}`)
+    raw.push(`${t} México`)         // más amplio que la ciudad
+    raw.push(t)                      // sin ubicación (máxima cobertura)
+    raw.push(`senior ${t} ${loc}`)   // variante seniority
+  }
+  if (vacancy.department) raw.push(`${t} ${vacancy.department} ${loc}`.trim())
+  // Una query por cada competencia (surfacean gente distinta)
+  ;(vacancy.competencies || []).map(c => c?.name).filter(Boolean).slice(0, 3)
+    .forEach(c => raw.push(`${t} ${c} ${loc}`.trim()))
   if (!raw.length) raw.push(loc)
-  return [...new Set(raw)].map(base => `${prefix} ${base}`.trim())
+  return [...new Set(raw.map(s => s.trim()).filter(Boolean))].slice(0, max).map(base => `${prefix} ${base}`.trim())
 }
 
 /** Derive a display name from a LinkedIn slug (…/in/carlos-alvarado-103b4a215). */
@@ -223,7 +231,10 @@ async function enrichProfile(slug, dispatcher) {
  *  heuristics (Brave's HTML contains benign "captcha" strings yet returns great
  *  results). Engines that genuinely block simply return 0 candidates. */
 async function scrapeQuery(query, dispatcher) {
+  // Brave primero (es el que devuelve datos server-side) → evita perder segundos
+  // en motores que fallan antes de llegar a él.
   const engines = buildSearchEngines(query)
+    .sort((a, b) => (a.name === 'Brave' ? -1 : 0) - (b.name === 'Brave' ? -1 : 0))
   const merged = []
   const seen = new Set()
   for (const engine of engines) {
@@ -231,7 +242,7 @@ async function scrapeQuery(query, dispatcher) {
       const res = await fetch(engine.url, {
         headers: engine.headers,
         dispatcher,
-        signal: AbortSignal.timeout(11000),
+        signal: AbortSignal.timeout(7000),
       })
       if (!res.ok) continue
       const html = await res.text()
@@ -271,6 +282,10 @@ export async function handler(event) {
   // Exclusión sector asegurador/inversiones: ON por defecto (crítico para
   // Prudential); el front puede apagarla cuando SÍ quieren gente del sector.
   const excludeSector = body.excludeSector !== false
+  // URLs ya conocidas (banco/bloqueados) → se excluyen server-side para devolver
+  // solo candidatos NUEVOS (clave cuando el banco ya tiene decenas de perfiles).
+  const known = new Set((Array.isArray(body.excludeUrls) ? body.excludeUrls : [])
+    .map(u => String(u).split('?')[0].replace(/\/$/, '')))
 
   const queries = buildQueries(vacancy, prefix)
   const targets = buildTargets(vacancy)
@@ -278,7 +293,7 @@ export async function handler(event) {
 
   const seen = new Set()
   const scored = []
-  const counts = { found: 0, excluded: 0, companies: 0, belowThreshold: 0, returned: 0 }
+  const counts = { found: 0, known: 0, excluded: 0, companies: 0, belowThreshold: 0, returned: 0 }
 
   // Búsquedas base en PARALELO (cada una por una IP distinta) → mucho más rápido.
   const pool = await buildProxyPool(Math.max(queries.length, 8))
@@ -295,6 +310,9 @@ export async function handler(event) {
   {
     for (const p of allProfiles) {
       counts.found++
+
+      // Salta los ya conocidos (banco/bloqueados) → solo devolvemos nuevos.
+      if (known.has((p.url || '').split('?')[0].replace(/\/$/, ''))) { counts.known++; continue }
 
       // El headline suele venir "Nombre - Puesto - Empresa"; sepáralo.
       const parts = (p.headline || '').split(/\s*[-–—·|]\s*/).map(s => s.trim()).filter(Boolean)
@@ -345,9 +363,9 @@ export async function handler(event) {
   // re-aplicar la exclusión. Concurrente, con IPs rotadas, acotado por tiempo.
   // Guarda de tiempo: si la búsqueda base ya tardó mucho, saltamos la
   // verificación para no exceder el límite de Netlify (~26s).
-  const timeLeft = 20000 - (Date.now() - t0)
-  if (excludeSector && dispatcher && results.length && timeLeft > 4000) {
-    const ENRICH_CAP = 12
+  const elapsed = Date.now() - t0
+  if (excludeSector && dispatcher && results.length && elapsed < 16000) {
+    const ENRICH_CAP = 6
     const toCheck = results.slice(0, ENRICH_CAP)
     const settled = await Promise.allSettled(
       toCheck.map((r, i) => enrichProfile(slugOf(r.url), pool[i % pool.length]))

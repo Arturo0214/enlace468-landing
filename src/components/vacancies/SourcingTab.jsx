@@ -28,7 +28,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const [autoRan, setAutoRan] = useState(false)
   const [autoCounts, setAutoCounts] = useState(null)
   const [autoError, setAutoError] = useState(null)
-  const [autoMinScore, setAutoMinScore] = useState(50)
+  const [autoMinScore, setAutoMinScore] = useState(40)
   const [excludeSector, setExcludeSector] = useState(true) // excluir aseguradoras/inversiones (Prudential)
   const [discardingUrl, setDiscardingUrl] = useState(null)
   const [importUrl, setImportUrl] = useState('')
@@ -409,6 +409,8 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
           platform: platform === 'all' ? 'linkedin' : platform,
           minScore: autoMinScore,
           excludeSector,
+          excludeUrls: [...bankUrls], // banco + bloqueados → solo trae nuevos
+          maxResults: 30,
         }),
       })
       const data = await res.json()
@@ -613,7 +615,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
                 <p className="text-sm font-semibold text-white">Prospectos rankeados</p>
                 {autoCounts ? (
                   <p className="text-[11px] text-gray-500">
-                    {autoCounts.returned} buenos · {autoCounts.excluded} aseguradoras excluidas · {autoCounts.belowThreshold} bajo umbral
+                    {autoCounts.returned} nuevos · {autoCounts.known || 0} ya en banco · {autoCounts.excluded} aseguradoras · {autoCounts.belowThreshold} bajo umbral
                     {autoCounts.quotaHit ? ' · ⚠ cuota diaria alcanzada' : ''}
                   </p>
                 ) : <p className="text-[11px] text-gray-500">Score ≥ {autoMinScore}</p>}
