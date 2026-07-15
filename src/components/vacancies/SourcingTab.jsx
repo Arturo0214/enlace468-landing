@@ -41,7 +41,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const [blockedGlobal, setBlockedGlobal] = useState(new Set()) // descartados de TODA la organización
   const [sending, setSending] = useState(false)
   const [sendResult, setSendResult] = useState(null)
-  const [activity, setActivity] = useState([])       // invitaciones enviadas (Unipile)
+  const [activity, setActivity] = useState({ invitations: [], connections: [], conversations: [], counts: {} })
   const [activityLoading, setActivityLoading] = useState(false)
   const [activityOpen, setActivityOpen] = useState(false)
   const cseRendered = useRef(false)
@@ -534,16 +534,17 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
     try {
       const res = await fetch('/api/linkedin-activity')
       const data = await res.json()
-      if (res.ok && data.ok) setActivity(data.invitations || [])
+      if (res.ok && data.ok) setActivity({ invitations: data.invitations || [], connections: data.connections || [], conversations: data.conversations || [], counts: data.counts || {} })
     } catch (e) { /* silencioso */ }
     finally { setActivityLoading(false) }
   }
   useEffect(() => { loadActivity() }, [])
 
-  // Slugs de LinkedIn ya invitados → para marcar candidatos como "contactado"
-  const invitedSlugs = new Set(activity.map(a => (a.public_id || '').toLowerCase()).filter(Boolean))
+  // Estado de contacto por candidato (para badges): conectado > invitado
+  const invitedSlugs = new Set(activity.invitations.map(a => (a.public_id || '').toLowerCase()).filter(Boolean))
+  const connectedSlugs = new Set(activity.connections.map(c => (c.public_id || '').toLowerCase()).filter(Boolean))
   const slugOfUrl = (url = '') => { const m = String(url).match(/\/in\/([^/?#]+)/i); return m ? decodeURIComponent(m[1]).toLowerCase() : '' }
-  const isContacted = (url) => invitedSlugs.has(slugOfUrl(url))
+  const contactStatus = (url) => { const s = slugOfUrl(url); return connectedSlugs.has(s) ? 'connected' : invitedSlugs.has(s) ? 'invited' : null }
 
   // Genera un mensaje de outreach personalizado con IA para un candidato.
   async function generateDraft(cand, channel) {
@@ -709,7 +710,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
             <div className="text-left">
               <p className="text-sm font-semibold text-white">Actividad de LinkedIn</p>
               <p className="text-[11px] text-gray-500">
-                {activityLoading ? 'Cargando…' : `${activity.length} invitaciones enviadas · pendientes de aceptar`}
+                {activityLoading ? 'Cargando…' : `${activity.invitations.length} pendientes · ${activity.counts?.unread || 0} con respuesta`}
               </p>
             </div>
           </div>
@@ -720,26 +721,58 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
             <span className="text-gray-500 text-xs">{activityOpen ? '▲' : '▼'}</span>
           </div>
         </button>
-        {activityOpen && (
-          <div className="mt-3 space-y-2">
-            {activity.length === 0 && !activityLoading && <p className="text-xs text-gray-500 py-2">Aún no hay invitaciones enviadas desde el CRM.</p>}
-            {activity.map(a => (
-              <div key={a.id} className="rounded-xl p-3 bg-white/[0.02] border border-white/[0.05] flex items-start gap-3">
-                {a.photo
-                  ? <img src={a.photo} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
-                  : <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary-light text-xs font-bold flex-shrink-0">{(a.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <a href={`https://www.linkedin.com/in/${a.public_id}`} target="_blank" rel="noopener" className="text-sm font-semibold text-white hover:text-primary-light truncate">{a.name}</a>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/15 text-amber-300 flex-shrink-0">Pendiente</span>
-                  </div>
-                  {a.message && <p className="text-[11px] text-gray-400 line-clamp-2 mt-0.5">{a.message}</p>}
-                  <p className="text-[10px] text-gray-600 mt-1">{a.date ? new Date(a.date).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</p>
+        {activityOpen && (() => {
+          const recientes = activity.connections.filter(c => c.date && (Date.now() - new Date(c.date).getTime()) < 30 * 86400000).slice(0, 12)
+          const respuestas = activity.conversations.filter(c => c.unread > 0 && c.name).slice(0, 12)
+          const row = (key, name, publicId, sub, right, photo) => (
+            <div key={key} className="rounded-xl p-3 bg-white/[0.02] border border-white/[0.05] flex items-start gap-3">
+              {photo ? <img src={photo} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                : <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary-light text-xs font-bold flex-shrink-0">{(name || '?').split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <a href={publicId ? `https://www.linkedin.com/in/${publicId}` : '#'} target="_blank" rel="noopener" className="text-sm font-semibold text-white hover:text-primary-light truncate">{name || 'LinkedIn'}</a>
+                  {right}
+                </div>
+                {sub}
+              </div>
+            </div>
+          )
+          return (
+            <div className="mt-3 space-y-4">
+              {/* Pendientes */}
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Invitaciones pendientes ({activity.invitations.length})</p>
+                <div className="space-y-2">
+                  {activity.invitations.length === 0 && <p className="text-xs text-gray-600">Ninguna pendiente.</p>}
+                  {activity.invitations.map(a => row(a.id, a.name, a.public_id,
+                    <>{a.message && <p className="text-[11px] text-gray-400 line-clamp-2 mt-0.5">{a.message}</p>}
+                      <p className="text-[10px] text-gray-600 mt-1">{a.date ? new Date(a.date).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</p></>,
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/15 text-amber-300 flex-shrink-0">Pendiente</span>, a.photo))}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+              {/* Aceptadas / conexiones recientes */}
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Conexiones recientes / aceptadas ({recientes.length})</p>
+                <div className="space-y-2">
+                  {recientes.length === 0 && <p className="text-xs text-gray-600">Sin conexiones recientes.</p>}
+                  {recientes.map((c, i) => row('conn' + i, c.name, c.public_id,
+                    c.headline && <p className="text-[11px] text-gray-400 line-clamp-1 mt-0.5">{c.headline}</p>,
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(16,185,129,0.15)', color: '#34d399' }}>Conectado</span>))}
+                </div>
+              </div>
+              {/* Respuestas */}
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Respuestas / mensajes sin leer ({respuestas.length})</p>
+                <div className="space-y-2">
+                  {respuestas.length === 0 && <p className="text-xs text-gray-600">Sin respuestas nuevas.</p>}
+                  {respuestas.map((c, i) => row('conv' + i, c.name, c.public_id,
+                    <p className="text-[10px] text-gray-600 mt-1">{c.date ? new Date(c.date).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</p>,
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-300 flex-shrink-0">{c.unread} sin leer</span>))}
+                </div>
+              </div>
+            </div>
+          )
+        })()}
       </div>
 
       {/* Resultados del sourcing automático — rankeados por match */}
@@ -795,7 +828,9 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <a href={r.url} target="_blank" rel="noopener" className="text-sm font-semibold text-white hover:text-primary-light transition-colors line-clamp-1">{r.full_name || r.title}</a>
-                        {isContacted(r.url) && <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(10,102,194,0.2)', color: '#5aa0e6' }}>✓ Invitado</span>}
+                        {contactStatus(r.url) === 'connected'
+                          ? <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(16,185,129,0.2)', color: '#34d399' }}>✓ Conectado</span>
+                          : contactStatus(r.url) === 'invited' && <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(10,102,194,0.2)', color: '#5aa0e6' }}>✓ Invitado</span>}
                       </div>
                       {(r.current_title || r.current_company) && (
                         <p className="text-[11px] text-gray-400 truncate mt-0.5">{[r.current_title, r.current_company].filter(Boolean).join(' · ')}</p>
@@ -858,7 +893,9 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <a href={b.url} target="_blank" rel="noopener" className="text-sm font-semibold text-white hover:text-primary-light transition-colors line-clamp-1">{b.full_name || b.title}</a>
-                        {isContacted(b.url) && <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(10,102,194,0.2)', color: '#5aa0e6' }}>✓ Invitado</span>}
+                        {contactStatus(b.url) === 'connected'
+                          ? <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(16,185,129,0.2)', color: '#34d399' }}>✓ Conectado</span>
+                          : contactStatus(b.url) === 'invited' && <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(10,102,194,0.2)', color: '#5aa0e6' }}>✓ Invitado</span>}
                       </div>
                       {(b.current_title || b.current_company) && (
                         <p className="text-[11px] text-gray-400 truncate mt-0.5">{[b.current_title, b.current_company].filter(Boolean).join(' · ')}</p>

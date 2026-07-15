@@ -24,25 +24,54 @@ export async function handler(event) {
   }
 
   const base = `https://${DSN}/api/v1`
-  try {
-    const res = await fetch(`${base}/users/invite/sent?account_id=${accountId}&limit=100`, {
-      headers: { 'X-API-KEY': KEY, accept: 'application/json' },
-      signal: AbortSignal.timeout(25000),
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) return { statusCode: 502, headers, body: JSON.stringify({ error: 'UNIPILE_ERROR', hint: data.detail || data.message || `HTTP ${res.status}` }) }
+  const get = (path) => fetch(`${base}${path}`, {
+    headers: { 'X-API-KEY': KEY, accept: 'application/json' },
+    signal: AbortSignal.timeout(25000),
+  }).then(async r => ({ ok: r.ok, data: await r.json().catch(() => ({})) }))
 
-    const invitations = (data.items || []).map(it => ({
-      id: it.id,
-      name: it.invited_user,
-      public_id: it.invited_user_public_id,
-      provider_id: it.invited_user_id,
-      photo: it.invited_user_profile_picture_url || null,
-      message: it.invitation_text || '',
-      date: it.parsed_datetime || it.date,
-      status: 'pending', // en la lista "sent" solo hay pendientes; al aceptarse salen
+  try {
+    // En paralelo: invitaciones pendientes, conexiones (aceptadas), chats (respuestas)
+    const [inv, rel, chats] = await Promise.all([
+      get(`/users/invite/sent?account_id=${accountId}&limit=100`),
+      get(`/users/relations?account_id=${accountId}&limit=200`),
+      get(`/chats?account_id=${accountId}&limit=100`),
+    ])
+
+    const invitations = (inv.data.items || []).map(it => ({
+      id: it.id, name: it.invited_user, public_id: it.invited_user_public_id, provider_id: it.invited_user_id,
+      photo: it.invited_user_profile_picture_url || null, message: it.invitation_text || '',
+      date: it.parsed_datetime || it.date, status: 'pending',
     }))
-    return { statusCode: 200, headers, body: JSON.stringify({ ok: true, count: invitations.length, invitations }) }
+
+    // Conexiones (aceptadas) + mapa provider_id → datos, para nombrar los chats
+    const relById = {}
+    const connections = (rel.data.items || []).map(r => {
+      const name = `${r.first_name || ''} ${r.last_name || ''}`.trim()
+      const c = { name, public_id: r.public_identifier, provider_id: r.member_id, headline: r.headline || '', date: r.created_at ? new Date(r.created_at).toISOString() : null }
+      if (r.member_id) relById[r.member_id] = c
+      return c
+    }).sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+
+    // Conversaciones (respuestas). Nombre resuelto vía relations cuando se puede.
+    const conversations = (chats.data.items || [])
+      .map(ch => {
+        const who = relById[ch.attendee_provider_id]
+        return {
+          id: ch.id, provider_id: ch.attendee_provider_id,
+          name: who?.name || null, public_id: who?.public_id || null,
+          unread: ch.unread_count || ch.unread || 0, date: ch.timestamp || null,
+        }
+      })
+      .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+
+    return {
+      statusCode: 200, headers,
+      body: JSON.stringify({
+        ok: true,
+        counts: { pending: invitations.length, connections: connections.length, unread: conversations.filter(c => c.unread > 0).length },
+        invitations, connections, conversations,
+      }),
+    }
   } catch (err) {
     return { statusCode: 502, headers, body: JSON.stringify({ error: 'UNIPILE_ERROR', hint: err.message?.slice(0, 160) }) }
   }
