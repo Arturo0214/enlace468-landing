@@ -38,6 +38,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const [draftLoading, setDraftLoading] = useState(false)
   const [draft, setDraft] = useState(null)
   const [draftCopied, setDraftCopied] = useState(false)
+  const [blockedGlobal, setBlockedGlobal] = useState(new Set()) // descartados de TODA la organización
   const cseRendered = useRef(false)
   const observerRef = useRef(null)
   const debounceRef = useRef(null)
@@ -60,6 +61,20 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
 
   // Limpia el draft de IA al abrir otro candidato
   useEffect(() => { setDraft(null); setDraftCopied(false) }, [selectedCandidate])
+
+  // Carga los candidatos DESCARTADOS de toda la organización → nunca reaparecen
+  // en ninguna búsqueda (no solo en esta vacante).
+  useEffect(() => {
+    const orgId = profile?.organization_id
+    if (!orgId) return
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase.from('sourcing_bank').select('url')
+        .eq('organization_id', orgId).eq('source', 'descartado')
+      if (!cancelled) setBlockedGlobal(new Set((data || []).map(b => b.url)))
+    })()
+    return () => { cancelled = true }
+  }, [profile?.organization_id])
 
   // Load sourcing bank for this vacancy
   useEffect(() => {
@@ -416,7 +431,8 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
           platform: platform === 'all' ? 'linkedin' : platform,
           minScore: autoMinScore,
           excludeSector,
-          excludeUrls: [...bankUrls], // banco + bloqueados → solo trae nuevos
+          // banco de esta vacante + TODOS los descartados de la org → nunca repetir
+          excludeUrls: [...new Set([...bankUrls, ...blockedGlobal])],
           maxResults: 30,
         }),
       })
@@ -468,6 +484,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
         .upsert(row, { onConflict: 'vacancy_id,url', ignoreDuplicates: true }).select().single()
       // Aunque ignoreDuplicates no devuelva fila, lo agregamos localmente para ocultarlo ya
       setBankItems(prev => prev.some(b => b.url === result.url) ? prev : [(data || row), ...prev])
+      setBlockedGlobal(prev => new Set([...prev, result.url])) // bloqueo global inmediato
     } catch (e) { console.error(e) }
     finally { setDiscardingUrl(null) }
   }
@@ -675,7 +692,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
           <div className="space-y-2">
             {(() => {
               // Dedup: oculta los ya guardados o bloqueados (no reaparecen)
-              const visible = autoResults.filter(r => r.score >= autoMinScore && !bankUrls.has(r.url))
+              const visible = autoResults.filter(r => r.score >= autoMinScore && !bankUrls.has(r.url) && !blockedGlobal.has(r.url))
               if (!autoLoading && autoResults.length > 0 && visible.length === 0) {
                 return <p className="text-xs text-gray-500 py-2">Todos los prospectos de esta búsqueda ya están guardados o bloqueados.</p>
               }
