@@ -44,6 +44,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const [activity, setActivity] = useState({ invitations: [], connections: [], conversations: [], counts: {} })
   const [activityLoading, setActivityLoading] = useState(false)
   const [activityOpen, setActivityOpen] = useState(false)
+  const [ourOutreach, setOurOutreach] = useState([]) // envíos registrados por el CRM (sourcing_bank)
   const cseRendered = useRef(false)
   const observerRef = useRef(null)
   const debounceRef = useRef(null)
@@ -529,6 +530,22 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   }
 
   // Carga las invitaciones enviadas por LinkedIn (Unipile) para el tablero.
+  const [connectingAccount, setConnectingAccount] = useState(false)
+  // Genera el link de Unipile y lo abre para conectar/cambiar la cuenta de LinkedIn.
+  async function connectLinkedInAccount() {
+    setConnectingAccount(true)
+    try {
+      const res = await fetch('/api/linkedin-connect', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ redirect_url: window.location.href }),
+      })
+      const data = await res.json()
+      if (data.ok && data.url) window.open(data.url, '_blank', 'noopener')
+      else alert(data.hint || 'No se pudo generar el link de conexión.')
+    } catch (e) { alert('No se pudo conectar con el servicio.') }
+    finally { setConnectingAccount(false) }
+  }
+
   async function loadActivity() {
     setActivityLoading(true)
     try {
@@ -540,10 +557,22 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   }
   useEffect(() => { loadActivity() }, [])
 
-  // Estado de contacto por candidato (para badges): conectado > invitado
-  const invitedSlugs = new Set(activity.invitations.map(a => (a.public_id || '').toLowerCase()).filter(Boolean))
-  const connectedSlugs = new Set(activity.connections.map(c => (c.public_id || '').toLowerCase()).filter(Boolean))
+  // Nuestro outreach registrado en el CRM (toda la organización, cualquier vacante)
+  async function loadOurOutreach() {
+    const orgId = profile?.organization_id
+    if (!orgId) return
+    const { data } = await supabase.from('sourcing_bank')
+      .select('url, full_name, contact_status, contact_channel, contacted_at, contact_message, provider_id')
+      .eq('organization_id', orgId).not('contact_status', 'is', null)
+      .order('contacted_at', { ascending: false })
+    setOurOutreach(data || [])
+  }
+  useEffect(() => { loadOurOutreach() }, [profile?.organization_id])
+
   const slugOfUrl = (url = '') => { const m = String(url).match(/\/in\/([^/?#]+)/i); return m ? decodeURIComponent(m[1]).toLowerCase() : '' }
+  // Estado por candidato: usamos NUESTRO registro (invitado) + Unipile (conectado)
+  const connectedSlugs = new Set(activity.connections.map(c => (c.public_id || '').toLowerCase()).filter(Boolean))
+  const invitedSlugs = new Set(ourOutreach.map(o => slugOfUrl(o.url)).filter(Boolean))
   const contactStatus = (url) => { const s = slugOfUrl(url); return connectedSlugs.has(s) ? 'connected' : invitedSlugs.has(s) ? 'invited' : null }
 
   // Genera un mensaje de outreach personalizado con IA para un candidato.
@@ -591,7 +620,23 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
       if (!res.ok || !data.ok) { setSendResult({ type: 'err', text: data.hint || data.error || 'No se pudo enviar.' }); return }
       if (data.alreadyConnected) { setSendResult({ type: 'ok', text: `${data.name} ya es tu contacto — mándale mensaje directo.` }); return }
       setSendResult({ type: 'ok', text: `✓ ${label} enviada a ${data.name || cand.full_name} por LinkedIn.` })
-      loadActivity() // refresca el tablero
+      // Registra el contacto en el banco (upsert) → tablero + no se re-contacta
+      try {
+        const row = {
+          organization_id: profile.organization_id, vacancy_id: vacancyId,
+          url: cand.linkedin_url, title: cand.full_name || data.name, full_name: cand.full_name || data.name,
+          current_title: cand.current_title || null, current_company: cand.current_company || null,
+          display_url: 'linkedin.com', snippet: cand.snippet || null, platform: 'linkedin', source: 'sourced',
+          created_by: profile.id,
+          contact_status: action === 'inmail' ? 'inmail_sent' : 'invited',
+          contact_channel: draft.channel, contacted_at: new Date().toISOString(),
+          contact_message: draft.body, provider_id: data.providerId || null,
+          invitation_id: data.result?.invitation_id || null,
+        }
+        await supabase.from('sourcing_bank').upsert(row, { onConflict: 'vacancy_id,url' })
+        loadOurOutreach()
+      } catch (e) { console.error('registro outreach:', e) }
+      loadActivity() // refresca el estado de LinkedIn
     } catch (e) { setSendResult({ type: 'err', text: 'No se pudo conectar con LinkedIn.' }) }
     finally { setSending(false) }
   }
@@ -708,13 +753,16 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
               <Send size={14} style={{ color: '#0a66c2' }} />
             </div>
             <div className="text-left">
-              <p className="text-sm font-semibold text-white">Actividad de LinkedIn</p>
+              <p className="text-sm font-semibold text-white">Outreach en LinkedIn</p>
               <p className="text-[11px] text-gray-500">
-                {activityLoading ? 'Cargando…' : `${activity.invitations.length} pendientes · ${activity.counts?.unread || 0} con respuesta`}
+                {activityLoading ? 'Cargando…' : `${ourOutreach.length} contactados · ${ourOutreach.filter(o => connectedSlugs.has(slugOfUrl(o.url))).length} aceptaron`}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <span onClick={e => { e.stopPropagation(); connectLinkedInAccount() }} className="text-[11px] text-primary-light hover:text-blue-300 cursor-pointer flex items-center gap-1" title="Conectar/cambiar la cuenta de LinkedIn que envía">
+              {connectingAccount ? <Loader2 size={12} className="animate-spin" /> : <Link2 size={12} />} Cambiar cuenta de LinkedIn
+            </span>
             <span onClick={e => { e.stopPropagation(); loadActivity() }} className="text-[11px] text-gray-400 hover:text-white cursor-pointer flex items-center gap-1">
               {activityLoading ? <Loader2 size={12} className="animate-spin" /> : <Search size={12} />} Actualizar
             </span>
@@ -722,15 +770,21 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
           </div>
         </button>
         {activityOpen && (() => {
-          const recientes = activity.connections.filter(c => c.date && (Date.now() - new Date(c.date).getTime()) < 30 * 86400000).slice(0, 12)
-          const respuestas = activity.conversations.filter(c => c.unread > 0 && c.name).slice(0, 12)
-          const row = (key, name, publicId, sub, right, photo) => (
-            <div key={key} className="rounded-xl p-3 bg-white/[0.02] border border-white/[0.05] flex items-start gap-3">
-              {photo ? <img src={photo} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
-                : <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary-light text-xs font-bold flex-shrink-0">{(name || '?').split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
+          const convByProvider = new Map(activity.conversations.filter(c => c.unread > 0).map(c => [c.provider_id, c]))
+          const enriched = ourOutreach.map(o => {
+            const slug = slugOfUrl(o.url)
+            return { ...o, slug, connected: connectedSlugs.has(slug), replied: !!(o.provider_id && convByProvider.has(o.provider_id)) }
+          })
+          const pendientes = enriched.filter(e => !e.connected && !e.replied)
+          const aceptados = enriched.filter(e => e.connected)
+          const respondieron = enriched.filter(e => e.replied)
+          const fecha = d => d ? new Date(d).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''
+          const row = (o, right, sub) => (
+            <div key={o.url} className="rounded-xl p-3 bg-white/[0.02] border border-white/[0.05] flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary-light text-xs font-bold flex-shrink-0">{(o.full_name || '?').split(' ').map(n => n[0]).join('').slice(0, 2)}</div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <a href={publicId ? `https://www.linkedin.com/in/${publicId}` : '#'} target="_blank" rel="noopener" className="text-sm font-semibold text-white hover:text-primary-light truncate">{name || 'LinkedIn'}</a>
+                  <a href={o.url} target="_blank" rel="noopener" className="text-sm font-semibold text-white hover:text-primary-light truncate">{o.full_name || 'LinkedIn'}</a>
                   {right}
                 </div>
                 {sub}
@@ -739,35 +793,31 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
           )
           return (
             <div className="mt-3 space-y-4">
-              {/* Pendientes */}
-              <div>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Invitaciones pendientes ({activity.invitations.length})</p>
-                <div className="space-y-2">
-                  {activity.invitations.length === 0 && <p className="text-xs text-gray-600">Ninguna pendiente.</p>}
-                  {activity.invitations.map(a => row(a.id, a.name, a.public_id,
-                    <>{a.message && <p className="text-[11px] text-gray-400 line-clamp-2 mt-0.5">{a.message}</p>}
-                      <p className="text-[10px] text-gray-600 mt-1">{a.date ? new Date(a.date).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</p></>,
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/15 text-amber-300 flex-shrink-0">Pendiente</span>, a.photo))}
+              {ourOutreach.length === 0 && <p className="text-xs text-gray-500 py-1">Aún no has contactado a nadie desde el CRM. Genera un mensaje y dale "Enviar conexión".</p>}
+              {respondieron.length > 0 && (
+                <div>
+                  <p className="text-[10px] text-blue-300 uppercase tracking-wider mb-2">💬 Respondieron ({respondieron.length})</p>
+                  <div className="space-y-2">{respondieron.map(o => row(o,
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-300 flex-shrink-0">Respondió</span>,
+                    <p className="text-[10px] text-gray-600 mt-1">Contactado {fecha(o.contacted_at)}</p>))}</div>
                 </div>
-              </div>
-              {/* Aceptadas / conexiones recientes */}
-              <div>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Conexiones recientes / aceptadas ({recientes.length})</p>
-                <div className="space-y-2">
-                  {recientes.length === 0 && <p className="text-xs text-gray-600">Sin conexiones recientes.</p>}
-                  {recientes.map((c, i) => row('conn' + i, c.name, c.public_id,
-                    c.headline && <p className="text-[11px] text-gray-400 line-clamp-1 mt-0.5">{c.headline}</p>,
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(16,185,129,0.15)', color: '#34d399' }}>Conectado</span>))}
+              )}
+              {aceptados.length > 0 && (
+                <div>
+                  <p className="text-[10px] text-emerald-400 uppercase tracking-wider mb-2">✅ Aceptaron ({aceptados.length})</p>
+                  <div className="space-y-2">{aceptados.map(o => row(o,
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(16,185,129,0.15)', color: '#34d399' }}>Conectado</span>,
+                    <p className="text-[10px] text-gray-600 mt-1">Contactado {fecha(o.contacted_at)}</p>))}</div>
                 </div>
-              </div>
-              {/* Respuestas */}
+              )}
               <div>
-                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Respuestas / mensajes sin leer ({respuestas.length})</p>
+                <p className="text-[10px] text-amber-300 uppercase tracking-wider mb-2">⏳ Pendientes de aceptar ({pendientes.length})</p>
                 <div className="space-y-2">
-                  {respuestas.length === 0 && <p className="text-xs text-gray-600">Sin respuestas nuevas.</p>}
-                  {respuestas.map((c, i) => row('conv' + i, c.name, c.public_id,
-                    <p className="text-[10px] text-gray-600 mt-1">{c.date ? new Date(c.date).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</p>,
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-300 flex-shrink-0">{c.unread} sin leer</span>))}
+                  {pendientes.length === 0 && <p className="text-xs text-gray-600">Ninguna pendiente.</p>}
+                  {pendientes.map(o => row(o,
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/15 text-amber-300 flex-shrink-0">{o.contact_status === 'inmail_sent' ? 'InMail' : 'Pendiente'}</span>,
+                    <>{o.contact_message && <p className="text-[11px] text-gray-400 line-clamp-2 mt-0.5">{o.contact_message}</p>}
+                      <p className="text-[10px] text-gray-600 mt-1">{fecha(o.contacted_at)}</p></>))}
                 </div>
               </div>
             </div>
