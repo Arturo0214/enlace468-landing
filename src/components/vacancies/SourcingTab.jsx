@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Globe, ExternalLink, Plus, Loader2, CheckCircle, Download, Users, X, Mail, Phone, MapPin, Star, Archive, Trash2, Save, Sparkles, SlidersHorizontal, Ban, Link2 } from 'lucide-react'
+import { Search, Globe, ExternalLink, Plus, Loader2, CheckCircle, Download, Users, X, Mail, Phone, MapPin, Star, Archive, Trash2, Save, Sparkles, SlidersHorizontal, Ban, Link2, Copy, MessageSquare } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import FeatureGate from '../ui/FeatureGate'
 import { matchExcludedCompany, NEGATIVE_QUERY, EXCLUDED_LABELS_SHORT } from '../../lib/excludedCompanies'
@@ -34,6 +34,10 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const [importUrl, setImportUrl] = useState('')
   const [importing, setImporting] = useState(false)
   const [importMsg, setImportMsg] = useState(null)
+  const [draftChannel, setDraftChannel] = useState('linkedin_message')
+  const [draftLoading, setDraftLoading] = useState(false)
+  const [draft, setDraft] = useState(null)
+  const [draftCopied, setDraftCopied] = useState(false)
   const cseRendered = useRef(false)
   const observerRef = useRef(null)
   const debounceRef = useRef(null)
@@ -53,6 +57,9 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const bankUrls = new Set(bankItems.map(b => b.url)) // incluye guardados Y descartados
   // Banco visible = solo guardados (los descartados se ocultan del banco y de resultados)
   const savedItems = bankItems.filter(b => b.source !== 'descartado')
+
+  // Limpia el draft de IA al abrir otro candidato
+  useEffect(() => { setDraft(null); setDraftCopied(false) }, [selectedCandidate])
 
   // Load sourcing bank for this vacancy
   useEffect(() => {
@@ -499,6 +506,35 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
     } finally { setImporting(false) }
   }
 
+  // Genera un mensaje de outreach personalizado con IA para un candidato.
+  async function generateDraft(cand, channel) {
+    setDraftLoading(true); setDraft(null); setDraftCopied(false)
+    try {
+      const res = await fetch('/api/outreach-draft', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          candidate: {
+            full_name: cand.full_name, current_title: cand.current_title, current_company: cand.current_company,
+            location: cand.location, snippet: cand.snippet,
+          },
+          vacancy: { title: vacancy.title, company_name: vacancy.company_name, location: vacancy.location, description: vacancy.description },
+          channel, recruiter: profile?.full_name ? `${profile.full_name} · Enlace 468` : 'Enlace 468',
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) { setDraft({ error: data.hint || data.error || 'No se pudo generar.' }); return }
+      setDraft({ subject: data.subject, body: data.body, channel })
+    } catch (e) { setDraft({ error: 'No se pudo conectar con el generador.' }) }
+    finally { setDraftLoading(false) }
+  }
+
+  function copyDraft() {
+    if (!draft?.body) return
+    const txt = (draft.subject ? `Asunto: ${draft.subject}\n\n` : '') + draft.body
+    navigator.clipboard?.writeText(txt)
+    setDraftCopied(true); setTimeout(() => setDraftCopied(false), 2000)
+  }
+
   const hasCards = googleResults.length > 0
 
   return (
@@ -907,6 +943,44 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
                 {selectedCandidate.linkedin_url && <a href={selectedCandidate.linkedin_url} target="_blank" rel="noopener" className="flex items-center gap-2 bg-primary-light/5 rounded-lg px-3 py-2.5 hover:bg-primary-light/10 border border-primary-light/10"><ExternalLink size={14} className="text-primary-light" /><span className="text-xs text-primary-light">Ver LinkedIn</span></a>}
               </div>
               {selectedCandidate.snippet && <div><p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Notas</p><p className="text-sm text-gray-300 whitespace-pre-wrap">{selectedCandidate.snippet}</p></div>}
+
+              {/* Mensaje de outreach con IA */}
+              <div className="rounded-xl p-3.5" style={{ background: 'rgba(0,169,157,0.05)', border: '1px solid rgba(0,169,157,0.15)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageSquare size={14} style={{ color: '#00A99D' }} />
+                  <p className="text-xs font-semibold text-white">Mensaje de contacto con IA</p>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {[
+                    { id: 'linkedin_note', label: 'Nota LinkedIn' },
+                    { id: 'linkedin_message', label: 'Mensaje LinkedIn' },
+                    { id: 'email', label: 'Email' },
+                    { id: 'whatsapp', label: 'WhatsApp' },
+                  ].map(ch => (
+                    <button key={ch.id} onClick={() => setDraftChannel(ch.id)}
+                      className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all ${draftChannel === ch.id ? 'text-white' : 'border-transparent text-gray-400 hover:text-white'}`}
+                      style={draftChannel === ch.id ? { background: 'rgba(0,169,157,0.15)', borderColor: 'rgba(0,169,157,0.4)' } : { background: 'rgba(255,255,255,0.03)' }}>
+                      {ch.label}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => generateDraft(selectedCandidate, draftChannel)} disabled={draftLoading}
+                  className="w-full py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ background: 'linear-gradient(90deg, #00A99D, #071B49)' }}>
+                  {draftLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  {draftLoading ? 'Generando…' : draft ? 'Regenerar' : 'Generar mensaje'}
+                </button>
+                {draft?.error && <p className="text-[11px] text-red-400 mt-2">{draft.error}</p>}
+                {draft?.body && (
+                  <div className="mt-2.5 rounded-lg p-3 bg-black/30 border border-white/[0.06]">
+                    {draft.subject && <p className="text-xs text-gray-400 mb-1.5"><span className="text-gray-500">Asunto:</span> {draft.subject}</p>}
+                    <p className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">{draft.body}</p>
+                    <button onClick={copyDraft} className="mt-2.5 flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.06] text-gray-300 hover:text-white hover:bg-white/[0.1]">
+                      {draftCopied ? <><CheckCircle size={12} className="text-emerald-400" /> Copiado</> : <><Copy size={12} /> Copiar</>}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-3 p-5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               {(() => {

@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
     "@hello-pangea/dnd": "^18.0.1",
     "@paypal/checkout-server-sdk": "^1.0.3",
     "@stripe/stripe-js": "^9.6.0",
