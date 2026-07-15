@@ -13,7 +13,7 @@ import Anthropic from '@anthropic-ai/sdk'
 const MODEL = 'claude-haiku-4-5-20251001'
 
 const CHANNEL_RULES = {
-  linkedin_note: 'Nota de solicitud de conexión de LinkedIn. MÁXIMO 280 caracteres. Sin asunto. Cálida, directa, 1 sola idea + por qué le escribes.',
+  linkedin_note: 'Nota de solicitud de conexión de LinkedIn. MÁXIMO 195 caracteres (LinkedIn corta en 200). MUY concisa: 1 idea + por qué le escribes + tu nombre. Sin asunto.',
   linkedin_message: 'Mensaje/InMail de LinkedIn. 4-6 líneas. Sin asunto. Personalizado a su rol, con el gancho de la vacante y un CTA suave (¿te interesa platicar?).',
   email: 'Correo en frío. Devuelve asunto (≤55 caract, sin clickbait) y cuerpo de 5-8 líneas. Profesional pero humano.',
   whatsapp: 'Mensaje de WhatsApp. 3-5 líneas, tono cercano y respetuoso. Sin asunto.',
@@ -90,9 +90,21 @@ Redacta el mensaje.`
     } catch {
       out = { subject: '', body: text.trim() }
     }
+    let finalBody = (out.body || '').trim()
+    // Garantiza el límite de LinkedIn (nota de conexión ≤200) recortando en
+    // frontera de palabra, ya que el modelo a veces se pasa.
+    if (channel === 'linkedin_note' && finalBody.length > 200) {
+      const head = finalBody.slice(0, 200)
+      // Prefiere terminar en frase completa (., ? o !); si no, en palabra.
+      const ends = [head.lastIndexOf('. '), head.lastIndexOf('? '), head.lastIndexOf('! '),
+                    head.lastIndexOf('.'), head.lastIndexOf('?'), head.lastIndexOf('!')]
+      const sentenceCut = Math.max(...ends)
+      if (sentenceCut > 110) finalBody = head.slice(0, sentenceCut + 1)
+      else { const w = head.lastIndexOf(' '); finalBody = head.slice(0, w > 110 ? w : 197).replace(/[\s,.-]+$/, '') + '…' }
+    }
     return {
       statusCode: 200, headers,
-      body: JSON.stringify({ ok: true, channel, subject: out.subject || '', body: (out.body || '').trim() }),
+      body: JSON.stringify({ ok: true, channel, subject: out.subject || '', body: finalBody }),
     }
   } catch (err) {
     return { statusCode: 502, headers, body: JSON.stringify({ error: 'LLM_ERROR', hint: err.message?.slice(0, 160) }) }

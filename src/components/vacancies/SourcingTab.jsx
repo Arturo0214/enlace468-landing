@@ -41,6 +41,9 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const [blockedGlobal, setBlockedGlobal] = useState(new Set()) // descartados de TODA la organización
   const [sending, setSending] = useState(false)
   const [sendResult, setSendResult] = useState(null)
+  const [activity, setActivity] = useState([])       // invitaciones enviadas (Unipile)
+  const [activityLoading, setActivityLoading] = useState(false)
+  const [activityOpen, setActivityOpen] = useState(false)
   const cseRendered = useRef(false)
   const observerRef = useRef(null)
   const debounceRef = useRef(null)
@@ -525,6 +528,23 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
     } finally { setImporting(false) }
   }
 
+  // Carga las invitaciones enviadas por LinkedIn (Unipile) para el tablero.
+  async function loadActivity() {
+    setActivityLoading(true)
+    try {
+      const res = await fetch('/api/linkedin-activity')
+      const data = await res.json()
+      if (res.ok && data.ok) setActivity(data.invitations || [])
+    } catch (e) { /* silencioso */ }
+    finally { setActivityLoading(false) }
+  }
+  useEffect(() => { loadActivity() }, [])
+
+  // Slugs de LinkedIn ya invitados → para marcar candidatos como "contactado"
+  const invitedSlugs = new Set(activity.map(a => (a.public_id || '').toLowerCase()).filter(Boolean))
+  const slugOfUrl = (url = '') => { const m = String(url).match(/\/in\/([^/?#]+)/i); return m ? decodeURIComponent(m[1]).toLowerCase() : '' }
+  const isContacted = (url) => invitedSlugs.has(slugOfUrl(url))
+
   // Genera un mensaje de outreach personalizado con IA para un candidato.
   async function generateDraft(cand, channel) {
     setDraftLoading(true); setDraft(null); setDraftCopied(false)
@@ -570,6 +590,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
       if (!res.ok || !data.ok) { setSendResult({ type: 'err', text: data.hint || data.error || 'No se pudo enviar.' }); return }
       if (data.alreadyConnected) { setSendResult({ type: 'ok', text: `${data.name} ya es tu contacto — mándale mensaje directo.` }); return }
       setSendResult({ type: 'ok', text: `✓ ${label} enviada a ${data.name || cand.full_name} por LinkedIn.` })
+      loadActivity() // refresca el tablero
     } catch (e) { setSendResult({ type: 'err', text: 'No se pudo conectar con LinkedIn.' }) }
     finally { setSending(false) }
   }
@@ -678,6 +699,49 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
         </div>
       </div>
 
+      {/* Tablero de outreach — invitaciones enviadas por LinkedIn */}
+      <div className="glass rounded-xl p-5">
+        <button onClick={() => setActivityOpen(o => !o)} className="w-full flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(10,102,194,0.15)' }}>
+              <Send size={14} style={{ color: '#0a66c2' }} />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-white">Actividad de LinkedIn</p>
+              <p className="text-[11px] text-gray-500">
+                {activityLoading ? 'Cargando…' : `${activity.length} invitaciones enviadas · pendientes de aceptar`}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span onClick={e => { e.stopPropagation(); loadActivity() }} className="text-[11px] text-gray-400 hover:text-white cursor-pointer flex items-center gap-1">
+              {activityLoading ? <Loader2 size={12} className="animate-spin" /> : <Search size={12} />} Actualizar
+            </span>
+            <span className="text-gray-500 text-xs">{activityOpen ? '▲' : '▼'}</span>
+          </div>
+        </button>
+        {activityOpen && (
+          <div className="mt-3 space-y-2">
+            {activity.length === 0 && !activityLoading && <p className="text-xs text-gray-500 py-2">Aún no hay invitaciones enviadas desde el CRM.</p>}
+            {activity.map(a => (
+              <div key={a.id} className="rounded-xl p-3 bg-white/[0.02] border border-white/[0.05] flex items-start gap-3">
+                {a.photo
+                  ? <img src={a.photo} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+                  : <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary-light text-xs font-bold flex-shrink-0">{(a.name || '?').split(' ').map(n => n[0]).join('').slice(0, 2)}</div>}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <a href={`https://www.linkedin.com/in/${a.public_id}`} target="_blank" rel="noopener" className="text-sm font-semibold text-white hover:text-primary-light truncate">{a.name}</a>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-400/15 text-amber-300 flex-shrink-0">Pendiente</span>
+                  </div>
+                  {a.message && <p className="text-[11px] text-gray-400 line-clamp-2 mt-0.5">{a.message}</p>}
+                  <p className="text-[10px] text-gray-600 mt-1">{a.date ? new Date(a.date).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Resultados del sourcing automático — rankeados por match */}
       {autoRan && (
         <div className="glass rounded-xl p-5">
@@ -729,7 +793,10 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <a href={r.url} target="_blank" rel="noopener" className="text-sm font-semibold text-white hover:text-primary-light transition-colors line-clamp-1 block">{r.full_name || r.title}</a>
+                      <div className="flex items-center gap-2">
+                        <a href={r.url} target="_blank" rel="noopener" className="text-sm font-semibold text-white hover:text-primary-light transition-colors line-clamp-1">{r.full_name || r.title}</a>
+                        {isContacted(r.url) && <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(10,102,194,0.2)', color: '#5aa0e6' }}>✓ Invitado</span>}
+                      </div>
                       {(r.current_title || r.current_company) && (
                         <p className="text-[11px] text-gray-400 truncate mt-0.5">{[r.current_title, r.current_company].filter(Boolean).join(' · ')}</p>
                       )}
@@ -789,7 +856,10 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
                       <Star size={14} className="text-amber-400 fill-amber-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <a href={b.url} target="_blank" rel="noopener" className="text-sm font-semibold text-white hover:text-primary-light transition-colors line-clamp-1 block">{b.full_name || b.title}</a>
+                      <div className="flex items-center gap-2">
+                        <a href={b.url} target="_blank" rel="noopener" className="text-sm font-semibold text-white hover:text-primary-light transition-colors line-clamp-1">{b.full_name || b.title}</a>
+                        {isContacted(b.url) && <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(10,102,194,0.2)', color: '#5aa0e6' }}>✓ Invitado</span>}
+                      </div>
                       {(b.current_title || b.current_company) && (
                         <p className="text-[11px] text-gray-400 truncate mt-0.5">{[b.current_title, b.current_company].filter(Boolean).join(' · ')}</p>
                       )}

@@ -40,8 +40,8 @@ export async function handler(event) {
   const subject = (body.subject || '').trim()
   const identifier = body.public_id || extractSlug(body.url || '')
   if (!identifier) return { statusCode: 400, headers, body: JSON.stringify({ error: 'INVALID_URL', hint: 'Falta URL/identificador de LinkedIn.' }) }
-  if (action === 'connect' && message.length > 300) {
-    return { statusCode: 400, headers, body: JSON.stringify({ error: 'NOTE_TOO_LONG', hint: 'La nota de conexión no puede exceder 300 caracteres.' }) }
+  if (action === 'connect' && message.length > 200) {
+    return { statusCode: 400, headers, body: JSON.stringify({ error: 'NOTE_TOO_LONG', hint: `La nota de conexión no puede exceder 200 caracteres (tiene ${message.length}).` }) }
   }
 
   const base = `https://${DSN}/api/v1`
