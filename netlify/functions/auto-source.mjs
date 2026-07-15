@@ -29,6 +29,7 @@ const COMPANY_HINTS = [
   'holding', 'holdings', 'despacho', 'asociados', 'solutions', 'soluciones', 'group',
   'grupo', 'capital', 'global', 'partners', 'advisory', 'financialgroup', 'company',
   'firma ', 'internacional', 'international', 'sa de cv', 's a de c v', 'servicios financieros',
+  'financiera ', 'financial group', 'grupo financiero', 'asesores', 'brokers', 'broker',
 ]
 function looksLikeCompany(name) {
   const n = normalizeText(name)
@@ -170,6 +171,53 @@ export async function getDispatcher() {
   }
 }
 
+/** Pool of dispatchers rotating the proxy port (Decodo …:10001-10010) so the
+ *  concurrent per-profile verification requests salen por IPs distintas y no
+ *  se rate-limitan. */
+async function buildProxyPool(size) {
+  const base = process.env.PROXY_URL
+  if (!base) return [undefined]
+  let ProxyAgent
+  try { ({ ProxyAgent } = await import('undici')) } catch { return [undefined] }
+  const m = base.match(/^(.*:)(\d{4,5})$/)
+  const pool = []
+  for (let i = 0; i < size; i++) {
+    let url = base
+    if (m) url = m[1] + (10001 + (i % 10))
+    try { pool.push(new ProxyAgent(url)) } catch { pool.push(undefined) }
+  }
+  return pool
+}
+
+function slugOf(url = '') {
+  const m = String(url).match(/\/in\/([^/?#]+)/i)
+  return m ? m[1] : ''
+}
+
+/** Targeted search for ONE profile → richer headline/description (often reveals
+ *  the current employer, e.g. an insurer, que el listado amplio no muestra).
+ *  Prioriza Brave (el motor que devuelve datos server-side) y reintenta. */
+async function enrichProfile(slug, dispatcher) {
+  if (!slug) return null
+  const engines = buildSearchEngines(`site:linkedin.com/in/${slug}`)
+    .sort((a, b) => (a.name === 'Brave' ? -1 : 0) - (b.name === 'Brave' ? -1 : 0))
+  const key = slug.slice(0, 12).toLowerCase()
+  for (let attempt = 0; attempt < 2; attempt++) {
+    for (const engine of engines) {
+      try {
+        const res = await fetch(engine.url, { headers: engine.headers, dispatcher, signal: AbortSignal.timeout(8000) })
+        if (!res.ok) continue
+        const html = await res.text()
+        if (html.length < 500) continue
+        const profs = parseSerpProfiles(html)
+        const p = profs.find(x => x.url.toLowerCase().includes(key)) || profs[0]
+        if (p && (p.headline || p.description)) return p
+      } catch { /* siguiente motor */ }
+    }
+  }
+  return null
+}
+
 /** Scrape one query across the rotating engines, merging candidates from any
  *  engine that yields them. We trust the extraction result, NOT block-word
  *  heuristics (Brave's HTML contains benign "captcha" strings yet returns great
@@ -201,6 +249,7 @@ async function scrapeQuery(query, dispatcher) {
 }
 
 export async function handler(event) {
+  const t0 = Date.now()
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
@@ -231,11 +280,20 @@ export async function handler(event) {
   const scored = []
   const counts = { found: 0, excluded: 0, companies: 0, belowThreshold: 0, returned: 0 }
 
-  for (const query of queries) {
-    const profiles = await scrapeQuery(query, dispatcher)
-    for (const p of profiles) {
-      if (seen.has(p.url)) continue
-      seen.add(p.url)
+  // Búsquedas base en PARALELO (cada una por una IP distinta) → mucho más rápido.
+  const pool = await buildProxyPool(Math.max(queries.length, 8))
+  const perQuery = await Promise.all(
+    queries.map((q, i) => scrapeQuery(q, pool[i % pool.length] || dispatcher).catch(() => []))
+  )
+  const allProfiles = []
+  for (const list of perQuery) {
+    for (const p of list) {
+      if (!seen.has(p.url)) { seen.add(p.url); allProfiles.push(p) }
+    }
+  }
+
+  {
+    for (const p of allProfiles) {
       counts.found++
 
       // El headline suele venir "Nombre - Puesto - Empresa"; sepáralo.
@@ -278,7 +336,42 @@ export async function handler(event) {
   }
 
   scored.sort((a, b) => b.score - a.score)
-  const results = scored.slice(0, maxResults)
+  let results = scored.slice(0, maxResults)
+
+  // ── Verificación por perfil (sin Apollo) ──────────────────────
+  // Muchos que trabajan en aseguradoras (New York Life/SMNYL) NO muestran a su
+  // empleador en el listado amplio (descripción bloqueada). Hacemos una búsqueda
+  // dirigida a cada uno de los que van a salir para revelar su empresa real y
+  // re-aplicar la exclusión. Concurrente, con IPs rotadas, acotado por tiempo.
+  // Guarda de tiempo: si la búsqueda base ya tardó mucho, saltamos la
+  // verificación para no exceder el límite de Netlify (~26s).
+  const timeLeft = 20000 - (Date.now() - t0)
+  if (excludeSector && dispatcher && results.length && timeLeft > 4000) {
+    const ENRICH_CAP = 12
+    const toCheck = results.slice(0, ENRICH_CAP)
+    const settled = await Promise.allSettled(
+      toCheck.map((r, i) => enrichProfile(slugOf(r.url), pool[i % pool.length]))
+    )
+    const dropped = new Set()
+    settled.forEach((e, i) => {
+      if (e.status !== 'fulfilled' || !e.value) return
+      const r = toCheck[i]
+      const p = e.value
+      const parts = (p.headline || '').split(/\s*[-–—·|]\s*/).map(s => s.trim()).filter(Boolean)
+      const ct = parts[1] || r.current_title
+      const cc = parts[2] || r.current_company
+      if (matchExcludedCompany(cc, ct, p.headline, p.description, r.full_name)) {
+        dropped.add(r.url)
+        counts.excluded++
+      } else {
+        // Aprovecha para enriquecer los datos mostrados
+        if (parts[1]) r.current_title = parts[1]
+        if (parts[2]) r.current_company = parts[2]
+      }
+    })
+    if (dropped.size) results = results.filter(r => !dropped.has(r.url))
+  }
+
   counts.returned = results.length
 
   return {
