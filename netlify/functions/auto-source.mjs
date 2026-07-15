@@ -120,7 +120,7 @@ function cleanDescription(raw) {
  *  with role/experience/location). Falls back to a generic anchor scan for
  *  other engines. The description is the free "enrichment" that lets scores
  *  reach 90+ for genuinely strong matches. */
-function parseSerpProfiles(html) {
+export function parseSerpProfiles(html) {
   const out = []
   const seen = new Set()
 
@@ -160,7 +160,7 @@ function parseSerpProfiles(html) {
 }
 
 /** Lazily build an undici ProxyAgent dispatcher if PROXY_URL is configured. */
-async function getDispatcher() {
+export async function getDispatcher() {
   if (!process.env.PROXY_URL) return undefined
   try {
     const { ProxyAgent } = await import('undici')
@@ -219,6 +219,9 @@ export async function handler(event) {
   const prefix = PLATFORM_PREFIX[body.platform] || PLATFORM_PREFIX.linkedin
   const minScore = Number.isFinite(body.minScore) ? body.minScore : 50
   const maxResults = Math.min(Math.max(parseInt(body.maxResults, 10) || 40, 1), 100)
+  // Exclusión sector asegurador/inversiones: ON por defecto (crítico para
+  // Prudential); el front puede apagarla cuando SÍ quieren gente del sector.
+  const excludeSector = body.excludeSector !== false
 
   const queries = buildQueries(vacancy, prefix)
   const targets = buildTargets(vacancy)
@@ -245,7 +248,7 @@ export async function handler(event) {
       const location = locM ? locM[1].trim() : null
 
       // Exclusión sector asegurador / inversiones (ahora también sobre la descripción)
-      if (matchExcludedCompany(current_company, current_title, p.headline, p.description, full_name)) {
+      if (excludeSector && matchExcludedCompany(current_company, current_title, p.headline, p.description, full_name)) {
         counts.excluded++
         continue
       }
@@ -281,7 +284,7 @@ export async function handler(event) {
   return {
     statusCode: 200, headers,
     body: JSON.stringify({
-      results, counts, minScore, queries,
+      results, counts, minScore, queries, excludeSector,
       proxied: !!dispatcher,
       ...(counts.found === 0 ? { hint: dispatcher ? 'Los buscadores no devolvieron perfiles (revisa el proxy).' : 'Sin resultados — los buscadores pudieron bloquear la IP del servidor. Configura PROXY_URL residencial para mayor confiabilidad.' } : {}),
     }),

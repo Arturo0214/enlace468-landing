@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Globe, ExternalLink, Plus, Loader2, CheckCircle, Download, Users, X, Mail, Phone, MapPin, Star, Archive, Trash2, Save, Sparkles, SlidersHorizontal } from 'lucide-react'
+import { Search, Globe, ExternalLink, Plus, Loader2, CheckCircle, Download, Users, X, Mail, Phone, MapPin, Star, Archive, Trash2, Save, Sparkles, SlidersHorizontal, Ban, Link2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import FeatureGate from '../ui/FeatureGate'
 import { matchExcludedCompany, NEGATIVE_QUERY, EXCLUDED_LABELS_SHORT } from '../../lib/excludedCompanies'
@@ -29,12 +29,18 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const [autoCounts, setAutoCounts] = useState(null)
   const [autoError, setAutoError] = useState(null)
   const [autoMinScore, setAutoMinScore] = useState(50)
+  const [excludeSector, setExcludeSector] = useState(true) // excluir aseguradoras/inversiones (Prudential)
+  const [discardingUrl, setDiscardingUrl] = useState(null)
+  const [importUrl, setImportUrl] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [importMsg, setImportMsg] = useState(null)
   const cseRendered = useRef(false)
   const observerRef = useRef(null)
   const debounceRef = useRef(null)
   const isLoadingMore = useRef(false)
   const seenUrls = useRef(new Set())
   const loadMoreTimeout = useRef(null)
+  const scrapedMore = useRef(false) // ya se jaló el lote extra del scraper (LinkedIn)
 
   const platforms = {
     linkedin: { label: 'LinkedIn', prefix: 'site:linkedin.com/in', color: 'border-blue-500/30 text-blue-400' },
@@ -44,7 +50,9 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
     all: { label: 'Todos', prefix: '', color: 'border-white/20 text-white' },
   }
 
-  const bankUrls = new Set(bankItems.map(b => b.url))
+  const bankUrls = new Set(bankItems.map(b => b.url)) // incluye guardados Y descartados
+  // Banco visible = solo guardados (los descartados se ocultan del banco y de resultados)
+  const savedItems = bankItems.filter(b => b.source !== 'descartado')
 
   // Load sourcing bank for this vacancy
   useEffect(() => {
@@ -159,9 +167,14 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
             setGoogleResults(parsed)
           }
 
-          const pages = container.querySelectorAll('.gsc-cursor-page')
-          const idx = Array.from(pages).findIndex(p => p.classList.contains('gsc-cursor-current-page'))
-          setHasMore(idx >= 0 && idx + 1 < pages.length)
+          // LinkedIn/Todos: siempre ofrecer "Ver más" (scraper) hasta que se jale.
+          if (platform === 'linkedin' || platform === 'all') {
+            setHasMore(!scrapedMore.current)
+          } else {
+            const pages = container.querySelectorAll('.gsc-cursor-page')
+            const idx = Array.from(pages).findIndex(p => p.classList.contains('gsc-cursor-current-page'))
+            setHasMore(idx >= 0 && idx + 1 < pages.length)
+          }
         }, 400)
       })
       observerRef.current.observe(container, { childList: true, subtree: true })
@@ -175,6 +188,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
     isLoadingMore.current = false
     setLoadingMore(false)
     seenUrls.current = new Set()
+    scrapedMore.current = false
     const tryExec = setInterval(() => {
       const el = window.google?.search?.cse?.element?.getElement('sourcing')
       if (el) { clearInterval(tryExec); el.execute(activeSearch) }
@@ -183,7 +197,36 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
     return () => { clearInterval(tryExec); clearTimeout(timeout) }
   }, [activeSearch])
 
+  // "Ver más" para LinkedIn: el widget CSE solo trae ~10 y su paginación es
+  // frágil. Traemos más desde el scraper server-side (hasta ~40 confiables).
+  async function loadMoreLinkedIn() {
+    setLoadingMore(true)
+    try {
+      const res = await fetch('/api/auto-source', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vacancy: { title: searchQuery, location: vacancy.location || '', competencies: [] },
+          platform: 'linkedin', minScore: 0, maxResults: 100, excludeSector,
+        }),
+      })
+      const data = await res.json()
+      const mapped = (data.results || []).map(r => ({
+        title: [r.full_name, r.current_title].filter(Boolean).join(' - ') || r.full_name,
+        url: r.url, displayUrl: r.displayUrl || 'linkedin.com', snippet: r.snippet || '',
+      })).filter(r => r.url && !seenUrls.current.has(r.url))
+      if (mapped.length) {
+        mapped.forEach(r => seenUrls.current.add(r.url))
+        setGoogleResults(prev => [...prev, ...mapped])
+      }
+      scrapedMore.current = true
+      setHasMore(false) // el scraper ya trae el lote completo
+    } catch (e) { console.error(e) }
+    finally { setLoadingMore(false) }
+  }
+
   function loadMore() {
+    // Para LinkedIn/Todos usamos el scraper (confiable). Otros portales: cursor CSE.
+    if (platform === 'linkedin' || platform === 'all') { loadMoreLinkedIn(); return }
     const container = document.getElementById('gcs-box')
     if (!container) return
     const pages = Array.from(container.querySelectorAll('.gsc-cursor-page'))
@@ -339,8 +382,8 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   }
 
   function exportBank() {
-    if (!bankItems.length) return
-    const csv = ['Nombre,Puesto,Empresa,URL,Plataforma,EnPipeline,Notas', ...bankItems.map(b =>
+    if (!savedItems.length) return
+    const csv = ['Nombre,Puesto,Empresa,URL,Plataforma,EnPipeline,Notas', ...savedItems.map(b =>
       [b.full_name||b.title||'', b.current_title||'', b.current_company||'', b.url||'', b.platform||'', b.candidate_id ? 'Si' : 'No', b.snippet||''].map(v => `"${(v||'').replace(/"/g,'""')}"`).join(',')
     )].join('\n')
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = `banco_sourcing_${vacancy?.title?.replace(/\s/g,'_')}.csv`; a.click()
@@ -365,6 +408,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
           },
           platform: platform === 'all' ? 'linkedin' : platform,
           minScore: autoMinScore,
+          excludeSector,
         }),
       })
       const data = await res.json()
@@ -404,6 +448,54 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   }
 
   const autoUnsaved = autoResults.filter(r => !bankUrls.has(r.url)).length
+
+  // Bloquear/descartar un candidato: lo persiste en el banco como 'descartado'
+  // para que NO vuelva a aparecer en futuras búsquedas de esta vacante.
+  async function blockResult(result) {
+    setDiscardingUrl(result.url)
+    try {
+      const row = { ...resultToBankRow(result), source: 'descartado' }
+      const { data } = await supabase.from('sourcing_bank')
+        .upsert(row, { onConflict: 'vacancy_id,url', ignoreDuplicates: true }).select().single()
+      // Aunque ignoreDuplicates no devuelva fila, lo agregamos localmente para ocultarlo ya
+      setBankItems(prev => prev.some(b => b.url === result.url) ? prev : [(data || row), ...prev])
+    } catch (e) { console.error(e) }
+    finally { setDiscardingUrl(null) }
+  }
+
+  // Importar un perfil de LinkedIn por su URL → jala datos → lo guarda al banco.
+  async function importByUrl() {
+    const url = importUrl.trim()
+    if (!url) return
+    if (!/linkedin\.com\/in\//i.test(url)) { setImportMsg({ type: 'err', text: 'Pega una URL de perfil (…/in/…).' }); return }
+    setImporting(true); setImportMsg(null)
+    try {
+      const res = await fetch('/api/import-profile', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.profile) { setImportMsg({ type: 'err', text: data.hint || data.error || 'No se pudo importar.' }); return }
+      const p = data.profile
+      if (bankUrls.has(p.url)) { setImportMsg({ type: 'err', text: 'Ese perfil ya está en el banco de esta vacante.' }); return }
+      if (excludeSector && matchExcludedCompany(p.current_company, p.current_title, p.snippet, p.full_name)) {
+        setImportMsg({ type: 'err', text: 'Ese perfil es del sector asegurador/inversiones (exclusión activa).' }); return
+      }
+      const row = {
+        organization_id: profile.organization_id, vacancy_id: vacancyId,
+        title: p.full_name, url: p.url, display_url: p.location ? `linkedin.com · ${p.location}` : 'linkedin.com',
+        snippet: p.snippet || null, platform: 'linkedin',
+        full_name: p.full_name, current_title: p.current_title, current_company: p.current_company,
+        source: 'linkedin', created_by: profile.id,
+      }
+      const { data: saved } = await supabase.from('sourcing_bank').insert(row).select().single()
+      if (saved) setBankItems(prev => [saved, ...prev])
+      setImportUrl('')
+      setImportMsg({ type: 'ok', text: `Importado: ${p.full_name}${p.current_title ? ' · ' + p.current_title : ''}${data.partial ? ' (datos limitados)' : ''}` })
+    } catch (e) {
+      setImportMsg({ type: 'err', text: 'No se pudo conectar con el importador.' })
+    } finally { setImporting(false) }
+  }
 
   const hasCards = googleResults.length > 0
 
@@ -472,11 +564,41 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
               className="w-24 accent-[#00A99D]" />
             <span className="font-semibold text-white w-6">{autoMinScore}</span>
           </div>
-          <span className="text-[10px] text-gray-500">Encuentra, filtra aseguradoras y te deja solo los mejores por vacante.</span>
+          {/* Toggle: excluir sector asegurador/inversiones (ON para Prudential) */}
+          <button type="button" onClick={() => setExcludeSector(v => !v)}
+            className="flex items-center gap-2 text-[11px] text-gray-300 hover:text-white transition-colors"
+            title="Prende para NO traer gente de aseguradoras/inversiones (Prudential). Apaga cuando SÍ quieres del sector.">
+            <span className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${excludeSector ? 'bg-[#00A99D]' : 'bg-white/15'}`}>
+              <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${excludeSector ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+            </span>
+            Excluir aseguradoras/inversiones
+          </button>
         </div>
         <p className="mt-2.5 text-[10px] text-gray-500 leading-relaxed">
-          Excluidas del sourcing: {EXCLUDED_LABELS_SHORT} y otras aseguradoras / casas de inversión.
+          {excludeSector
+            ? <>Excluyendo del sourcing: {EXCLUDED_LABELS_SHORT} y otras aseguradoras / casas de inversión.</>
+            : <span className="text-amber-400/80">⚠ Exclusión de sector APAGADA — se incluirán perfiles de aseguradoras/inversiones.</span>}
         </p>
+
+        {/* Importar por URL de LinkedIn (agregar gente de tu red al CRM) */}
+        <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Link2 size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input type="text" value={importUrl} onChange={e => setImportUrl(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') importByUrl() }}
+                placeholder="Pega la URL de un perfil de LinkedIn para agregarlo al banco…"
+                className="w-full pl-9 pr-4 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] focus:border-primary-light/40 outline-none text-white placeholder-gray-500 text-xs" />
+            </div>
+            <button onClick={importByUrl} disabled={importing || !importUrl.trim()}
+              className="px-4 py-2 bg-white/[0.06] text-white rounded-lg hover:bg-white/[0.1] text-xs font-medium disabled:opacity-40 flex items-center gap-1.5 whitespace-nowrap">
+              {importing ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />} Importar
+            </button>
+          </div>
+          {importMsg && (
+            <p className={`mt-2 text-[11px] ${importMsg.type === 'ok' ? 'text-emerald-400' : 'text-red-400'}`}>{importMsg.text}</p>
+          )}
+        </div>
       </div>
 
       {/* Resultados del sourcing automático — rankeados por match */}
@@ -513,11 +635,16 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
           )}
 
           <div className="space-y-2">
-            {autoResults.filter(r => r.score >= autoMinScore).map((r, i) => {
-              const isSaved = bankUrls.has(r.url)
+            {(() => {
+              // Dedup: oculta los ya guardados o bloqueados (no reaparecen)
+              const visible = autoResults.filter(r => r.score >= autoMinScore && !bankUrls.has(r.url))
+              if (!autoLoading && autoResults.length > 0 && visible.length === 0) {
+                return <p className="text-xs text-gray-500 py-2">Todos los prospectos de esta búsqueda ya están guardados o bloqueados.</p>
+              }
+              return visible.map((r, i) => {
               const badge = r.score >= 75 ? '#00A99D' : r.score >= 60 ? '#f59e0b' : '#9ca3af'
               return (
-                <div key={i} className={`rounded-xl p-4 border transition-all ${isSaved ? 'bg-emerald-500/[0.03] border-emerald-500/20' : 'bg-white/[0.02] border-white/[0.05] hover:border-white/[0.12]'}`}>
+                <div key={i} className="rounded-xl p-4 border transition-all bg-white/[0.02] border-white/[0.05] hover:border-white/[0.12]">
                   <div className="flex items-start gap-3">
                     <div className="flex flex-col items-center flex-shrink-0 w-10">
                       <div className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold text-white" style={{ background: badge }}>
@@ -537,14 +664,14 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
                       )}
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
-                      {isSaved ? (
-                        <span className="p-1.5 text-emerald-400" title="En el banco"><CheckCircle size={16} /></span>
-                      ) : (
-                        <button onClick={() => saveToBank(r)} disabled={savingUrl === r.url}
-                          className="p-1.5 rounded-lg text-gray-500 hover:text-amber-400 hover:bg-amber-400/10 transition-all disabled:opacity-40" title="Guardar en el banco">
-                          {savingUrl === r.url ? <Loader2 size={14} className="animate-spin" /> : <Star size={14} />}
-                        </button>
-                      )}
+                      <button onClick={() => saveToBank(r)} disabled={savingUrl === r.url}
+                        className="p-1.5 rounded-lg text-gray-500 hover:text-amber-400 hover:bg-amber-400/10 transition-all disabled:opacity-40" title="Guardar en el banco">
+                        {savingUrl === r.url ? <Loader2 size={14} className="animate-spin" /> : <Star size={14} />}
+                      </button>
+                      <button onClick={() => blockResult(r)} disabled={discardingUrl === r.url}
+                        className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-all disabled:opacity-40" title="Bloquear — no volverá a aparecer en esta vacante">
+                        {discardingUrl === r.url ? <Loader2 size={14} className="animate-spin" /> : <Ban size={14} />}
+                      </button>
                       <a href={r.url} target="_blank" rel="noopener" className="p-1.5 rounded-lg text-gray-600 hover:text-primary-light hover:bg-primary-light/10 transition-all">
                         <ExternalLink size={14} />
                       </a>
@@ -552,13 +679,14 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
                   </div>
                 </div>
               )
-            })}
+              })
+            })()}
           </div>
         </div>
       )}
 
       {/* Banco de sourcing — persistent per-vacancy bank */}
-      {bankItems.length > 0 && (
+      {savedItems.length > 0 && (
         <div className="glass rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -567,7 +695,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
               </div>
               <div>
                 <p className="text-sm font-semibold text-white">Banco de sourcing</p>
-                <p className="text-[11px] text-gray-500">{bankItems.length} guardados · {bankItems.filter(b => b.candidate_id).length} en pipeline</p>
+                <p className="text-[11px] text-gray-500">{savedItems.length} guardados · {savedItems.filter(b => b.candidate_id).length} en pipeline</p>
               </div>
             </div>
             <button onClick={exportBank} className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-400 hover:text-white bg-white/[0.04] rounded-lg hover:bg-white/[0.08]">
@@ -575,7 +703,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
             </button>
           </div>
           <div className="space-y-2">
-            {bankItems.map(b => {
+            {savedItems.map(b => {
               const inPipeline = !!b.candidate_id
               return (
                 <div key={b.id} className={`rounded-xl p-4 border transition-all ${inPipeline ? 'bg-emerald-500/[0.03] border-emerald-500/20' : 'bg-white/[0.02] border-white/[0.06] hover:border-amber-400/20'}`}>
@@ -692,7 +820,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
       {!activeSearch && <div id="gcs-box" style={{ display: 'none' }} />}
 
       {/* Empty state */}
-      {!activeSearch && !searching && localResults.length === 0 && bankItems.length === 0 && (
+      {!activeSearch && !searching && localResults.length === 0 && savedItems.length === 0 && (
         <div className="text-center py-10 glass rounded-xl">
           <Search size={32} className="mx-auto text-gray-600 mb-3" />
           <p className="text-gray-500 text-sm">Busca candidatos por puesto, industria o ubicacion.</p>
