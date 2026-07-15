@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Globe, ExternalLink, Plus, Loader2, CheckCircle, Download, Users, X, Mail, Phone, MapPin, Star, Archive, Trash2, Save, Sparkles, SlidersHorizontal, Ban, Link2, Copy, MessageSquare } from 'lucide-react'
+import { Search, Globe, ExternalLink, Plus, Loader2, CheckCircle, Download, Users, X, Mail, Phone, MapPin, Star, Archive, Trash2, Save, Sparkles, SlidersHorizontal, Ban, Link2, Copy, MessageSquare, Send } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import FeatureGate from '../ui/FeatureGate'
 import { matchExcludedCompany, NEGATIVE_QUERY, EXCLUDED_LABELS_SHORT } from '../../lib/excludedCompanies'
@@ -39,6 +39,8 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const [draft, setDraft] = useState(null)
   const [draftCopied, setDraftCopied] = useState(false)
   const [blockedGlobal, setBlockedGlobal] = useState(new Set()) // descartados de TODA la organización
+  const [sending, setSending] = useState(false)
+  const [sendResult, setSendResult] = useState(null)
   const cseRendered = useRef(false)
   const observerRef = useRef(null)
   const debounceRef = useRef(null)
@@ -60,7 +62,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const savedItems = bankItems.filter(b => b.source !== 'descartado')
 
   // Limpia el draft de IA al abrir otro candidato
-  useEffect(() => { setDraft(null); setDraftCopied(false) }, [selectedCandidate])
+  useEffect(() => { setDraft(null); setDraftCopied(false); setSendResult(null) }, [selectedCandidate])
 
   // Carga los candidatos DESCARTADOS de toda la organización → nunca reaparecen
   // en ninguna búsqueda (no solo en esta vacante).
@@ -552,6 +554,26 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
     setDraftCopied(true); setTimeout(() => setDraftCopied(false), 2000)
   }
 
+  // Envía la conexión/InMail por LinkedIn vía Unipile (acción real, 1 clic).
+  async function sendLinkedIn(cand, action) {
+    if (!cand?.linkedin_url) { setSendResult({ type: 'err', text: 'Este candidato no tiene URL de LinkedIn.' }); return }
+    if (!draft?.body) { setSendResult({ type: 'err', text: 'Genera un mensaje primero.' }); return }
+    const label = action === 'inmail' ? 'InMail' : 'solicitud de conexión'
+    if (!window.confirm(`¿Enviar ${label} a ${cand.full_name || 'este candidato'} por LinkedIn?\n\n"${draft.body.slice(0, 180)}"`)) return
+    setSending(true); setSendResult(null)
+    try {
+      const res = await fetch('/api/linkedin-send', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: cand.linkedin_url, message: draft.body, subject: draft.subject, action }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) { setSendResult({ type: 'err', text: data.hint || data.error || 'No se pudo enviar.' }); return }
+      if (data.alreadyConnected) { setSendResult({ type: 'ok', text: `${data.name} ya es tu contacto — mándale mensaje directo.` }); return }
+      setSendResult({ type: 'ok', text: `✓ ${label} enviada a ${data.name || cand.full_name} por LinkedIn.` })
+    } catch (e) { setSendResult({ type: 'err', text: 'No se pudo conectar con LinkedIn.' }) }
+    finally { setSending(false) }
+  }
+
   const hasCards = googleResults.length > 0
 
   return (
@@ -992,9 +1014,19 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
                   <div className="mt-2.5 rounded-lg p-3 bg-black/30 border border-white/[0.06]">
                     {draft.subject && <p className="text-xs text-gray-400 mb-1.5"><span className="text-gray-500">Asunto:</span> {draft.subject}</p>}
                     <p className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">{draft.body}</p>
-                    <button onClick={copyDraft} className="mt-2.5 flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.06] text-gray-300 hover:text-white hover:bg-white/[0.1]">
-                      {draftCopied ? <><CheckCircle size={12} className="text-emerald-400" /> Copiado</> : <><Copy size={12} /> Copiar</>}
-                    </button>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                      <button onClick={copyDraft} className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg bg-white/[0.06] text-gray-300 hover:text-white hover:bg-white/[0.1]">
+                        {draftCopied ? <><CheckCircle size={12} className="text-emerald-400" /> Copiado</> : <><Copy size={12} /> Copiar</>}
+                      </button>
+                      {selectedCandidate.linkedin_url && (draft.channel === 'linkedin_note' || draft.channel === 'linkedin_message') && (
+                        <button onClick={() => sendLinkedIn(selectedCandidate, draft.channel === 'linkedin_message' ? 'inmail' : 'connect')} disabled={sending}
+                          className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg font-medium text-white disabled:opacity-50" style={{ background: '#0a66c2' }}>
+                          {sending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                          {draft.channel === 'linkedin_message' ? 'Enviar InMail' : 'Enviar conexión'}
+                        </button>
+                      )}
+                    </div>
+                    {sendResult && <p className={`text-[11px] mt-2 ${sendResult.type === 'ok' ? 'text-emerald-400' : 'text-red-400'}`}>{sendResult.text}</p>}
                   </div>
                 )}
               </div>
