@@ -60,6 +60,37 @@ for (const group of SYNONYM_GROUPS) {
   for (const w of group) SYNONYM_INDEX.set(w, group)
 }
 
+// ── Filtro geográfico ──────────────────────────────────────────
+// Las búsquedas "site:linkedin.com/in" traen perfiles de toda LatAm (el idioma
+// coincide). Señales de que el perfil vive FUERA de México: países y ciudades
+// elegidos para no chocar con nombres propios o universidades mexicanas.
+const FOREIGN_SIGNALS = [
+  'peru', 'chile', 'argentina', 'colombia', 'ecuador', 'bolivia', 'venezuela',
+  'uruguay', 'paraguay', 'brasil', 'brazil', 'espana', 'spain', 'guatemala',
+  'honduras', 'nicaragua', 'panama', 'costa rica', 'el salvador',
+  'republica dominicana', 'puerto rico', 'buenos aires', 'bogota', 'medellin',
+  'santiago de chile', 'guayaquil', 'quito', 'montevideo', 'caracas',
+  'sao paulo', 'lima peru',
+]
+// Si el texto también menciona México (o una ciudad mexicana), NO se descarta:
+// puede ser un mexicano con experiencia regional ("responsable de México y Perú").
+const MEXICO_SIGNALS = [
+  'mexico', 'mexicana', 'mexicano', 'cdmx', 'ciudad de mexico', 'guadalajara',
+  'monterrey', 'queretaro', 'puebla', 'tijuana', 'merida', 'cancun', 'toluca',
+  'aguascalientes', 'chihuahua', 'hermosillo', 'culiacan', 'veracruz',
+  'estado de mexico', 'nuevo leon', 'jalisco',
+]
+const wordRe = w => new RegExp(`\\b${w}\\b`)
+
+/** Devuelve la señal de país extranjero encontrada, o null si el texto menciona
+ *  México o no hay señal. Espera texto crudo (se normaliza adentro). */
+export function detectForeignLocation(text) {
+  const t = normalizeText(text)
+  if (!t) return null
+  if (MEXICO_SIGNALS.some(w => wordRe(w).test(t))) return null
+  return FOREIGN_SIGNALS.find(w => wordRe(w).test(t)) || null
+}
+
 /** True if `text` contains `token` or any of its bilingual synonyms. */
 function hasTerm(text, token) {
   const group = SYNONYM_INDEX.get(token)
@@ -116,6 +147,13 @@ export function scoreProspect(vacancy, prospect = {}, targets = null) {
   if (targets.wantsSenior && isJunior) total -= 15
   else if (targets.wantsSenior && isSenior) total += 6
 
+  // Perfil ubicado fuera de México → castigo fuerte (salvo que la vacante
+  // misma sea para ese país).
+  const foreign = detectForeignLocation(text)
+  const vacLoc = normalizeText(vacancy.location || '')
+  const isForeign = foreign && !vacLoc.includes(foreign)
+  if (isForeign) total -= 40
+
   const score = Math.max(0, Math.min(Math.round(total), 100))
 
   // Human-readable rationale for the UI
@@ -131,6 +169,7 @@ export function scoreProspect(vacancy, prospect = {}, targets = null) {
   const missingComps = targets.compTokens.map(c => c.name).filter(n => !matchedComps.includes(n))
   if (missingComps.length) gaps.push(`Competencias no vistas: ${missingComps.slice(0, 2).join(', ')}`)
   if (targets.wantsSenior && isJunior) gaps.push('Perfil parece junior')
+  if (isForeign) gaps.push(`Ubicación fuera de México (${foreign})`)
 
   return {
     score,

@@ -18,7 +18,7 @@
 
 import { buildSearchEngines } from './search-candidates.mjs'
 import { matchExcludedCompany, normalizeText } from '../../src/lib/excludedCompanies.js'
-import { buildTargets, scoreProspect } from '../../src/lib/sourcingScore.js'
+import { buildTargets, scoreProspect, detectForeignLocation } from '../../src/lib/sourcingScore.js'
 
 // Señales de que un perfil /in/ es una EMPRESA/marca, no una persona.
 // Se checa contra el NOMBRE (no el headline, que sí puede decir "servicios
@@ -46,8 +46,11 @@ function looksLikeJobPosting(desc) {
     || /\d{1,2} de \w+ de 20\d\d\s*-/.test(desc) // "18 de abril de 2023 - ..." (fecha de posteo)
 }
 
+// LinkedIn indexa cada perfil bajo el subdominio de su país (mx., pe., cl., ar…).
+// Restringir a mx.linkedin.com es el filtro geográfico más confiable: evita que
+// "México" como palabra clave traiga perfiles de toda LatAm.
 const PLATFORM_PREFIX = {
-  linkedin: 'site:linkedin.com/in',
+  linkedin: 'site:mx.linkedin.com/in',
   occ: 'site:occ.com.mx',
   indeed: 'site:mx.indeed.com',
   computrabajo: 'site:computrabajo.com.mx',
@@ -115,6 +118,13 @@ function normProfileUrl(href) {
     .replace(/https?:\/\/[a-z]{2,3}\.linkedin\.com/i, 'https://www.linkedin.com')
 }
 
+/** País del perfil según el subdominio ORIGINAL del SERP (pe., cl., ar., mx…),
+ *  antes de normalizar a www. 'www' = desconocido. */
+function countryOfHref(href) {
+  const m = String(href).match(/https?:\/\/([a-z]{2,3})\.linkedin\.com/i)
+  return m ? m[1].toLowerCase() : 'www'
+}
+
 /** Strip LinkedIn boilerplate from a result description snippet. */
 function cleanDescription(raw) {
   let d = decodeEntities(raw.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim()
@@ -149,7 +159,7 @@ export function parseSerpProfiles(html) {
     const name = nameFromSlug(url) || (headline.split(/\s*[-–]\s*/)[0] || '').trim()
     if (!name && !headline && !description) continue
     seen.add(url)
-    out.push({ url, name, headline, description })
+    out.push({ url, name, headline, description, country: countryOfHref(hrefM[1]) })
   }
   if (out.length) return out
 
@@ -163,7 +173,7 @@ export function parseSerpProfiles(html) {
     const headline = cleanSerpTitle(m[2])
     const name = nameFromSlug(url)
     if (!name && !headline) continue
-    out.push({ url, name, headline, description: '' })
+    out.push({ url, name, headline, description: '', country: countryOfHref(m[1]) })
   }
   return out
 }
@@ -282,6 +292,9 @@ export async function handler(event) {
   // Exclusión sector asegurador/inversiones: ON por defecto (crítico para
   // Prudential); el front puede apagarla cuando SÍ quieren gente del sector.
   const excludeSector = body.excludeSector !== false
+  // Filtro geográfico: fuera perfiles de otros países (Perú, Chile, Argentina…).
+  // ON por defecto; el front puede apagarlo para vacantes fuera de México.
+  const excludeForeign = body.excludeForeign !== false
   // URLs ya conocidas (banco/bloqueados) → se excluyen server-side para devolver
   // solo candidatos NUEVOS (clave cuando el banco ya tiene decenas de perfiles).
   const known = new Set((Array.isArray(body.excludeUrls) ? body.excludeUrls : [])
@@ -293,7 +306,7 @@ export async function handler(event) {
 
   const seen = new Set()
   const scored = []
-  const counts = { found: 0, known: 0, excluded: 0, companies: 0, belowThreshold: 0, returned: 0 }
+  const counts = { found: 0, known: 0, excluded: 0, companies: 0, foreign: 0, belowThreshold: 0, returned: 0 }
 
   // Búsquedas base en PARALELO (cada una por una IP distinta) → mucho más rápido.
   const pool = await buildProxyPool(Math.max(queries.length, 8))
@@ -313,6 +326,14 @@ export async function handler(event) {
 
       // Salta los ya conocidos (banco/bloqueados) → solo devolvemos nuevos.
       if (known.has((p.url || '').split('?')[0].replace(/\/$/, ''))) { counts.known++; continue }
+
+      // Filtro geográfico: (1) subdominio del SERP ≠ mx/www → vive en otro país;
+      // (2) el texto menciona otro país de LatAm/España sin mencionar México.
+      if (excludeForeign) {
+        const foreignSubdomain = p.country && p.country !== 'mx' && p.country !== 'www'
+        const foreignText = detectForeignLocation(`${p.headline || ''} ${p.description || ''}`)
+        if (foreignSubdomain || foreignText) { counts.foreign++; continue }
+      }
 
       // El headline suele venir "Nombre - Puesto - Empresa"; sepáralo.
       const parts = (p.headline || '').split(/\s*[-–—·|]\s*/).map(s => s.trim()).filter(Boolean)
@@ -395,7 +416,7 @@ export async function handler(event) {
   return {
     statusCode: 200, headers,
     body: JSON.stringify({
-      results, counts, minScore, queries, excludeSector,
+      results, counts, minScore, queries, excludeSector, excludeForeign,
       proxied: !!dispatcher,
       ...(counts.found === 0 ? { hint: dispatcher ? 'Los buscadores no devolvieron perfiles (revisa el proxy).' : 'Sin resultados — los buscadores pudieron bloquear la IP del servidor. Configura PROXY_URL residencial para mayor confiabilidad.' } : {}),
     }),

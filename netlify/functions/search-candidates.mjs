@@ -217,7 +217,9 @@ export async function handler(event) {
   }
 
   try {
-    const searchQuery = `site:linkedin.com/in ${query} ${NEGATIVE_QUERY}`.trim()
+    // mx.linkedin.com = solo perfiles ubicados en México (LinkedIn indexa cada
+    // perfil bajo el subdominio de su país).
+    const searchQuery = `site:mx.linkedin.com/in ${query} ${NEGATIVE_QUERY}`.trim()
     const engines = buildSearchEngines(searchQuery, offset)
     let allCandidates = []
     const errors = []
