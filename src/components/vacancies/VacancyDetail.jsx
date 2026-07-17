@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, FileText, Users, Search, Send, BarChart3, Loader2, CheckCircle, Copy, ChevronDown, ChevronUp, Star, Download, Filter } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import { duplicateVacancy } from '../../lib/duplicateVacancy'
 import VacancyPipeline from './VacancyPipeline'
 import SourcingTab from './SourcingTab'
 import ScreeningTab from './ScreeningTab'
@@ -55,6 +56,7 @@ export default function VacancyDetail() {
   const [copied, setCopied] = useState(null)
   const [pipelineStats, setPipelineStats] = useState(null)
   const [pipelineCandidates, setPipelineCandidates] = useState([])
+  const [duplicating, setDuplicating] = useState(false)
 
   useEffect(() => { if (profile) loadVacancy() }, [id, profile])
 
@@ -106,6 +108,18 @@ export default function VacancyDetail() {
 
   useEffect(() => { if (activeTab === 'report') loadReport() }, [activeTab])
 
+  async function handleDuplicate() {
+    if (duplicating) return
+    setDuplicating(true)
+    try {
+      const copy = await duplicateVacancy(vacancy, profile)
+      setActiveTab('details')
+      navigate(`/dashboard/vacancies/${copy.id}`)
+    } catch (err) {
+      alert('Error al duplicar: ' + err.message)
+    } finally { setDuplicating(false) }
+  }
+
   if (loading) return <div className="flex items-center justify-center py-12"><div className="animate-spin rounded-full h-6 w-6 border-2 border-primary-light border-t-transparent" /></div>
   if (!vacancy) return null
 
@@ -135,6 +149,15 @@ export default function VacancyDetail() {
           </div>
           {vacancy.company_name && <p className="text-sm text-gray-400">{vacancy.company_name}{vacancy.location ? ` · ${vacancy.location}` : ''}</p>}
         </div>
+        <button
+          onClick={handleDuplicate}
+          disabled={duplicating}
+          title="Crear una copia de esta vacante (sin candidatos)"
+          className="flex items-center gap-1.5 px-3 py-2 glass rounded-lg text-xs font-medium text-gray-300 hover:text-white hover:border-primary/30 disabled:opacity-50 transition-all flex-shrink-0"
+        >
+          {duplicating ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}
+          {duplicating ? 'Duplicando...' : 'Duplicar'}
+        </button>
       </div>
 
       <div className="flex gap-0.5 mb-5 overflow-x-auto" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>

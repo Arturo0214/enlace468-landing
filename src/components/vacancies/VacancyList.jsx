@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Plus, Briefcase, Clock, CheckCircle, PauseCircle, XCircle } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Plus, Briefcase, Clock, CheckCircle, PauseCircle, XCircle, Copy, Loader2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import { duplicateVacancy } from '../../lib/duplicateVacancy'
 
 const statusConfig = {
   draft: { label: 'Borrador', color: 'bg-gray-500/20 text-gray-300' },
@@ -21,9 +22,11 @@ const priorityColors = {
 
 export default function VacancyList() {
   const { profile } = useAuth()
+  const navigate = useNavigate()
   const [vacancies, setVacancies] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [duplicatingId, setDuplicatingId] = useState(null)
 
   useEffect(() => { if (profile) loadVacancies() }, [profile])
 
@@ -38,6 +41,19 @@ export default function VacancyList() {
   }
 
   const filtered = filter === 'all' ? vacancies : vacancies.filter(v => v.status === filter)
+
+  async function handleDuplicate(e, vacancy) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (duplicatingId) return
+    setDuplicatingId(vacancy.id)
+    try {
+      const copy = await duplicateVacancy(vacancy, profile)
+      navigate(`/dashboard/vacancies/${copy.id}`)
+    } catch (err) {
+      alert('Error al duplicar: ' + err.message)
+    } finally { setDuplicatingId(null) }
+  }
 
   return (
     <div>
@@ -113,9 +129,19 @@ export default function VacancyList() {
                       <p className="text-sm text-gray-400">{vacancy.company_name} {vacancy.location ? `· ${vacancy.location}` : ''}</p>
                     )}
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <div className="text-sm font-medium text-white">{candidateCount} candidatos</div>
-                    {hiredCount > 0 && <div className="text-xs text-green-400">{hiredCount} contratado{hiredCount > 1 ? 's' : ''}</div>}
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="text-right">
+                      <div className="text-sm font-medium text-white">{candidateCount} candidatos</div>
+                      {hiredCount > 0 && <div className="text-xs text-green-400">{hiredCount} contratado{hiredCount > 1 ? 's' : ''}</div>}
+                    </div>
+                    <button
+                      onClick={e => handleDuplicate(e, vacancy)}
+                      disabled={duplicatingId !== null}
+                      title="Duplicar vacante"
+                      className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/10 disabled:opacity-40 transition-all"
+                    >
+                      {duplicatingId === vacancy.id ? <Loader2 size={16} className="animate-spin" /> : <Copy size={16} />}
+                    </button>
                   </div>
                 </div>
               </Link>
