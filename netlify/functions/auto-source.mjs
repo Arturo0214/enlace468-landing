@@ -399,6 +399,12 @@ export async function handler(event) {
       const parts = (p.headline || '').split(/\s*[-–—·|]\s*/).map(s => s.trim()).filter(Boolean)
       const ct = parts[1] || r.current_title
       const cc = parts[2] || r.current_company
+      // La búsqueda dirigida puede revelar que vive en otro país → bloqueado.
+      if (excludeForeign && detectForeignLocation(`${p.headline || ''} ${p.description || ''}`)) {
+        dropped.add(r.url)
+        counts.foreign++
+        return
+      }
       if (matchExcludedCompany(cc, ct, p.headline, p.description, r.full_name)) {
         dropped.add(r.url)
         counts.excluded++

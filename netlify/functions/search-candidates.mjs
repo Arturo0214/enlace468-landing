@@ -4,6 +4,7 @@
 // Company exclusion list (insurance / investment sector) — single source of truth
 // shared with the front-end sourcing surfaces. See src/lib/excludedCompanies.js.
 import { matchExcludedCompany, NEGATIVE_QUERY } from '../../src/lib/excludedCompanies.js'
+import { isForeignProfile } from '../../src/lib/sourcingScore.js'
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -47,16 +48,19 @@ export function extractCandidatesFromHTML(html, stats = { excluded: 0 }) {
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
 
-  // Extract LinkedIn profile URLs
+  // Extract LinkedIn profile URLs (keeping the ORIGINAL country subdomain so we
+  // can block foreign profiles: pe., cl., ar. → not Mexico)
   const urlPattern = /https?:\/\/[a-z]{2,3}\.linkedin\.com\/in\/[a-z0-9\-_%]+/gi
   const urls = new Set()
+  const originalUrls = new Map() // normalized → original (con subdominio de país)
   let match
   while ((match = urlPattern.exec(html)) !== null) {
-    let url = match[0].split('?')[0].split('#')[0].replace(/\/$/, '')
+    const original = match[0].split('?')[0].split('#')[0].replace(/\/$/, '')
     // Normalize to www.linkedin.com
-    url = url.replace(/https?:\/\/[a-z]{2,3}\.linkedin\.com/, 'https://www.linkedin.com')
+    const url = original.replace(/https?:\/\/[a-z]{2,3}\.linkedin\.com/, 'https://www.linkedin.com')
     if (!url.includes('login') && !url.includes('signup') && !url.includes('404') && !url.includes('jobs') && !url.includes('company')) {
       urls.add(url)
+      if (!originalUrls.has(url)) originalUrls.set(url, original)
     }
   }
 
@@ -148,6 +152,13 @@ export function extractCandidatesFromHTML(html, stats = { excluded: 0 }) {
       : ''
     if (matchExcludedCompany(currentCompany, currentTitle, snippet, fullName, excludeContext)) {
       stats.excluded++
+      continue
+    }
+
+    // Bloquea perfiles ubicados fuera de México (subdominio de país del URL
+    // original, o mención de otro país en el texto extraído).
+    if (isForeignProfile(originalUrls.get(profileUrl) || profileUrl, currentTitle, snippet, location)) {
+      stats.foreign = (stats.foreign || 0) + 1
       continue
     }
 
@@ -273,6 +284,7 @@ export async function handler(event) {
         results: allCandidates.slice(0, 100),
         count: allCandidates.length,
         excluded: stats.excluded,
+        foreign: stats.foreign || 0,
         query: searchQuery,
         offset,
         ...(allCandidates.length === 0 && errors.length > 0 ? { debug: errors } : {}),

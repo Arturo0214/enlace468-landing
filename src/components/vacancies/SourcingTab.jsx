@@ -3,6 +3,7 @@ import { Search, Globe, ExternalLink, Plus, Loader2, CheckCircle, Download, User
 import { supabase } from '../../lib/supabase'
 import FeatureGate from '../ui/FeatureGate'
 import { matchExcludedCompany, NEGATIVE_QUERY, EXCLUDED_LABELS_SHORT } from '../../lib/excludedCompanies'
+import { isForeignProfile } from '../../lib/sourcingScore'
 
 const CSE_ID = '234e26a7d970d4e6f'
 
@@ -176,6 +177,8 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
           }).filter(r => r && r.title && r.url && !r.url.includes('google.com/search'))
             // Drop candidates from excluded firms (insurance / investment sector)
             .filter(r => !matchExcludedCompany(r.title, r.snippet, r.displayUrl))
+            // Bloquea perfiles ubicados fuera de México (subdominio pe./cl./ar… o texto)
+            .filter(r => !isForeignProfile(r.url, r.title, r.snippet, r.displayUrl))
 
           // Only keep results we haven't shown yet (dedupe by URL across pages)
           const fresh = parsed.filter(r => !seenUrls.current.has(r.url))

@@ -91,6 +91,16 @@ export function detectForeignLocation(text) {
   return FOREIGN_SIGNALS.find(w => wordRe(w).test(t)) || null
 }
 
+/** BLOQUEO de perfiles extranjeros: true si la URL de LinkedIn viene de un
+ *  subdominio de otro país (pe., cl., ar…) o si el texto delata otro país.
+ *  Compartido por el server (auto-source, search-candidates) y el front. */
+export function isForeignProfile(url, ...texts) {
+  const m = String(url || '').match(/https?:\/\/([a-z]{2,3})\.linkedin\.com/i)
+  const sub = m ? m[1].toLowerCase() : null
+  if (sub && sub !== 'mx' && sub !== 'www') return true
+  return !!detectForeignLocation(texts.filter(Boolean).join(' '))
+}
+
 /** True if `text` contains `token` or any of its bilingual synonyms. */
 function hasTerm(text, token) {
   const group = SYNONYM_INDEX.get(token)
@@ -147,12 +157,12 @@ export function scoreProspect(vacancy, prospect = {}, targets = null) {
   if (targets.wantsSenior && isJunior) total -= 15
   else if (targets.wantsSenior && isSenior) total += 6
 
-  // Perfil ubicado fuera de México → castigo fuerte (salvo que la vacante
-  // misma sea para ese país).
+  // Perfil ubicado fuera de México → BLOQUEADO (score 0), salvo que la vacante
+  // misma sea para ese país.
   const foreign = detectForeignLocation(text)
   const vacLoc = normalizeText(vacancy.location || '')
   const isForeign = foreign && !vacLoc.includes(foreign)
-  if (isForeign) total -= 40
+  if (isForeign) total = 0
 
   const score = Math.max(0, Math.min(Math.round(total), 100))
 
