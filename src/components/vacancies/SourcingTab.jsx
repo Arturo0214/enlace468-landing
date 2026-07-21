@@ -18,6 +18,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const [googleResults, setGoogleResults] = useState([])
   const [hasMore, setHasMore] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [exhausted, setExhausted] = useState(false) // ya no hay más resultados para esta búsqueda
   // Sourcing bank (persistent collection of candidate cards, per vacancy)
   const [bankItems, setBankItems] = useState([])
   const [savingAll, setSavingAll] = useState(false)
@@ -230,6 +231,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
     setGoogleResults([])
     isLoadingMore.current = false
     setLoadingMore(false)
+    setExhausted(false)
     seenUrls.current = new Set()
     scrapedMore.current = false
     const tryExec = setInterval(() => {
@@ -244,13 +246,17 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   // frágil. Traemos más desde el scraper server-side (hasta ~40 confiables).
   async function loadMoreLinkedIn() {
     setLoadingMore(true)
+    let added = 0
     try {
+      // Timeout duro: si el scraper (o el proxy) tarda, no dejamos "Cargando…"
+      // girando indefinidamente.
       const res = await fetch('/api/auto-source', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           vacancy: { title: searchQuery, location: vacancy.location || '', competencies: [] },
           platform: 'linkedin', minScore: 0, maxResults: 100, excludeSector,
         }),
+        signal: AbortSignal.timeout(22000),
       })
       const data = await res.json()
       const mapped = (data.results || []).map(r => ({
@@ -260,11 +266,15 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
       if (mapped.length) {
         mapped.forEach(r => seenUrls.current.add(r.url))
         setGoogleResults(prev => [...prev, ...mapped])
+        added = mapped.length
       }
+    } catch (e) { console.error('loadMore scraper:', e) }
+    finally {
       scrapedMore.current = true
       setHasMore(false) // el scraper ya trae el lote completo
-    } catch (e) { console.error(e) }
-    finally { setLoadingMore(false) }
+      if (!added) setExhausted(true) // avisa que ya no hay más (en vez de desaparecer sin más)
+      setLoadingMore(false)
+    }
   }
 
   function loadMore() {
@@ -279,9 +289,19 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
       if (next) {
         isLoadingMore.current = true
         setLoadingMore(true)
-        // Fallback: si no llegan resultados nuevos, libera el flag para reintentar
+        // Fallback: si en 6s no llegan resultados nuevos de Google, no dejamos el
+        // spinner colgado. En LinkedIn/Todos intentamos el scraper; si no, agotado.
         clearTimeout(loadMoreTimeout.current)
-        loadMoreTimeout.current = setTimeout(() => { isLoadingMore.current = false; setLoadingMore(false) }, 6000)
+        loadMoreTimeout.current = setTimeout(() => {
+          if (!isLoadingMore.current) return // ya llegaron resultados, todo bien
+          isLoadingMore.current = false
+          setLoadingMore(false)
+          if ((platform === 'linkedin' || platform === 'all') && !scrapedMore.current) {
+            loadMoreLinkedIn()
+          } else {
+            setHasMore(false); setExhausted(true)
+          }
+        }, 6000)
         // Las páginas del cursor CSE responden a un click real de anchor
         next.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }))
         return
@@ -1058,6 +1078,11 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
             <button onClick={loadMore} disabled={loadingMore} className="w-full mt-3 py-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] text-sm text-gray-400 hover:text-white hover:bg-white/[0.06] transition-all flex items-center justify-center gap-2 disabled:opacity-60">
               {loadingMore ? <><Loader2 size={14} className="animate-spin" /> Cargando…</> : <><Plus size={14} /> Mostrar mas resultados</>}
             </button>
+          )}
+          {!hasMore && exhausted && (
+            <p className="w-full mt-3 py-2.5 text-center text-xs text-gray-500">
+              No hay más resultados para esta búsqueda. Prueba términos más generales (ej. solo el puesto y la ciudad).
+            </p>
           )}
         </div>
       )}
