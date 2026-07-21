@@ -58,7 +58,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   useEffect(() => { platformRef.current = platform }, [platform])
 
   const platforms = {
-    linkedin: { label: 'LinkedIn', prefix: 'site:mx.linkedin.com/in', color: 'border-blue-500/30 text-blue-400' },
+    linkedin: { label: 'LinkedIn', prefix: 'site:linkedin.com/in', color: 'border-blue-500/30 text-blue-400' },
     occ: { label: 'OCC', prefix: 'site:occ.com.mx', color: 'border-emerald-500/30 text-emerald-400' },
     indeed: { label: 'Indeed', prefix: 'site:mx.indeed.com', color: 'border-indigo-500/30 text-indigo-400' },
     computrabajo: { label: 'CompuTrabajo', prefix: 'site:computrabajo.com.mx', color: 'border-orange-500/30 text-orange-400' },

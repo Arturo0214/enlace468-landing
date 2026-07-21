@@ -46,11 +46,12 @@ function looksLikeJobPosting(desc) {
     || /\d{1,2} de \w+ de 20\d\d\s*-/.test(desc) // "18 de abril de 2023 - ..." (fecha de posteo)
 }
 
-// LinkedIn indexa cada perfil bajo el subdominio de su país (mx., pe., cl., ar…).
-// Restringir a mx.linkedin.com es el filtro geográfico más confiable: evita que
-// "México" como palabra clave traiga perfiles de toda LatAm.
+// Búsqueda amplia site:linkedin.com/in (mucho más pool: la mayoría de perfiles
+// mexicanos están indexados como www.linkedin.com, no bajo el subdominio mx.).
+// Los extranjeros se filtran después con isForeignProfile (subdominio pe./cl./ar.
+// o mención de otro país en el texto).
 const PLATFORM_PREFIX = {
-  linkedin: 'site:mx.linkedin.com/in',
+  linkedin: 'site:linkedin.com/in',
   occ: 'site:occ.com.mx',
   indeed: 'site:mx.indeed.com',
   computrabajo: 'site:computrabajo.com.mx',
