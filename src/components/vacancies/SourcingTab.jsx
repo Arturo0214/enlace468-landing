@@ -53,6 +53,8 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const seenUrls = useRef(new Set())
   const loadMoreTimeout = useRef(null)
   const scrapedMore = useRef(false) // ya se jaló el lote extra del scraper (LinkedIn)
+  const platformRef = useRef(platform) // el observer se crea una vez → ref para no leer un platform viejo
+  useEffect(() => { platformRef.current = platform }, [platform])
 
   const platforms = {
     linkedin: { label: 'LinkedIn', prefix: 'site:mx.linkedin.com/in', color: 'border-blue-500/30 text-blue-400' },
@@ -157,7 +159,13 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
         clearTimeout(debounceRef.current)
         debounceRef.current = setTimeout(() => {
           const noRes = container.querySelector('.gs-no-results-result')
-          if (noRes) { setGoogleResults([]); return }
+          if (noRes) {
+            // No borres lo ya mostrado si estamos paginando: un "sin resultados"
+            // transitorio de Google al cambiar de página dejaba la lista en blanco.
+            if (!isLoadingMore.current) setGoogleResults([])
+            else { isLoadingMore.current = false; setLoadingMore(false); setHasMore(false) }
+            return
+          }
 
           let els = container.querySelectorAll('.gsc-webResult.gsc-result')
           if (!els.length) els = container.querySelectorAll('.gsc-result')
@@ -198,13 +206,17 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
             setGoogleResults(parsed)
           }
 
-          // LinkedIn/Todos: siempre ofrecer "Ver más" (scraper) hasta que se jale.
-          if (platform === 'linkedin' || platform === 'all') {
-            setHasMore(!scrapedMore.current)
+          // "Ver más": ofrecerlo si Google tiene más páginas nativas (2-10, hasta
+          // ~100 resultados, confiable y sin proxy). En LinkedIn/Todos, cuando ya
+          // no hay más páginas de Google, se ofrece el scraper server-side.
+          const pages = container.querySelectorAll('.gsc-cursor-page')
+          const idx = Array.from(pages).findIndex(p => p.classList.contains('gsc-cursor-current-page'))
+          const moreGooglePages = idx >= 0 && idx + 1 < pages.length
+          const plat = platformRef.current
+          if (plat === 'linkedin' || plat === 'all') {
+            setHasMore(moreGooglePages || !scrapedMore.current)
           } else {
-            const pages = container.querySelectorAll('.gsc-cursor-page')
-            const idx = Array.from(pages).findIndex(p => p.classList.contains('gsc-cursor-current-page'))
-            setHasMore(idx >= 0 && idx + 1 < pages.length)
+            setHasMore(moreGooglePages)
           }
         }, 400)
       })
@@ -256,21 +268,32 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   }
 
   function loadMore() {
-    // Para LinkedIn/Todos usamos el scraper (confiable). Otros portales: cursor CSE.
-    if (platform === 'linkedin' || platform === 'all') { loadMoreLinkedIn(); return }
+    // 1) Avanza la paginación NATIVA de Google (páginas 2-10 → hasta ~100
+    //    resultados, confiable y sin proxy). Aplica a TODAS las plataformas,
+    //    incluida LinkedIn: es lo que destraba el "solo salen 10".
     const container = document.getElementById('gcs-box')
-    if (!container) return
-    const pages = Array.from(container.querySelectorAll('.gsc-cursor-page'))
-    const idx = pages.findIndex(p => p.classList.contains('gsc-cursor-current-page'))
-    const next = idx >= 0 ? pages[idx + 1] : pages.find(p => !p.classList.contains('gsc-cursor-current-page'))
-    if (!next) { setHasMore(false); return }
-    isLoadingMore.current = true
-    setLoadingMore(true)
-    // Fallback: if no new results arrive, release the flag so the button can be retried
-    clearTimeout(loadMoreTimeout.current)
-    loadMoreTimeout.current = setTimeout(() => { isLoadingMore.current = false; setLoadingMore(false) }, 6000)
-    // CSE cursor pages respond to a real anchor click event
-    next.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }))
+    if (container) {
+      const pages = Array.from(container.querySelectorAll('.gsc-cursor-page'))
+      const idx = pages.findIndex(p => p.classList.contains('gsc-cursor-current-page'))
+      const next = idx >= 0 ? pages[idx + 1] : pages.find(p => !p.classList.contains('gsc-cursor-current-page'))
+      if (next) {
+        isLoadingMore.current = true
+        setLoadingMore(true)
+        // Fallback: si no llegan resultados nuevos, libera el flag para reintentar
+        clearTimeout(loadMoreTimeout.current)
+        loadMoreTimeout.current = setTimeout(() => { isLoadingMore.current = false; setLoadingMore(false) }, 6000)
+        // Las páginas del cursor CSE responden a un click real de anchor
+        next.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }))
+        return
+      }
+    }
+    // 2) Agotadas las páginas de Google: en LinkedIn/Todos jala el lote extra del
+    //    scraper server-side (requiere proxy; si no hay, simplemente no agrega).
+    if ((platform === 'linkedin' || platform === 'all') && !scrapedMore.current) {
+      loadMoreLinkedIn()
+      return
+    }
+    setHasMore(false)
   }
 
   function doSearch(q, plat) {
