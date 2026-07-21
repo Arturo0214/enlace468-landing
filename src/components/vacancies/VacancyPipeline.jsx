@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
-import { Plus, User, Star, X, Mail, Phone, MapPin, ExternalLink, Briefcase, Calendar, Tag, Clock, MessageCircle, Send, Loader2, CheckCircle, ArrowUpRight, ArrowDownLeft, FileText, Video, Link2, UserPlus, Lock, Crown, AlertTriangle, Heart, Copy, Trash2 } from 'lucide-react'
+import { Plus, User, Star, X, Mail, Phone, MapPin, ExternalLink, Briefcase, Calendar, Tag, Clock, MessageCircle, Send, Loader2, CheckCircle, ArrowUpRight, ArrowDownLeft, FileText, Video, Link2, UserPlus, Lock, Crown, AlertTriangle, Heart, Copy, Trash2, Search } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { usePlan } from '../../lib/planContext'
@@ -27,6 +27,7 @@ export default function VacancyPipeline({ vacancyId }) {
   const [showAddModal, setShowAddModal] = useState(false)
   const [bankCandidates, setBankCandidates] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [boardSearch, setBoardSearch] = useState('') // filtro del tablero por nombre
   const [selectedVC, setSelectedVC] = useState(null)
   const [contactNote, setContactNote] = useState('')
   const [savingContact, setSavingContact] = useState(false)
@@ -489,11 +490,39 @@ Enlace 468`)
 
   if (loading) return <div className="flex items-center justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" /></div>
 
+  // Filtro del tablero: insensible a mayúsculas y acentos, por nombre o puesto.
+  const normalize = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const q = normalize(boardSearch.trim())
+  const matchesSearch = vc => !q || normalize(vc.candidates?.full_name).includes(q) || normalize(vc.candidates?.current_title).includes(q)
+  const matchCount = q ? candidates.filter(matchesSearch).length : candidates.length
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-gray-400">{candidates.length} candidato{candidates.length !== 1 ? 's' : ''} en pipeline</p>
-        <button onClick={openAddModal} className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-primary to-primary-light text-white rounded-lg hover:opacity-90 text-sm font-medium">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <p className="text-sm text-gray-400 whitespace-nowrap">
+            {q
+              ? <><span className="text-white font-medium">{matchCount}</span> de {candidates.length}</>
+              : <>{candidates.length} candidato{candidates.length !== 1 ? 's' : ''} en pipeline</>}
+          </p>
+          <div className="relative w-full max-w-xs">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+            <input
+              type="text"
+              value={boardSearch}
+              onChange={e => setBoardSearch(e.target.value)}
+              placeholder="Buscar candidato por nombre..."
+              className="w-full pl-8 pr-8 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none text-white placeholder-gray-500 text-sm"
+            />
+            {boardSearch && (
+              <button onClick={() => setBoardSearch('')} title="Limpiar"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+        <button onClick={openAddModal} className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-primary to-primary-light text-white rounded-lg hover:opacity-90 text-sm font-medium flex-shrink-0">
           <Plus size={16} /> Agregar candidato
         </button>
       </div>
@@ -501,7 +530,7 @@ Enlace 468`)
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-3 overflow-x-auto pb-2" style={{ height: 'calc(100vh - 330px)' }}>
           {stages.map(stage => {
-            const items = candidates.filter(c => c.stage === stage.id)
+            const items = candidates.filter(c => c.stage === stage.id && matchesSearch(c))
             return (
               <Droppable key={stage.id} droppableId={stage.id}>
                 {(provided, snapshot) => (
