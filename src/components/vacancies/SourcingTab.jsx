@@ -242,6 +242,20 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
     return () => { clearInterval(tryExec); clearTimeout(timeout) }
   }, [activeSearch])
 
+  // Auto-acumular: Google trae 10 por página; en vez de esperar a que el usuario
+  // pique "Ver más", jalamos páginas siguientes SOLAS hasta juntar ~AUTO_TARGET
+  // resultados de arranque. Se detiene al llegar a la meta, si ya no hay más
+  // páginas, o si está agotado. El usuario puede seguir con "Ver más" tras la meta.
+  const AUTO_TARGET = 40
+  useEffect(() => {
+    if (!activeSearch) return
+    if (loadingMore || isLoadingMore.current) return
+    if (googleResults.length === 0 || googleResults.length >= AUTO_TARGET) return
+    if (!hasMore || exhausted) return
+    const t = setTimeout(() => loadMore(), 500)
+    return () => clearTimeout(t)
+  }, [googleResults, hasMore, loadingMore, exhausted, activeSearch])
+
   // "Ver más" para LinkedIn: el widget CSE solo trae ~10 y su paginación es
   // frágil. Traemos más desde el scraper server-side (hasta ~40 confiables).
   async function loadMoreLinkedIn() {
