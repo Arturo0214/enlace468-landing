@@ -43,6 +43,13 @@ async function fetchWithRetry(url, options, maxRetries = 2) {
 export function extractCandidatesFromHTML(html, stats = { excluded: 0 }) {
   const candidates = []
 
+  // DDG entrega los URLs dentro de redirects codificados (?uddg=https%3A%2F%2F…)
+  // que el scan de URLs no veía → decodifícalos y agrégalos al HTML escaneado.
+  const ddgDecoded = [...html.matchAll(/[?&]uddg=(https?%3A%2F%2F[^&"']+)/gi)]
+    .map(m => { try { return decodeURIComponent(m[1]) } catch { return '' } })
+    .filter(u => /linkedin\.com\/in\//i.test(u))
+  if (ddgDecoded.length) html = html + '\n' + ddgDecoded.join('\n')
+
   // Clean HTML for text extraction
   const cleanHtml = html
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
@@ -235,8 +242,51 @@ export async function handler(event) {
     const errors = []
     const stats = { excluded: 0 }
 
+    // Serper.dev primero (Google real vía API, no se degrada ni bloquea);
+    // si no hay key o falla, sigue el scraping de motores como siempre.
+    if (process.env.SERPER_API_KEY) {
+      try {
+        const res = await fetch('https://google.serper.dev/search', {
+          method: 'POST',
+          headers: { 'X-API-KEY': process.env.SERPER_API_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ q: searchQuery, gl: 'mx', hl: 'es', num: 30 }),
+          signal: AbortSignal.timeout(8000),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          for (const r of data.organic || []) {
+            const rawLink = r.link || ''
+            if (!/linkedin\.com\/in\/[^/?#]{3,}/i.test(rawLink)) continue
+            const profileUrl = rawLink.split('?')[0].split('#')[0].replace(/\/$/, '')
+              .replace(/https?:\/\/[a-z]{2,3}\.linkedin\.com/i, 'https://www.linkedin.com')
+            if (allCandidates.some(c => c.linkedin_url === profileUrl)) continue
+            const cleanTitle = (r.title || '').replace(/\s*[|·-]\s*LinkedIn.*$/i, '')
+            const segments = cleanTitle.split(/\s*[-–—]\s*/).map(s => s.trim()).filter(Boolean)
+            const fullName = segments[0] || profileUrl.split('/in/')[1]
+            const currentTitle = segments[1] || null
+            const currentCompany = segments[2] || null
+            if (matchExcludedCompany(currentCompany, currentTitle, r.snippet, fullName)) { stats.excluded++; continue }
+            if (isForeignProfile(rawLink, currentTitle, r.snippet, null)) { stats.foreign = (stats.foreign || 0) + 1; continue }
+            allCandidates.push({
+              full_name: fullName,
+              current_title: currentTitle,
+              current_company: currentCompany,
+              linkedin_url: profileUrl,
+              snippet: r.snippet || null,
+              location: null,
+            })
+          }
+        } else {
+          errors.push(`Serper: HTTP ${res.status}`)
+        }
+      } catch (err) {
+        errors.push(`Serper: ${err.message}`)
+      }
+    }
+
     // Try each engine in order until we get results
     for (const engine of engines) {
+      if (allCandidates.length >= 10) break
       try {
         const response = await fetchWithRetry(engine.url, { headers: engine.headers })
         if (!response) {
