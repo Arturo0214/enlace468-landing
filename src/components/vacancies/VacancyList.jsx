@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Briefcase, Clock, CheckCircle, PauseCircle, XCircle, Copy, Loader2 } from 'lucide-react'
+import { Plus, Briefcase, Clock, CheckCircle, PauseCircle, XCircle, Copy, Loader2, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { duplicateVacancy } from '../../lib/duplicateVacancy'
@@ -27,6 +27,7 @@ export default function VacancyList() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [duplicatingId, setDuplicatingId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
 
   useEffect(() => { if (profile) loadVacancies() }, [profile])
 
@@ -53,6 +54,25 @@ export default function VacancyList() {
     } catch (err) {
       alert('Error al duplicar: ' + err.message)
     } finally { setDuplicatingId(null) }
+  }
+
+  async function handleDelete(e, vacancy) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (deletingId) return
+    const count = vacancy.vacancy_candidates?.length || 0
+    const msg = count > 0
+      ? `¿Eliminar la vacante "${vacancy.title}"?\n\nSe borrarán también sus ${count} candidato${count > 1 ? 's' : ''} del pipeline y su banco de sourcing. Esta acción NO se puede deshacer.`
+      : `¿Eliminar la vacante "${vacancy.title}"?\n\nEsta acción NO se puede deshacer.`
+    if (!window.confirm(msg)) return
+    setDeletingId(vacancy.id)
+    try {
+      const { error } = await supabase.from('vacancies').delete().eq('id', vacancy.id)
+      if (error) throw error
+      setVacancies(prev => prev.filter(v => v.id !== vacancy.id))
+    } catch (err) {
+      alert('Error al eliminar: ' + err.message)
+    } finally { setDeletingId(null) }
   }
 
   return (
@@ -141,6 +161,14 @@ export default function VacancyList() {
                       className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/10 disabled:opacity-40 transition-all"
                     >
                       {duplicatingId === vacancy.id ? <Loader2 size={16} className="animate-spin" /> : <Copy size={16} />}
+                    </button>
+                    <button
+                      onClick={e => handleDelete(e, vacancy)}
+                      disabled={deletingId !== null}
+                      title="Eliminar vacante"
+                      className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-40 transition-all"
+                    >
+                      {deletingId === vacancy.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                     </button>
                   </div>
                 </div>

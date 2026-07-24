@@ -31,7 +31,7 @@ const COMPANY_HINTS = [
   'firma ', 'internacional', 'international', 'sa de cv', 's a de c v', 'servicios financieros',
   'financiera ', 'financial group', 'grupo financiero', 'asesores', 'brokers', 'broker',
 ]
-function looksLikeCompany(name) {
+export function looksLikeCompany(name) {
   const n = normalizeText(name)
   if (!n) return false
   return COMPANY_HINTS.some(h => n.includes(h))
@@ -139,6 +139,23 @@ function decodeDdgHref(href) {
   try { return decodeURIComponent(m[1]) } catch { return href }
 }
 
+/** Resuelve el destino REAL de un href de SERP: Google envuelve en
+ *  /url?q=<url-encoded>, Bing en /ck/a?...&u=a1<base64url>, DDG en ?uddg=.
+ *  Sin esto, Google y Bing devuelven 200 con resultados y el parser saca 0. */
+function resolveSerpHref(href) {
+  let h = decodeDdgHref(href)
+  const g = String(h).match(/[?&](?:q|url)=(https?[^&"']+)/i)
+  if (g) { try { h = decodeURIComponent(g[1]) } catch { h = g[1] } }
+  const b = String(h).match(/[?&]u=a1([A-Za-z0-9_\-=]+)/)
+  if (b) {
+    try {
+      const dec = Buffer.from(b[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8')
+      if (/^https?:\/\//i.test(dec)) h = dec
+    } catch { /* href tal cual */ }
+  }
+  return h
+}
+
 /** País del perfil según el subdominio ORIGINAL del SERP (pe., cl., ar., mx…),
  *  antes de normalizar a www. 'www' = desconocido. */
 function countryOfHref(href) {
@@ -208,16 +225,20 @@ export function parseSerpProfiles(html) {
   if (out.length) return out
 
   // ── Fallback: generic anchor scan (Google/Bing/DDG) ───────────
-  const re = /<a[^>]+href="([^"]*linkedin\.com\/in\/[^"?#]*)[^"]*"[^>]*>([\s\S]*?)<\/a>/gi
+  // Escanea TODOS los anchors y resuelve el destino real (Google /url?q=,
+  // Bing base64) antes de filtrar por linkedin.com/in.
+  const re = /<a[^>]+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi
   let m
   while ((m = re.exec(html)) !== null) {
-    const url = normProfileUrl(m[1])
+    const real = resolveSerpHref(decodeEntities(m[1]))
+    if (!/linkedin\.com\/in\/[^/?#]{3,}/i.test(real)) continue
+    const url = normProfileUrl(real)
     if (!/\/in\/[^/]{3,}/.test(url) || seen.has(url)) continue
     seen.add(url)
     const headline = cleanSerpTitle(m[2])
     const name = nameFromSlug(url)
     if (!name && !headline) continue
-    out.push({ url, name, headline, description: '', country: countryOfHref(m[1]) })
+    out.push({ url, name, headline, description: '', country: countryOfHref(real) })
   }
   return out
 }
@@ -261,6 +282,35 @@ export async function serperSearch(query, num = 30) {
   } catch { return null }
 }
 
+/** Bing en formato RSS (format=rss): XML limpio con títulos "Nombre - Puesto |
+ *  LinkedIn" y links DIRECTOS (con subdominio de país). El HTML normal de Bing
+ *  le sirve un cascarón vacío a IPs de datacenter, pero el RSS sí responde y
+ *  pesa ~6KB. ~10 items por página; se pagina con first=. */
+async function bingRssSearch(query, offset = 0, dispatcher) {
+  try {
+    const url = `https://www.bing.com/search?format=rss&q=${encodeURIComponent(query)}&count=50${offset ? `&first=${offset * 10 + 1}` : ''}`
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36' },
+      dispatcher,
+      signal: AbortSignal.timeout(6000),
+    })
+    if (!res.ok) return []
+    const xml = await res.text()
+    const out = []
+    for (const [, it] of xml.matchAll(/<item>([\s\S]*?)<\/item>/g)) {
+      const link = decodeEntities((it.match(/<link>([^<]+)<\/link>/) || [])[1] || '')
+      if (!/linkedin\.com\/in\/[^/?#]{3,}/i.test(link)) continue
+      const purl = normProfileUrl(link)
+      const headline = cleanSerpTitle(decodeEntities((it.match(/<title>([^<]+)<\/title>/) || [])[1] || ''))
+      const description = cleanDescription((it.match(/<description>([\s\S]*?)<\/description>/) || [])[1] || '')
+      const name = nameFromSlug(purl) || (headline.split(/\s*[-–]\s*/)[0] || '').trim()
+      if (!name && !headline) continue
+      out.push({ url: purl, name, headline, description, country: countryOfHref(link) })
+    }
+    return out
+  } catch { return [] }
+}
+
 /** Lazily build an undici ProxyAgent dispatcher if PROXY_URL is configured. */
 export async function getDispatcher() {
   if (!process.env.PROXY_URL) return undefined
@@ -275,7 +325,7 @@ export async function getDispatcher() {
 /** Pool of dispatchers rotating the proxy port (Decodo …:10001-10010) so the
  *  concurrent per-profile verification requests salen por IPs distintas y no
  *  se rate-limitan. */
-async function buildProxyPool(size) {
+export async function buildProxyPool(size) {
   const base = process.env.PROXY_URL
   if (!base) return [undefined]
   let ProxyAgent
@@ -307,9 +357,13 @@ async function enrichProfile(slug, dispatcher) {
     const p = viaSerper.find(x => x.url.toLowerCase().includes(k)) || viaSerper[0]
     if (p && (p.headline || p.description)) return p
   }
+  const key = slug.slice(0, 12).toLowerCase()
+  // Bing RSS dirigido: confiable desde datacenter y trae headline+descripción.
+  const viaRss = await bingRssSearch(`site:linkedin.com/in/${slug}`, 0, dispatcher)
+  const pr = viaRss.find(x => x.url.toLowerCase().includes(key)) || viaRss[0]
+  if (pr && (pr.headline || pr.description)) return pr
   const engines = buildSearchEngines(`site:linkedin.com/in/${slug}`)
     .sort((a, b) => (a.name === 'Brave' ? -1 : 0) - (b.name === 'Brave' ? -1 : 0))
-  const key = slug.slice(0, 12).toLowerCase()
   const deadline = Date.now() + 8000
   // 1a pasada por el proxy; si está caído, 2a pasada directa desde Netlify.
   for (const disp of dispatcher ? [dispatcher, undefined] : [undefined]) {
@@ -333,16 +387,23 @@ async function enrichProfile(slug, dispatcher) {
  *  engine that yields them. We trust the extraction result, NOT block-word
  *  heuristics (Brave's HTML contains benign "captcha" strings yet returns great
  *  results). Engines that genuinely block simply return 0 candidates. */
-async function scrapeQuery(query, dispatcher, dbg) {
+export async function scrapeQuery(query, dispatcher, dbg, offset = 0) {
   // Serper primero: Google real vía API, no se degrada ni bloquea.
-  const viaSerper = await serperSearch(query)
+  // (solo para la página 1: Serper pagina distinto)
+  const viaSerper = offset === 0 ? await serperSearch(query) : null
   if (viaSerper?.length) { dbg?.push(`Serper: ${viaSerper.length} perfiles`); return viaSerper }
   // Brave primero (es el que devuelve datos server-side) → evita perder segundos
-  // en motores que fallan antes de llegar a él.
-  const engines = buildSearchEngines(query)
+  // en motores que fallan antes de llegar a él. offset = página de Brave (0-9).
+  const engines = buildSearchEngines(query, offset)
     .sort((a, b) => (a.name === 'Brave' ? -1 : 0) - (b.name === 'Brave' ? -1 : 0))
   const merged = []
   const seen = new Set()
+  // Bing RSS primero: barato, confiable desde datacenter y con links directos —
+  // garantiza ~10/query aunque Brave esté rate-limitado.
+  for (const p of await bingRssSearch(query, offset, dispatcher)) {
+    if (!seen.has(p.url)) { seen.add(p.url); merged.push(p) }
+  }
+  if (merged.length) dbg?.push(`BingRSS: ${merged.length} perfiles`)
   // El front aborta a los 22s y Netlify corta a ~26 → la fase de búsqueda base
   // tiene 10s; el resto del presupuesto es para la verificación por perfil.
   const deadline = Date.now() + 10000

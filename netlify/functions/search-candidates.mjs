@@ -4,7 +4,10 @@
 // Company exclusion list (insurance / investment sector) — single source of truth
 // shared with the front-end sourcing surfaces. See src/lib/excludedCompanies.js.
 import { matchExcludedCompany, NEGATIVE_QUERY } from '../../src/lib/excludedCompanies.js'
-import { isForeignProfile } from '../../src/lib/sourcingScore.js'
+import { isForeignProfile, detectForeignLocation } from '../../src/lib/sourcingScore.js'
+// Import circular con auto-source (él importa buildSearchEngines de aquí):
+// seguro en ESM porque solo se usan declaraciones de función en runtime.
+import { scrapeQuery, buildProxyPool, getDispatcher, looksLikeCompany } from './auto-source.mjs'
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -235,96 +238,78 @@ export async function handler(event) {
   }
 
   try {
-    // Búsqueda amplia (más pool); los extranjeros se filtran con isForeignProfile.
-    const searchQuery = `site:linkedin.com/in ${query} ${NEGATIVE_QUERY}`.trim()
-    const engines = buildSearchEngines(searchQuery, offset)
-    let allCandidates = []
+    // 4 variantes de la query en PARALELO → objetivo 50+ perfiles únicos.
+    // Una sola query da ~20 (Brave) + ~10 (DDG); el outreach necesita volumen,
+    // así que se amplía con ubicación/seniority y se fusiona deduplicando.
+    // Diversidad geográfica: en roles comerciales/financieros los SERPs vienen
+    // dominados por gente de aseguradoras (SMNYL/GNP…) que la exclusión tira —
+    // más variantes distintas = más perfiles únicos netos que más páginas de
+    // la misma query.
+    const seenVariant = new Set()
+    const variants = [query, `${query} México`, `${query} Ciudad de México`, `${query} Monterrey`, `${query} Guadalajara`, `senior ${query}`]
+      .map(v => v.trim())
+      .filter(v => { const k = v.toLowerCase(); if (seenVariant.has(k)) return false; seenVariant.add(k); return true })
+      .map(v => `site:linkedin.com/in ${v} ${NEGATIVE_QUERY}`.trim())
+
+    const allCandidates = []
     const errors = []
-    const stats = { excluded: 0 }
+    const stats = { excluded: 0, foreign: 0 }
+    const dbg = event.queryStringParameters?.debug ? [] : null
 
-    // Serper.dev primero (Google real vía API, no se degrada ni bloquea);
-    // si no hay key o falla, sigue el scraping de motores como siempre.
-    if (process.env.SERPER_API_KEY) {
+    const dispatcher = await getDispatcher()
+    let pool = await buildProxyPool(Math.max(variants.length, 4))
+    if (dispatcher) {
       try {
-        const res = await fetch('https://google.serper.dev/search', {
-          method: 'POST',
-          headers: { 'X-API-KEY': process.env.SERPER_API_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ q: searchQuery, gl: 'mx', hl: 'es', num: 30 }),
-          signal: AbortSignal.timeout(8000),
+        await fetch('https://example.com/', { dispatcher, signal: AbortSignal.timeout(6000) })
+      } catch { pool = [undefined] } // proxy caído → directo desde Netlify
+    }
+
+    // Cada variante se pide en 2 páginas de Brave (20 c/u). En OLEADAS de 4 con
+    // pausa: lanzar todo junto dispara el rate-limit de Brave (429 masivo) y
+    // termina dando MENOS. Se corta al juntar ~90 crudos — las queries
+    // "tóxicas" (Asesor Financiero) pierden ~60% a la exclusión de aseguradoras
+    // y aun así llegan a 50+.
+    const jobs = variants.flatMap(v => [0, 1].map(o => ({ v, o })))
+    const raw = []
+    const seen = new Set()
+    const CHUNK = 4
+    for (let i = 0; i < jobs.length; i += CHUNK) {
+      const wave = jobs.slice(i, i + CHUNK)
+      const lists = await Promise.all(
+        wave.map((j, k) => scrapeQuery(j.v, pool[(i + k) % pool.length], dbg, j.o).catch(err => { errors.push(err.message); return [] }))
+      )
+      for (const list of lists) {
+        for (const p of list) {
+          if (!seen.has(p.url)) { seen.add(p.url); raw.push(p) }
+        }
+      }
+      if (raw.length >= 120 || i + CHUNK >= jobs.length) break
+      await new Promise(r => setTimeout(r, 1200))
+    }
+
+    {
+      for (const p of raw) {
+        // El headline suele venir "Nombre - Puesto - Empresa"; sepáralo.
+        const parts = (p.headline || '').split(/\s*[-–—·|]\s*/).map(s => s.trim()).filter(Boolean)
+        const full_name = p.name || parts[0] || 'Perfil de LinkedIn'
+        const current_title = parts[1] || null
+        const current_company = parts[2] || null
+        if (looksLikeCompany(full_name)) continue // páginas de empresa/marca, no personas
+        const exclLabel = matchExcludedCompany(current_company, current_title, p.headline, p.description, full_name)
+        if (exclLabel) { stats.excluded++; dbg?.push(`EXCL [${exclLabel}] ${full_name} | ${(p.headline || '').slice(0, 60)}`); continue }
+        const foreign = (p.country && p.country !== 'mx' && p.country !== 'www')
+          || detectForeignLocation(`${p.headline || ''} ${p.description || ''}`)
+        if (foreign) { stats.foreign++; continue }
+        allCandidates.push({
+          full_name,
+          current_title,
+          current_company,
+          linkedin_url: p.url,
+          snippet: p.description || null,
+          location: null,
         })
-        if (res.ok) {
-          const data = await res.json()
-          for (const r of data.organic || []) {
-            const rawLink = r.link || ''
-            if (!/linkedin\.com\/in\/[^/?#]{3,}/i.test(rawLink)) continue
-            const profileUrl = rawLink.split('?')[0].split('#')[0].replace(/\/$/, '')
-              .replace(/https?:\/\/[a-z]{2,3}\.linkedin\.com/i, 'https://www.linkedin.com')
-            if (allCandidates.some(c => c.linkedin_url === profileUrl)) continue
-            const cleanTitle = (r.title || '').replace(/\s*[|·-]\s*LinkedIn.*$/i, '')
-            const segments = cleanTitle.split(/\s*[-–—]\s*/).map(s => s.trim()).filter(Boolean)
-            const fullName = segments[0] || profileUrl.split('/in/')[1]
-            const currentTitle = segments[1] || null
-            const currentCompany = segments[2] || null
-            if (matchExcludedCompany(currentCompany, currentTitle, r.snippet, fullName)) { stats.excluded++; continue }
-            if (isForeignProfile(rawLink, currentTitle, r.snippet, null)) { stats.foreign = (stats.foreign || 0) + 1; continue }
-            allCandidates.push({
-              full_name: fullName,
-              current_title: currentTitle,
-              current_company: currentCompany,
-              linkedin_url: profileUrl,
-              snippet: r.snippet || null,
-              location: null,
-            })
-          }
-        } else {
-          errors.push(`Serper: HTTP ${res.status}`)
-        }
-      } catch (err) {
-        errors.push(`Serper: ${err.message}`)
       }
     }
-
-    // Try each engine in order until we get results
-    for (const engine of engines) {
-      if (allCandidates.length >= 10) break
-      try {
-        const response = await fetchWithRetry(engine.url, { headers: engine.headers })
-        if (!response) {
-          errors.push(`${engine.name}: no response`)
-          continue
-        }
-
-        const html = await response.text()
-
-        // Check if we got blocked (CAPTCHA, empty, or very short response)
-        if (html.length < 500 || /captcha|unusual traffic|blocked|access denied/i.test(html)) {
-          errors.push(`${engine.name}: blocked/captcha (${html.length} bytes)`)
-          continue
-        }
-
-        const candidates = extractCandidatesFromHTML(html, stats)
-
-        if (candidates.length > 0) {
-          // Merge results, dedup by linkedin_url
-          const seen = new Set(allCandidates.map(c => c.linkedin_url))
-          for (const c of candidates) {
-            if (!seen.has(c.linkedin_url)) {
-              allCandidates.push(c)
-              seen.add(c.linkedin_url)
-            }
-          }
-          // If we have a good number of results, stop trying more engines
-          if (allCandidates.length >= 10) break
-        } else {
-          errors.push(`${engine.name}: 0 results from ${html.length} bytes`)
-        }
-      } catch (err) {
-        errors.push(`${engine.name}: ${err.message}`)
-      }
-    }
-
-    // If first pass got few results, try remaining engines that haven't been tried
-    // (the loop above already handles this via the rotation)
 
     return {
       statusCode: 200,
@@ -333,9 +318,11 @@ export async function handler(event) {
         results: allCandidates.slice(0, 100),
         count: allCandidates.length,
         excluded: stats.excluded,
-        foreign: stats.foreign || 0,
-        query: searchQuery,
+        foreign: stats.foreign,
+        query,
+        variants,
         offset,
+        ...(dbg ? { engineLog: dbg } : {}),
         ...(allCandidates.length === 0 && errors.length > 0 ? { debug: errors } : {}),
       }),
     }
