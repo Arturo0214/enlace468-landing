@@ -425,9 +425,11 @@ export async function handler(event) {
   // presupuesto de tiempo de su query y nunca se llega a la pasada directa.
   if (dispatcher) {
     try {
-      await fetch('https://example.com/', { dispatcher, signal: AbortSignal.timeout(3000) })
-    } catch {
-      dbg?.push('proxy muerto → modo directo')
+      // 6s: el primer CONNECT de un proxy residencial rotatorio puede tardar.
+      await fetch('https://example.com/', { dispatcher, signal: AbortSignal.timeout(6000) })
+    } catch (e) {
+      const cause = e.cause ? ` (${e.cause.code || e.cause.message || e.cause})` : ''
+      dbg?.push(`proxy muerto → modo directo: ${e.message}${cause}`)
       activeDispatcher = undefined
       pool = [undefined]
     }
