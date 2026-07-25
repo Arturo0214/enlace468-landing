@@ -295,6 +295,10 @@ export async function handler(event) {
         const current_title = parts[1] || null
         const current_company = parts[2] || null
         if (looksLikeCompany(full_name)) continue // páginas de empresa/marca, no personas
+        // Perfiles "fantasma" (~20 contactos, cuentas muertas): el snippet trae
+        // "N connections/contactos"; menos de 50 exactos → fuera.
+        const connM = `${p.description || ''} ${p.headline || ''}`.match(/(\d+)\s*\+?\s*(?:connections?|conexiones|contactos)\b/i)
+        if (connM && !connM[0].includes('+') && +connM[1] < 50) { stats.ghost = (stats.ghost || 0) + 1; continue }
         const exclLabel = matchExcludedCompany(current_company, current_title, p.headline, p.description, full_name)
         if (exclLabel) { stats.excluded++; dbg?.push(`EXCL [${exclLabel}] ${full_name} | ${(p.headline || '').slice(0, 60)}`); continue }
         const foreign = (p.country && p.country !== 'mx' && p.country !== 'www')
@@ -319,6 +323,7 @@ export async function handler(event) {
         count: allCandidates.length,
         excluded: stats.excluded,
         foreign: stats.foreign,
+        ghost: stats.ghost || 0,
         query,
         variants,
         offset,

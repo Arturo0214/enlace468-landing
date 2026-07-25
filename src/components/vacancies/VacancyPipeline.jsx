@@ -6,6 +6,17 @@ import { useAuth } from '../../lib/auth'
 import { usePlan } from '../../lib/planContext'
 import { getFirefliesEmails, matchEmailToCandidate, getCalendarEvents, matchEventToCandidate } from '../../lib/googleApi'
 
+// Origen del candidato → etiqueta en la tarjeta. Permite comparar conversión
+// de candidatos MANUALES (link pegado / recomendado) vs los del sourcing
+// automatizado (feedback de Flavio/Karina 2026-07-24).
+const MANUAL_SOURCES = ['manual', 'referral', 'linkedin', 'csv_import']
+function originBadge(source) {
+  if (!source) return null
+  if (source === 'meta_ads') return { label: 'Ads', cls: 'bg-purple-500/15 text-purple-300' }
+  if (MANUAL_SOURCES.includes(source)) return { label: 'Manual', cls: 'bg-teal-500/15 text-teal-300' }
+  return { label: 'Auto', cls: 'bg-blue-500/15 text-blue-300' }
+}
+
 const stages = [
   { id: 'sourced', label: 'Sourced', color: 'border-gray-400', bg: 'bg-gray-50 dark:bg-gray-900/30' },
   { id: 'contacted', label: 'Contactado', color: 'border-blue-400', bg: 'bg-gray-100/60 dark:bg-gray-800/30' },
@@ -593,6 +604,7 @@ Enlace 468`)
                                 </div>
                               </div>
                               <div className="mt-2 flex items-center gap-1">
+                                {(() => { const o = originBadge(vc.candidates?.source); return o ? <span className={`text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${o.cls}`}>{o.label}</span> : null })()}
                                 {vc.match_score != null && (
                                   <>
                                     <Star size={12} className="text-gold" />

@@ -475,7 +475,7 @@ export async function handler(event) {
 
   const seen = new Set()
   const scored = []
-  const counts = { found: 0, known: 0, excluded: 0, companies: 0, foreign: 0, belowThreshold: 0, returned: 0 }
+  const counts = { found: 0, known: 0, excluded: 0, companies: 0, foreign: 0, ghost: 0, belowThreshold: 0, returned: 0 }
 
   // Búsquedas base en PARALELO (cada una por una IP distinta) → mucho más rápido.
   const dbg = body.debug ? [] : null
@@ -538,6 +538,15 @@ export async function handler(event) {
       // Filtra páginas de EMPRESA/marca (queremos individuos)
       if (looksLikeCompany(full_name)) {
         counts.companies++
+        continue
+      }
+
+      // Perfiles "fantasma" (cuenta creada y nunca usada: sin foto, ~20
+      // contactos — feedback de Karina): el snippet de LinkedIn suele traer
+      // "N connections/contactos"; menos de 50 exactos → fuera.
+      const connM = `${p.description || ''} ${p.headline || ''}`.match(/(\d+)\s*\+?\s*(?:connections?|conexiones|contactos)\b/i)
+      if (connM && !connM[0].includes('+') && +connM[1] < 50) {
+        counts.ghost++
         continue
       }
 

@@ -453,11 +453,15 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
     setPromotingId(item.id)
     try {
       const isLinkedin = item.url?.includes('linkedin.com')
+      // El origen viaja del banco al pipeline: manual (link pegado por el
+      // reclutador) vs web-sourced (búsqueda) — clave para medir conversión.
+      const isManual = item.source === 'manual'
       const { data } = await supabase.from('candidates').insert({
         organization_id: profile.organization_id, full_name: item.full_name || item.title,
         current_title: item.current_title || null, current_company: item.current_company || null,
         linkedin_url: isLinkedin ? item.url : null,
-        source: 'web-sourced', notes: item.snippet || null, tags: ['web-sourced'],
+        source: isManual ? 'manual' : 'web-sourced', notes: item.snippet || null,
+        tags: isManual ? ['candidato-manual'] : ['web-sourced'],
       }).select().single()
       if (data) {
         await supabase.from('vacancy_candidates').insert({ vacancy_id: vacancyId, candidate_id: data.id, stage: 'sourced', assigned_to: profile.id })
@@ -578,7 +582,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
         title: p.full_name, url: p.url, display_url: p.location ? `linkedin.com · ${p.location}` : 'linkedin.com',
         snippet: p.snippet || null, platform: 'linkedin',
         full_name: p.full_name, current_title: p.current_title, current_company: p.current_company,
-        source: 'linkedin', created_by: profile.id,
+        source: 'manual', created_by: profile.id, // pegado a mano por el reclutador
       }
       const { data: saved } = await supabase.from('sourcing_bank').insert(row).select().single()
       if (saved) setBankItems(prev => [saved, ...prev])
