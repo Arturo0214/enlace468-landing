@@ -9,7 +9,7 @@ import { getFirefliesEmails, matchEmailToCandidate, getCalendarEvents, matchEven
 // Origen del candidato → etiqueta en la tarjeta. Permite comparar conversión
 // de candidatos MANUALES (link pegado / recomendado) vs los del sourcing
 // automatizado (feedback de Flavio/Karina 2026-07-24).
-const MANUAL_SOURCES = ['manual', 'referral', 'linkedin', 'csv_import']
+const MANUAL_SOURCES = ['manual', 'referral', 'linkedin', 'csv_import', 'direct', 'other']
 function originBadge(source) {
   if (!source) return null
   if (source === 'meta_ads') return { label: 'Ads', cls: 'bg-purple-500/15 text-purple-300' }
@@ -827,7 +827,9 @@ Enlace 468`)
                   <div className="flex flex-wrap gap-1.5">
                     {[
                       { label: 'Google', url: `https://www.google.com/search?q=${encodeURIComponent(`"${c.full_name}" ${c.current_company || ''}`)}` },
-                      { label: 'LinkedIn', url: c.linkedin_url || `https://www.google.com/search?q=site:linkedin.com/in+${encodeURIComponent(c.full_name || '')}` },
+                      // Con URL guardada abre el perfil DIRECTO; sin URL lo dice
+                      // claro (antes el botón "LinkedIn" mandaba a Google sin avisar).
+                      { label: c.linkedin_url ? 'LinkedIn' : 'Buscar en LinkedIn', url: c.linkedin_url || `https://www.google.com/search?q=${encodeURIComponent(`site:linkedin.com/in "${c.full_name || ''}"`)}` },
                       { label: 'Noticias', url: `https://www.google.com/search?q=${encodeURIComponent(`"${c.full_name}"`)}&tbm=nws` },
                     ].map((s, i) => <a key={i} href={s.url} target="_blank" rel="noopener" className="text-[10px] px-2 py-1 rounded bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"><ExternalLink size={8} className="inline mr-0.5" />{s.label}</a>)}
                   </div>

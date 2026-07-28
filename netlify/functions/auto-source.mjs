@@ -39,6 +39,13 @@ export function looksLikeCompany(name) {
 
 // La descripción a veces es una OFERTA DE EMPLEO que el perfil publicó, no su
 // bio → no debe inflar el score. Se detecta y se ignora para el matching.
+// Señales de EMPRENDEDOR / dueño de negocio en headline+descripción (pedido de
+// Ingrid: convierten mejor porque no les da miedo emprender).
+const ENTREPRENEUR_RE = /\b(fundador|fundadora|co-?fundador|co-?fundadora|founder|co-?founder|emprendedor|emprendedora|entrepreneur|due[ñn][oa] de|propietari[oa]|business owner|owner at|negocio propio|mi (?:propi[oa] )?(?:negocio|empresa)|socio fundador|director general y fundador)\b/i
+function isEntrepreneurProfile(text) {
+  return ENTREPRENEUR_RE.test(text || '')
+}
+
 function looksLikeJobPosting(desc) {
   const d = normalizeText(desc)
   if (!d) return false
@@ -60,10 +67,20 @@ const PLATFORM_PREFIX = {
 /** Build DIVERSE queries from the vacancy so el listado no se repite: variantes
  *  por ubicación, seniority y cada competencia → más perfiles distintos. Sin
  *  operadores negativos (las aseguradoras se filtran después). */
-function buildQueries(vacancy, prefix, max = 5) {
+function buildQueries(vacancy, prefix, max = 5, seeds = [], searchTerms = []) {
   const loc = vacancy.location || 'México'
   const t = (vacancy.title || '').trim()
   const raw = []
+  // Términos GANADORES del reclutador (cómo se describe en LinkedIn la gente
+  // que SÍ responde — p.ej. los filtros de Karina): van PRIMERO y fijos.
+  // Resuelven vacantes con título interno ("FINANCE CONSULTANT") que nadie
+  // usa en su perfil.
+  const winners = (searchTerms || []).map(s => String(s).trim()).filter(Boolean).slice(0, 4)
+  winners.forEach(term => raw.push(/\b(cdmx|m[eé]xico|monterrey|guadalajara|quer[eé]taro)\b/i.test(term) ? term : `${term} ${loc}`))
+  // Lookalike: títulos de los candidatos MANUALES de la vacante (los que mejor
+  // responden según el equipo) generan sus propias queries.
+  ;(seeds || []).map(s => s?.title).filter(Boolean).slice(0, 2)
+    .forEach(st => { if (normalizeText(st) !== normalizeText(t)) raw.push(`${st} ${loc}`) })
   if (t) {
     raw.push(`${t} ${loc}`)
     raw.push(`${t} México`)         // más amplio que la ciudad
@@ -77,16 +94,18 @@ function buildQueries(vacancy, prefix, max = 5) {
     .forEach(c => raw.push(`${t} ${c} ${loc}`.trim()))
   if (!raw.length) raw.push(loc)
   const uniq = [...new Set(raw.map(s => s.trim()).filter(Boolean))]
-  // La 1a (título+ubicación) siempre va; el resto se BARAJA para que corridas
-  // sucesivas usen variantes distintas — con queries deterministas cada corrida
-  // re-encontraba los mismos perfiles, que ya estaban en el banco (excludeUrls)
-  // y el neto de candidatos NUEVOS se iba a cero.
-  const [head, ...tail] = uniq
+  // Los términos ganadores (o la 1a variante) van FIJOS; el resto se BARAJA
+  // para que corridas sucesivas usen variantes distintas — con queries
+  // deterministas cada corrida re-encontraba los mismos perfiles, que ya
+  // estaban en el banco (excludeUrls) y el neto de NUEVOS se iba a cero.
+  const fixedN = Math.min(Math.max(winners.length, 1), uniq.length)
+  const head = uniq.slice(0, fixedN)
+  const tail = uniq.slice(fixedN)
   for (let i = tail.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
     ;[tail[i], tail[j]] = [tail[j], tail[i]]
   }
-  return [head, ...tail].slice(0, max).map(base => `${prefix} ${base}`.trim())
+  return [...head, ...tail].slice(0, max).map(base => `${prefix} ${base}`.trim())
 }
 
 /** Derive a display name from a LinkedIn slug (…/in/carlos-alvarado-103b4a215). */
@@ -469,8 +488,39 @@ export async function handler(event) {
   const known = new Set((Array.isArray(body.excludeUrls) ? body.excludeUrls : [])
     .map(u => String(u).split('?')[0].replace(/\/$/, '')))
 
-  const queries = buildQueries(vacancy, prefix)
-  const targets = buildTargets(vacancy)
+  // Semillas lookalike: perfiles manuales de la vacante → queries extra y
+  // boost de score a prospectos parecidos (título/empresa).
+  const seeds = Array.isArray(body.seeds) ? body.seeds.slice(0, 8) : []
+  const seedTokens = new Set(
+    seeds.flatMap(s => normalizeText(`${s?.title || ''} ${s?.company || ''}`).split(/\s+/))
+      .filter(tk => tk.length > 3)
+  )
+
+  const winnerTerms = Array.isArray(body.searchTerms) ? body.searchTerms.map(s => String(s).trim()).filter(Boolean).slice(0, 4) : []
+  // Modo emprendedores (Ingrid): solo perfiles con señales de negocio propio;
+  // agrega queries dirigidas a fundadores/emprendedores del giro.
+  const onlyEntrepreneurs = body.onlyEntrepreneurs === true
+  let queries = buildQueries(vacancy, prefix, 5, seeds, winnerTerms)
+  if (onlyEntrepreneurs) {
+    // Modo emprendedores: las queries van DIRIGIDAS a fundadores/dueños; las
+    // genéricas casi no los traen (2 de 114 en pruebas).
+    const loc = vacancy.location || 'México'
+    const flavor = winnerTerms[0] || (vacancy.title || '').trim()
+    queries = [
+      `${prefix} fundador ${loc}`,
+      `${prefix} emprendedor ${loc}`,
+      `${prefix} dueño de negocio ${loc}`,
+      `${prefix} fundador ${flavor} ${loc}`,
+      `${prefix} emprendedor ${flavor} México`,
+    ].map(q => q.replace(/\s+/g, ' ').trim())
+  }
+  // El scorer debe aceptar los términos ganadores como títulos ALTERNATIVOS:
+  // si el reclutador busca "Ejecutivo de ventas", esos perfiles no pueden
+  // reprobar por no decir "FINANCE CONSULTANT". Un set de targets por título
+  // y se toma el MEJOR score (concatenarlos diluía el ratio de match).
+  const targetsList = [vacancy.title, ...winnerTerms].filter(Boolean)
+    .map(tt => buildTargets({ ...vacancy, title: tt }))
+  if (!targetsList.length) targetsList.push(buildTargets(vacancy))
   const dispatcher = await getDispatcher()
 
   const seen = new Set()
@@ -554,6 +604,9 @@ export async function handler(event) {
       // salvo que la descripción sea una oferta de empleo (ruido).
       const usefulDesc = looksLikeJobPosting(p.description) ? '' : p.description
       const enriched = [p.headline, usefulDesc].filter(Boolean).join(' · ')
+      // Señal de emprendedor: etiqueta siempre; en modo onlyEntrepreneurs filtra.
+      const entrepreneur = isEntrepreneurProfile(`${p.headline || ''} ${usefulDesc || ''}`)
+      if (onlyEntrepreneurs && !entrepreneur) { counts.notEntrepreneur = (counts.notEntrepreneur || 0) + 1; continue }
       const prospect = {
         title: p.headline || full_name,
         url: p.url,
@@ -561,8 +614,23 @@ export async function handler(event) {
         displayUrl: 'linkedin.com',
         snippet: enriched,
         full_name, current_title, current_company, location,
+        entrepreneur,
       }
-      const s = scoreProspect(vacancy, prospect, targets)
+      let s = scoreProspect(vacancy, prospect, targetsList[0])
+      for (let ti = 1; ti < targetsList.length; ti++) {
+        const alt = scoreProspect(vacancy, prospect, targetsList[ti])
+        if (alt.score > s.score) s = alt
+      }
+      // Emprendedores convierten mejor (feedback Ingrid) → boost leve; en modo
+      // "solo emprendedores" el rasgo ES el criterio → boost mayor para que
+      // no reprueben por no coincidir con el título de la vacante.
+      if (entrepreneur) s.score = Math.min(100, s.score + (onlyEntrepreneurs ? 15 : 6))
+      // Boost lookalike: ≥2 tokens compartidos con los perfiles manuales → +8.
+      if (seedTokens.size) {
+        const pTokens = normalizeText(`${current_title || ''} ${current_company || ''} ${p.headline || ''}`).split(/\s+/)
+        const overlap = pTokens.filter(tk => seedTokens.has(tk)).length
+        if (overlap >= 2) s.score = Math.min(100, s.score + 8)
+      }
       if (s.score < minScore) { counts.belowThreshold++; continue }
       scored.push({ ...prospect, score: s.score, matchedComps: s.matchedComps, strengths: s.strengths, gaps: s.gaps })
     }

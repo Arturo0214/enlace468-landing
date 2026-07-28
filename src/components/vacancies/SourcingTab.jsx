@@ -31,7 +31,11 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const [autoCounts, setAutoCounts] = useState(null)
   const [autoError, setAutoError] = useState(null)
   const [autoMinScore, setAutoMinScore] = useState(40)
+  // Términos "ganadores" del reclutador (cómo se describe la gente que SÍ
+  // responde, ej. los filtros de Karina) — persisten en la vacante.
+  const [autoTerms, setAutoTerms] = useState('')
   const [excludeSector, setExcludeSector] = useState(true) // excluir aseguradoras/inversiones (Prudential)
+  const [onlyEntrepreneurs, setOnlyEntrepreneurs] = useState(false) // solo perfiles con negocio propio (Ingrid)
   const [discardingUrl, setDiscardingUrl] = useState(null)
   const [importUrl, setImportUrl] = useState('')
   const [importing, setImporting] = useState(false)
@@ -71,6 +75,9 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
 
   // Limpia el draft de IA al abrir otro candidato
   useEffect(() => { setDraft(null); setDraftCopied(false); setSendResult(null) }, [selectedCandidate])
+
+  // Carga los términos ganadores guardados en la vacante
+  useEffect(() => { setAutoTerms((vacancy?.search_terms || []).join(', ')) }, [vacancy?.id])
 
   // Carga los candidatos DESCARTADOS de toda la organización → nunca reaparecen
   // en ninguna búsqueda (no solo en esta vacante).
@@ -489,6 +496,21 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
     setAutoError(null)
     setAutoRan(true)
     try {
+      // Términos ganadores → se guardan en la vacante para todo el equipo.
+      const terms = autoTerms.split(',').map(s => s.trim()).filter(Boolean).slice(0, 4)
+      supabase.from('vacancies').update({ search_terms: terms }).eq('id', vacancyId).then(() => {})
+      // Semillas lookalike: los candidatos MANUALES del pipeline (los que mejor
+      // responden según el equipo) → queries extra + boost a perfiles parecidos.
+      let seeds = []
+      try {
+        const { data: vcSeed } = await supabase.from('vacancy_candidates')
+          .select('candidates(current_title, current_company, source, tags)')
+          .eq('vacancy_id', vacancyId).limit(200)
+        seeds = (vcSeed || []).map(r => r.candidates)
+          .filter(c => c && (['manual', 'referral'].includes(c.source) || (c.tags || []).includes('candidato-manual')))
+          .map(c => ({ title: c.current_title, company: c.current_company }))
+          .filter(s => s.title || s.company).slice(0, 8)
+      } catch { /* sin semillas */ }
       const res = await fetch('/api/auto-source', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -498,6 +520,9 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
             company_name: vacancy.company_name, description: vacancy.description,
             challenges: vacancy.challenges, competencies: vacancy.competencies || [],
           },
+          searchTerms: terms,
+          seeds,
+          onlyEntrepreneurs,
           platform: platform === 'all' ? 'linkedin' : platform,
           minScore: autoMinScore,
           excludeSector,
@@ -757,7 +782,15 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
           ))}
         </div>
         {/* Sourcing automático */}
-        <div className="mt-3 pt-3 flex flex-wrap items-center gap-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <label className="block text-[11px] text-gray-400 mb-1.5">
+            Términos que SÍ responden (cómo se describe esa gente en LinkedIn, separados por coma — se guardan en la vacante)
+          </label>
+          <input type="text" value={autoTerms} onChange={e => setAutoTerms(e.target.value)}
+            placeholder='Ej. "Ejecutivo de ventas, Coordinador Comercial, Ejecutivo Comercial"'
+            className="w-full mb-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 focus:border-[#00A99D]/50 outline-none text-white placeholder-gray-600 text-sm" />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
           <button onClick={runAutoSource} disabled={autoLoading}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white disabled:opacity-50 transition-all"
             style={{ background: 'linear-gradient(90deg, #00A99D, #071B49)' }}>
@@ -780,6 +813,15 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
               <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${excludeSector ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
             </span>
             Excluir aseguradoras/inversiones
+          </button>
+          {/* Toggle: solo emprendedores/dueños de negocio (convierten mejor — Ingrid) */}
+          <button type="button" onClick={() => setOnlyEntrepreneurs(v => !v)}
+            className="flex items-center gap-2 text-[11px] text-gray-300 hover:text-white transition-colors"
+            title="Solo perfiles con señales de negocio propio (fundador, emprendedor, dueño). Convierten mejor: no les da miedo emprender.">
+            <span className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${onlyEntrepreneurs ? 'bg-[#00A99D]' : 'bg-white/15'}`}>
+              <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${onlyEntrepreneurs ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+            </span>
+            Solo emprendedores
           </button>
         </div>
         <p className="mt-2.5 text-[10px] text-gray-500 leading-relaxed">
@@ -942,6 +984,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <a href={r.url} target="_blank" rel="noopener" className="text-sm font-semibold text-white hover:text-primary-light transition-colors line-clamp-1">{r.full_name || r.title}</a>
+                        {r.entrepreneur && <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(245,158,11,0.15)', color: '#fbbf24' }}>🚀 Emprendedor</span>}
                         {contactStatus(r.url) === 'connected'
                           ? <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(16,185,129,0.2)', color: '#34d399' }}>✓ Conectado</span>
                           : contactStatus(r.url) === 'invited' && <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(10,102,194,0.2)', color: '#5aa0e6' }}>✓ Invitado</span>}

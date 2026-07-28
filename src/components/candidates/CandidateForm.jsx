@@ -23,7 +23,7 @@ export default function CandidateForm({ onClose, onSaved, initial }) {
     linkedin_url: initial?.linkedin_url || '', location: initial?.location || '',
     current_title: initial?.current_title || '', current_company: initial?.current_company || '',
     years_experience: initial?.years_experience || '', salary_expectation: initial?.salary_expectation || '',
-    source: initial?.source || '', tags: initial?.tags?.join(', ') || '', notes: initial?.notes || '',
+    source: initial?.source || 'manual', tags: initial?.tags?.join(', ') || '', notes: initial?.notes || '',
     // Compliance fields
     data_obtained_at: initial?.data_obtained_at || new Date().toISOString().split('T')[0],
     data_purpose: initial?.data_purpose || 'recruitment',
@@ -45,7 +45,9 @@ export default function CandidateForm({ onClose, onSaved, initial }) {
         current_company: form.current_company || null,
         years_experience: form.years_experience ? Number(form.years_experience) : null,
         salary_expectation: form.salary_expectation ? Number(form.salary_expectation) : null,
-        source: form.source || null, tags: form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+        // Alta hecha por una persona → 'manual' salvo que elija otra fuente.
+        // Nunca null: el origen Manual/Auto debe distinguirse SIEMPRE.
+        source: form.source || 'manual', tags: form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
         notes: form.notes || null,
         data_obtained_at: form.data_obtained_at || null,
         data_purpose: form.data_purpose,
@@ -96,7 +98,7 @@ export default function CandidateForm({ onClose, onSaved, initial }) {
           <div className="grid grid-cols-2 gap-3">
             <div><label className={labelClass}>Fuente</label>
               <select value={form.source} onChange={e => update('source', e.target.value)} className={inputClass}>
-                <option value="">Seleccionar...</option>
+                <option value="manual">Manual (lo agregué yo)</option>
                 <option value="linkedin">LinkedIn</option><option value="occ">OCC</option>
                 <option value="referral">Referido</option><option value="direct">Directo</option><option value="other">Otro</option>
               </select>
