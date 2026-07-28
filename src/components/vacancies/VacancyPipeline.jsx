@@ -35,6 +35,7 @@ export default function VacancyPipeline({ vacancyId }) {
   const hasBankAccess = canDo('access_candidate_bank')
   const [candidates, setCandidates] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [bankCandidates, setBankCandidates] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -65,12 +66,23 @@ export default function VacancyPipeline({ vacancyId }) {
   useEffect(() => { loadPipeline() }, [vacancyId])
 
   async function loadPipeline() {
-    const { data } = await supabase.from('vacancy_candidates').select('*, candidates(*)').eq('vacancy_id', vacancyId).order('created_at')
+    // Todo va en try/finally: un error de red aquí (p. ej. un proxy corporativo
+    // que rechaza requests) dejaba el spinner girando para siempre.
+    try {
+    setLoadError(null)
+    const { data, error } = await supabase.from('vacancy_candidates').select('*, candidates(*)').eq('vacancy_id', vacancyId).order('created_at')
+    if (error) throw error
     const vcs = data || []
     // Load interaction summary per candidate to determine response status
     if (vcs.length > 0) {
       const vcIds = vcs.map(vc => vc.id)
-      const { data: ints } = await supabase.from('candidate_interactions').select('vacancy_candidate_id, direction, created_at').in('vacancy_candidate_id', vcIds)
+      // En LOTES de 80: con 260 candidatos los ids en la URL suman ~10KB y los
+      // proxies corporativos matan el request (pipeline colgado para Karina).
+      const ints = []
+      for (let i = 0; i < vcIds.length; i += 80) {
+        const { data: chunk } = await supabase.from('candidate_interactions').select('vacancy_candidate_id, direction, created_at').in('vacancy_candidate_id', vcIds.slice(i, i + 80))
+        if (chunk?.length) ints.push(...chunk)
+      }
       const intMap = {}
       ;(ints || []).forEach(i => {
         if (!intMap[i.vacancy_candidate_id]) intMap[i.vacancy_candidate_id] = { outbound: 0, inbound: 0, lastOutbound: null }
@@ -91,7 +103,13 @@ export default function VacancyPipeline({ vacancyId }) {
       })
       vcs.forEach(vc => { vc._interactions = intMap[vc.id] || null })
     }
-    setCandidates(vcs); setLoading(false)
+    setCandidates(vcs)
+    } catch (e) {
+      console.error('loadPipeline:', e)
+      setLoadError(e.message || 'Error de red')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleDragEnd(result) {
@@ -117,7 +135,11 @@ export default function VacancyPipeline({ vacancyId }) {
         if (others.length > 0) {
           const now = new Date().toISOString()
           const otherIds = others.map(c => c.id)
-          await supabase.from('vacancy_candidates').update({ stage: 'rejected', stage_changed_at: now }).in('id', otherIds)
+          // En lotes de 80: con cientos de ids la URL crece a ~10KB y los
+          // proxies corporativos la rechazan.
+          for (let i = 0; i < otherIds.length; i += 80) {
+            await supabase.from('vacancy_candidates').update({ stage: 'rejected', stage_changed_at: now }).in('id', otherIds.slice(i, i + 80))
+          }
           await supabase.from('vacancies').update({ status: 'closed_filled', closed_at: now, closed_reason: `Candidato contratado: ${candidate?.candidates?.full_name}` }).eq('id', vacancyId)
           loadPipeline()
         }
@@ -500,6 +522,17 @@ Enlace 468`)
   }
 
   if (loading) return <div className="flex items-center justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" /></div>
+
+  if (loadError) return (
+    <div className="text-center py-12 glass rounded-xl">
+      <p className="text-red-400 text-sm mb-1">No se pudo cargar el pipeline</p>
+      <p className="text-gray-500 text-xs mb-4">{loadError}</p>
+      <button onClick={() => { setLoading(true); loadPipeline() }}
+        className="px-4 py-2 bg-gradient-to-r from-primary to-primary-light text-white rounded-lg text-sm font-medium hover:opacity-90">
+        Reintentar
+      </button>
+    </div>
+  )
 
   // Filtro del tablero: insensible a mayúsculas y acentos, por nombre o puesto.
   const normalize = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
