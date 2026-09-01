@@ -61,16 +61,64 @@ for (const group of SYNONYM_GROUPS) {
 }
 
 // ── Filtro geográfico ──────────────────────────────────────────
-// Las búsquedas "site:linkedin.com/in" traen perfiles de toda LatAm (el idioma
-// coincide). Señales de que el perfil vive FUERA de México: países y ciudades
-// elegidos para no chocar con nombres propios o universidades mexicanas.
+// Las búsquedas "site:linkedin.com/in" traen perfiles de todo el mundo (los de
+// EUA/India/UK viven bajo www.linkedin.com, sin subdominio que los delate —
+// reporte de Karina 2026-08-28). Señales de que el perfil vive FUERA de México:
+// países y ciudades elegidos para no chocar con nombres propios, colonias o
+// universidades mexicanas (por eso NO están: roma, sofia, orlando, virginia,
+// leon, colorado, nevada, san francisco, san antonio…).
 const FOREIGN_SIGNALS = [
+  // LatAm + España (los originales)
   'peru', 'chile', 'argentina', 'colombia', 'ecuador', 'bolivia', 'venezuela',
   'uruguay', 'paraguay', 'brasil', 'brazil', 'espana', 'spain', 'guatemala',
   'honduras', 'nicaragua', 'panama', 'costa rica', 'el salvador',
   'republica dominicana', 'puerto rico', 'buenos aires', 'bogota', 'medellin',
   'santiago de chile', 'guayaquil', 'quito', 'montevideo', 'caracas',
-  'sao paulo', 'lima peru',
+  'sao paulo', 'lima peru', 'cuba', 'la habana', 'jamaica', 'haiti', 'belice', 'belize',
+  'madrid', 'barcelona espana', 'valencia espana', 'sevilla',
+  // Estados Unidos y Canadá
+  'estados unidos', 'united states', 'new york', 'nueva york', 'california',
+  'texas', 'florida', 'miami', 'chicago', 'houston', 'dallas', 'seattle',
+  'boston', 'denver', 'atlanta', 'philadelphia', 'las vegas', 'los angeles',
+  'san diego', 'new jersey', 'illinois', 'ohio', 'michigan', 'massachusetts',
+  'pennsylvania', 'north carolina', 'washington dc', 'canada', 'toronto',
+  'vancouver', 'montreal', 'ottawa', 'calgary',
+  // Reino Unido e Irlanda
+  'reino unido', 'united kingdom', 'inglaterra', 'england', 'londres', 'london',
+  'manchester', 'birmingham', 'escocia', 'scotland', 'glasgow', 'edimburgo',
+  'edinburgh', 'irlanda', 'ireland', 'dublin',
+  // Europa
+  'francia', 'france', 'paris', 'alemania', 'germany', 'berlin', 'munich',
+  'frankfurt', 'hamburgo', 'hamburg', 'italia', 'italy', 'milano', 'portugal',
+  'lisboa', 'lisbon', 'paises bajos', 'netherlands', 'holanda', 'amsterdam',
+  'rotterdam', 'belgica', 'belgium', 'bruselas', 'brussels', 'suiza',
+  'switzerland', 'zurich', 'ginebra', 'geneva', 'austria', 'viena', 'vienna',
+  'polonia', 'poland', 'varsovia', 'warsaw', 'cracovia', 'krakow', 'rumania',
+  'romania', 'bucarest', 'bucharest', 'hungria', 'hungary', 'budapest',
+  'grecia', 'greece', 'atenas', 'athens', 'suecia', 'sweden', 'estocolmo',
+  'stockholm', 'noruega', 'norway', 'oslo', 'dinamarca', 'denmark',
+  'copenhague', 'copenhagen', 'finlandia', 'finland', 'helsinki',
+  'republica checa', 'czech republic', 'chequia', 'praga', 'prague',
+  'eslovaquia', 'slovakia', 'bulgaria', 'serbia', 'belgrado', 'croacia',
+  'croatia', 'ucrania', 'ukraine', 'kiev', 'kyiv', 'rusia', 'russia', 'moscu',
+  'moscow', 'turquia', 'turkey', 'estambul', 'istanbul', 'ankara',
+  // India y resto de Asia
+  'india', 'mumbai', 'delhi', 'bangalore', 'bengaluru', 'hyderabad', 'chennai',
+  'pune', 'kolkata', 'gurgaon', 'gurugram', 'noida', 'ahmedabad', 'jaipur',
+  'pakistan', 'karachi', 'lahore', 'islamabad', 'bangladesh', 'dhaka',
+  'sri lanka', 'nepal', 'china', 'beijing', 'shanghai', 'shenzhen', 'hong kong',
+  'taiwan', 'taipei', 'japon', 'japan', 'tokio', 'tokyo', 'osaka',
+  'corea del sur', 'south korea', 'seul', 'seoul', 'singapur', 'singapore',
+  'filipinas', 'philippines', 'manila', 'indonesia', 'jakarta', 'malasia',
+  'malaysia', 'kuala lumpur', 'tailandia', 'thailand', 'bangkok', 'vietnam',
+  'hanoi', 'ho chi minh',
+  // Medio Oriente, África y Oceanía
+  'emiratos arabes', 'united arab emirates', 'dubai', 'abu dhabi', 'qatar',
+  'doha', 'arabia saudita', 'saudi arabia', 'riyadh', 'kuwait', 'israel',
+  'tel aviv', 'egipto', 'egypt', 'el cairo', 'cairo', 'sudafrica',
+  'south africa', 'johannesburgo', 'johannesburg', 'cape town', 'nigeria',
+  'kenia', 'kenya', 'nairobi', 'marruecos', 'morocco', 'australia', 'sydney',
+  'melbourne', 'brisbane', 'nueva zelanda', 'new zealand', 'auckland',
 ]
 // Si el texto también menciona México (o una ciudad mexicana), NO se descarta:
 // puede ser un mexicano con experiencia regional ("responsable de México y Perú").
@@ -78,7 +126,13 @@ const MEXICO_SIGNALS = [
   'mexico', 'mexicana', 'mexicano', 'cdmx', 'ciudad de mexico', 'guadalajara',
   'monterrey', 'queretaro', 'puebla', 'tijuana', 'merida', 'cancun', 'toluca',
   'aguascalientes', 'chihuahua', 'hermosillo', 'culiacan', 'veracruz',
-  'estado de mexico', 'nuevo leon', 'jalisco',
+  'estado de mexico', 'nuevo leon', 'jalisco', 'mexicali', 'saltillo',
+  'morelia', 'san luis potosi', 'tampico', 'oaxaca', 'chiapas', 'tabasco',
+  'yucatan', 'sonora', 'sinaloa', 'durango', 'zacatecas', 'guanajuato',
+  'michoacan', 'morelos', 'cuernavaca', 'pachuca', 'tlaxcala', 'colima',
+  'nayarit', 'irapuato', 'celaya', 'ciudad juarez', 'reynosa', 'ensenada',
+  'naucalpan', 'tlalnepantla', 'ecatepec', 'coyoacan', 'polanco', 'interlomas',
+  'edomex', 'leon gto', 'torreon', 'campeche', 'quintana roo', 'baja california',
 ]
 const wordRe = w => new RegExp(`\\b${w}\\b`)
 

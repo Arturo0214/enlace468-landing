@@ -20,21 +20,66 @@ import { buildSearchEngines } from './search-candidates.mjs'
 import { matchExcludedCompany, normalizeText } from '../../src/lib/excludedCompanies.js'
 import { buildTargets, scoreProspect, detectForeignLocation } from '../../src/lib/sourcingScore.js'
 
-// Señales de que un perfil /in/ es una EMPRESA/marca, no una persona.
-// Se checa contra el NOMBRE (no el headline, que sí puede decir "servicios
-// financieros" en un individuo). Substrings elegidos que no aparecen en
-// nombres de personas mexicanas.
-const COMPANY_HINTS = [
+// Señales de que un perfil /in/ es una EMPRESA/marca, no una persona
+// (reporte de Karina 2026-08-28/31: "me manda consultorías, no personas" —
+// se colaban "Medios Inmobiliaria", "Neo Credit", "Tu Asesor Hipotecario",
+// agencias de reclutamiento…). Se checa contra el NOMBRE (no el headline, que
+// sí puede decir "servicios financieros" en un individuo). Tres capas:
+//
+// 1. FRASES/TOKENS FUERTES: jamás aparecen en el nombre de una persona.
+// 2. Prefijos de marca ("Tu X", "Mi X", "Somos X").
+// 3. PALABRAS DE GIRO: sí pueden aparecer en el slug de una persona que se
+//    "brandea" (luis-hernandez-asesor-hipotecario) → se QUITAN del nombre y
+//    si no queda un nombre humano (2+ palabras), es una marca.
+const STRONG_PHRASES = [
+  'sa de cv', 's a de c v', 's de rl', 'servicios financieros', 'financial group',
+  'grupo financiero', 'bienes raices', 'real estate', 'recursos humanos',
+  'casa de bolsa', 'firma ',
+]
+const STRONG_TOKENS = new Set([
   'consulting', 'consultores', 'consultoria', 'corporativo', 'corporation', 'corporate',
   'holding', 'holdings', 'despacho', 'asociados', 'solutions', 'soluciones', 'group',
   'grupo', 'capital', 'global', 'partners', 'advisory', 'financialgroup', 'company',
-  'firma ', 'internacional', 'international', 'sa de cv', 's a de c v', 'servicios financieros',
-  'financiera ', 'financial group', 'grupo financiero', 'asesores', 'brokers', 'broker',
-]
+  'internacional', 'international', 'financiera', 'financieras', 'asesores', 'brokers',
+  'broker', 'inmobiliaria', 'inmobiliarias', 'hipotecaria', 'hipotecarias', 'seguros',
+  'aseguradora', 'afianzadora', 'agencia', 'agency', 'agencias', 'staffing',
+  'headhunter', 'headhunters', 'headhunting', 'reclutamiento', 'recruitment',
+  'recruiting', 'realty', 'properties', 'propiedades', 'inc', 'llc', 'ltd', 'sapi',
+  'corp', 'promotoria', 'inversiones', 'firm',
+])
+const TRADE_TOKENS = new Set([
+  // giro/oficio que la gente pone en su slug — no bastan solos para ser persona
+  'asesor', 'asesora', 'asesoria', 'consultor', 'consultora', 'hipotecario', 'hipotecarios',
+  'inmobiliario', 'inmobiliarios', 'credito', 'creditos', 'credit', 'financiero',
+  'financieros', 'finanzas', 'finance', 'financial', 'patrimonial', 'ejecutivo',
+  'ejecutiva', 'agente', 'gerente', 'director', 'directora', 'general',
+  'vendedor', 'vendedora', 'ventas', 'marketing', 'digital', 'medios', 'legal',
+  'juridico', 'fiscal', 'contable', 'experto', 'experta', 'coach', 'oficial',
+  'equipo', 'team', 'servicios', 'services', 'solutions', 'express', 'online',
+  // giros/marcas frecuentes en páginas de empresa con URL /in/
+  'negocios', 'centro', 'bolsa', 'hipoteca', 'hipotecas', 'patrimonio',
+  'vivienda', 'inmuebles', 'propiedades', 'invierte', 'inversion', 'academia',
+  'instituto', 'escuela', 'cursos', 'seguro', 'prestamos', 'prestamo',
+  // conectores y genéricos
+  'tu', 'mi', 'su', 'de', 'del', 'la', 'el', 'los', 'las', 'y', 'en', 'para',
+  'con', 'sin', 'desde', 'cero', 'mx', 'mexico', 'cdmx', 'and', 'the', 'casa',
+  'hogar', 'punto',
+])
 export function looksLikeCompany(name) {
-  const n = normalizeText(name)
+  const n = normalizeText(name).replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()
   if (!n) return false
-  return COMPANY_HINTS.some(h => n.includes(h))
+  if (STRONG_PHRASES.some(h => n.includes(h))) return true
+  const toks = n.split(' ')
+  if (toks.some(t => STRONG_TOKENS.has(t))) return true
+  if (/^(tu|mi|somos)\s/.test(n)) return true
+  // Slug de marca concatenado ("brokerhipotecario", "creditosfacilmx"): en
+  // nombres de UN solo token las palabras fuertes cuentan como substring.
+  if (toks.length === 1 && ['broker', 'inmobiliaria', 'hipotecaria', 'seguros', 'consultoria', 'agencia', 'financiera', 'creditos', 'staffing', 'realty'].some(h => toks[0].includes(h))) return true
+  // "Neo Credit" → quita 'credit' → queda "Neo" (1) → marca.
+  // "Luis Hernandez Asesor Hipotecario" → quedan "Luis Hernandez" (2) → persona.
+  const rest = toks.filter(t => !TRADE_TOKENS.has(t))
+  if (rest.length < 2 && rest.length < toks.length) return true
+  return false
 }
 
 // La descripción a veces es una OFERTA DE EMPLEO que el perfil publicó, no su
@@ -92,6 +137,11 @@ function buildQueries(vacancy, prefix, max = 5, seeds = [], searchTerms = []) {
   // Una query por cada competencia (surfacean gente distinta)
   ;(vacancy.competencies || []).map(c => c?.name).filter(Boolean).slice(0, 3)
     .forEach(c => raw.push(`${t} ${c} ${loc}`.trim()))
+  // Competencia SOLA + ubicación: rescata vacantes cuyo título es un nombre
+  // interno/comercial ("CERO HIPOTECA") que nadie usa en su perfil — con puro
+  // título esas búsquedas regresan empresas del producto, no candidatos.
+  ;(vacancy.competencies || []).map(c => c?.name).filter(Boolean).slice(0, 2)
+    .forEach(c => { if (String(c).trim().length >= 4) raw.push(`${String(c).trim()} ${loc}`.trim()) })
   if (!raw.length) raw.push(loc)
   const uniq = [...new Set(raw.map(s => s.trim()).filter(Boolean))]
   // Los términos ganadores (o la 1a variante) van FIJOS; el resto se BARAJA
@@ -471,8 +521,13 @@ export async function handler(event) {
   let body
   try { body = JSON.parse(event.body || '{}') } catch { return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON' }) } }
 
-  const vacancy = body.vacancy
-  if (!vacancy?.title) return { statusCode: 400, headers, body: JSON.stringify({ error: 'vacancy.title requerido' }) }
+  const rawVacancy = body.vacancy
+  if (!rawVacancy?.title) return { statusCode: 400, headers, body: JSON.stringify({ error: 'vacancy.title requerido' }) }
+  // Títulos internos con marca ("Consultor Inmobiliario Senior | Célula Cero
+  // Hipoteca") ensucian queries y scoring: la parte después de | / · es nombre
+  // de producto, no de puesto — con ella las búsquedas regresan EMPRESAS del
+  // producto (reporte Karina 2026-08-31). Nos quedamos con el puesto.
+  const vacancy = { ...rawVacancy, title: String(rawVacancy.title).split(/[|·]/)[0].trim() || rawVacancy.title }
 
   const prefix = PLATFORM_PREFIX[body.platform] || PLATFORM_PREFIX.linkedin
   const minScore = Number.isFinite(body.minScore) ? body.minScore : 50
@@ -500,7 +555,7 @@ export async function handler(event) {
   // Modo emprendedores (Ingrid): solo perfiles con señales de negocio propio;
   // agrega queries dirigidas a fundadores/emprendedores del giro.
   const onlyEntrepreneurs = body.onlyEntrepreneurs === true
-  let queries = buildQueries(vacancy, prefix, 5, seeds, winnerTerms)
+  let queries = buildQueries(vacancy, prefix, 7, seeds, winnerTerms)
   if (onlyEntrepreneurs) {
     // Modo emprendedores: las queries van DIRIGIDAS a fundadores/dueños; las
     // genéricas casi no los traen (2 de 114 en pruebas).
@@ -529,7 +584,7 @@ export async function handler(event) {
 
   // Búsquedas base en PARALELO (cada una por una IP distinta) → mucho más rápido.
   const dbg = body.debug ? [] : null
-  let pool = await buildProxyPool(Math.max(queries.length, 8))
+  let pool = await buildProxyPool(Math.max(queries.length + 2, 9))
   let activeDispatcher = dispatcher
   // Proxy caído (suscripción vencida, credenciales…) → detectarlo UNA vez aquí
   // y trabajar directo desde Netlify; si no, cada fetch proxied quema el
@@ -545,8 +600,13 @@ export async function handler(event) {
       pool = [undefined]
     }
   }
+  // Además de la página 1 de cada query, la página 2 de las 2 primeras (las
+  // fijas/ganadoras): más cosecha bruta = más sobrevivientes tras los filtros
+  // (Karina veía corridas de 4-7 netos). Todo corre en paralelo con IP rotada.
+  const jobs = queries.map(q => ({ q, o: 0 }))
+  for (const q of queries.slice(0, 2)) jobs.push({ q, o: 1 })
   const perQuery = await Promise.all(
-    queries.map((q, i) => scrapeQuery(q, pool[i % pool.length] || activeDispatcher, dbg).catch(() => []))
+    jobs.map((j, i) => scrapeQuery(j.q, pool[i % pool.length] || activeDispatcher, dbg, j.o).catch(() => []))
   )
   const allProfiles = []
   for (const list of perQuery) {

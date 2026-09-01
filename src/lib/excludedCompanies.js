@@ -37,6 +37,7 @@ export const EXCLUDED_COMPANIES = [
   { label: 'Principal', patterns: ['principal financial', 'principal seguros', 'principal afore'] },
   { label: 'Old Mutual / Skandia', patterns: ['old mutual', 'skandia'] },
   { label: 'Thona Seguros', patterns: ['thona'] },
+  { label: 'General de Seguros', patterns: ['general de seguros', 'general de salud'] },
   // Afores / retirement
   { label: 'Profuturo', patterns: ['profuturo'] },
   { label: 'Afore XXI Banorte', patterns: ['afore xxi', 'xxi banorte'] },

@@ -4,7 +4,7 @@
 // Company exclusion list (insurance / investment sector) — single source of truth
 // shared with the front-end sourcing surfaces. See src/lib/excludedCompanies.js.
 import { matchExcludedCompany, NEGATIVE_QUERY } from '../../src/lib/excludedCompanies.js'
-import { isForeignProfile, detectForeignLocation } from '../../src/lib/sourcingScore.js'
+import { isForeignProfile, detectForeignLocation, buildTargets, scoreProspect } from '../../src/lib/sourcingScore.js'
 // Import circular con auto-source (él importa buildSearchEngines de aquí):
 // seguro en ESM porque solo se usan declaraciones de función en runtime.
 import { scrapeQuery, buildProxyPool, getDispatcher, looksLikeCompany } from './auto-source.mjs'
@@ -283,9 +283,17 @@ export async function handler(event) {
           if (!seen.has(p.url)) { seen.add(p.url); raw.push(p) }
         }
       }
-      if (raw.length >= 120 || i + CHUNK >= jobs.length) break
+      if (raw.length >= 150 || i + CHUNK >= jobs.length) break
       await new Promise(r => setTimeout(r, 1200))
     }
+
+    // Relevancia contra la query del reclutador (reporte Karina 2026-08-28:
+    // "puse Ejecutivo de Prospección y me salió un ingeniero en aeronáutica").
+    // Un perfil CON texto visible que no comparte NI UNA señal de puesto con la
+    // query (sinónimos ES↔EN incluidos) es ruido del SERP → fuera. Los demás se
+    // ordenan por afinidad en vez del orden arbitrario de los motores.
+    const relevanceTargets = buildTargets({ title: query })
+    const canJudgeRelevance = relevanceTargets.titleTokens.length > 0
 
     {
       for (const p of raw) {
@@ -294,7 +302,7 @@ export async function handler(event) {
         const full_name = p.name || parts[0] || 'Perfil de LinkedIn'
         const current_title = parts[1] || null
         const current_company = parts[2] || null
-        if (looksLikeCompany(full_name)) continue // páginas de empresa/marca, no personas
+        if (looksLikeCompany(full_name)) { stats.companies = (stats.companies || 0) + 1; continue } // páginas de empresa/marca, no personas
         // Perfiles "fantasma" (~20 contactos, cuentas muertas): el snippet trae
         // "N connections/contactos"; menos de 50 exactos → fuera.
         const connM = `${p.description || ''} ${p.headline || ''}`.match(/(\d+)\s*\+?\s*(?:connections?|conexiones|contactos)\b/i)
@@ -304,6 +312,12 @@ export async function handler(event) {
         const foreign = (p.country && p.country !== 'mx' && p.country !== 'www')
           || detectForeignLocation(`${p.headline || ''} ${p.description || ''}`)
         if (foreign) { stats.foreign++; continue }
+        let relevance = 0
+        if (canJudgeRelevance) {
+          const sc = scoreProspect({ title: query }, { title: p.headline, current_title, snippet: p.description }, relevanceTargets)
+          if (sc.roleScore === 0 && (p.headline || p.description)) { stats.offTopic = (stats.offTopic || 0) + 1; continue }
+          relevance = sc.score
+        }
         allCandidates.push({
           full_name,
           current_title,
@@ -311,9 +325,11 @@ export async function handler(event) {
           linkedin_url: p.url,
           snippet: p.description || null,
           location: null,
+          relevance,
         })
       }
     }
+    allCandidates.sort((a, b) => (b.relevance || 0) - (a.relevance || 0))
 
     return {
       statusCode: 200,
@@ -324,6 +340,8 @@ export async function handler(event) {
         excluded: stats.excluded,
         foreign: stats.foreign,
         ghost: stats.ghost || 0,
+        companies: stats.companies || 0,
+        offTopic: stats.offTopic || 0,
         query,
         variants,
         offset,

@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Printer, Copy, CheckCircle, Shield, Users, TrendingUp, Star, AlertTriangle, ChevronRight } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { supabase } from '../../lib/supabase'
 
 const STAGE_LABELS = {
   sourced: 'Sourced',
@@ -28,6 +29,23 @@ const STAGE_COLORS = {
 
 const FUNNEL_ORDER = ['sourced', 'contacted', 'screening', 'interviewing', 'shortlist', 'presented', 'offer', 'hired']
 
+// Orden de avance para el funnel HISTÓRICO (feedback Karina 2026-08-28: el
+// reporte solo mostraba dónde está cada quien HOY; un entrevistado que luego
+// fue rechazado desaparecía del conteo de entrevistas). 'evaluated' y
+// 'shortlist' son la misma altura del embudo (el pipeline usa una, el reporte
+// histórico las funde).
+const STAGE_ORDER = { sourced: 0, contacted: 1, screening: 2, interviewing: 3, evaluated: 4, shortlist: 4, presented: 5, offer: 6, hired: 7 }
+const FUNNEL_STEPS = [
+  { key: 'sourced', order: 0, label: 'Sourced' },
+  { key: 'contacted', order: 1, label: 'Contactado' },
+  { key: 'screening', order: 2, label: 'Screening' },
+  { key: 'interviewing', order: 3, label: 'Entrevista' },
+  { key: 'evaluated', order: 4, label: 'Evaluado / Shortlist' },
+  { key: 'presented', order: 5, label: 'Presentado' },
+  { key: 'offer', order: 6, label: 'Oferta' },
+  { key: 'hired', order: 7, label: 'Contratado' },
+]
+
 function scoreColor(score) {
   if (score >= 80) return 'text-emerald-400'
   if (score >= 60) return 'text-amber-400'
@@ -42,6 +60,22 @@ function scoreBg(score) {
 
 export default function ExecutiveReport({ vacancy, candidates }) {
   const [copied, setCopied] = useState(false)
+  // Transiciones de etapa registradas en BD (trigger en vacancy_candidates +
+  // backfill desde activity_log) → permite contar quiénes PASARON por cada
+  // etapa aunque hoy estén en rechazados.
+  const [history, setHistory] = useState(null)
+
+  useEffect(() => {
+    if (!vacancy?.id) return
+    let alive = true
+    supabase
+      .from('stage_history')
+      .select('vacancy_candidate_id, to_stage')
+      .eq('vacancy_id', vacancy.id)
+      .limit(10000)
+      .then(({ data, error }) => { if (alive) setHistory(error ? [] : (data || [])) })
+    return () => { alive = false }
+  }, [vacancy?.id])
 
   // Process metrics
   const metrics = useMemo(() => {
@@ -56,6 +90,27 @@ export default function ExecutiveReport({ vacancy, candidates }) {
     const funnel = {}
     candidates.forEach(vc => {
       funnel[vc.stage] = (funnel[vc.stage] || 0) + 1
+    })
+
+    // ── Funnel HISTÓRICO: hasta dónde llegó cada candidato ──
+    const maxByVc = {}
+    candidates.forEach(vc => {
+      const o = STAGE_ORDER[vc.stage]
+      if (o != null) maxByVc[vc.id] = o
+    })
+    ;(history || []).forEach(h => {
+      const o = STAGE_ORDER[h.to_stage]
+      if (o != null) maxByVc[h.vacancy_candidate_id] = Math.max(maxByVc[h.vacancy_candidate_id] ?? -1, o)
+    })
+    const rejectedIds = new Set(candidates.filter(c => c.stage === 'rejected').map(c => c.id))
+    const reachedOrders = Object.entries(maxByVc)
+    const histFunnel = FUNNEL_STEPS.map(step => {
+      const reached = reachedOrders.filter(([, o]) => o >= step.order).length
+      const rejectedAfter = reachedOrders.filter(([id, o]) => o === step.order && rejectedIds.has(id)).length
+      const current = candidates.filter(c =>
+        c.stage === step.key || (step.key === 'evaluated' && c.stage === 'shortlist')
+      ).length
+      return { ...step, reached, rejectedAfter, current }
     })
 
     // Source distribution
@@ -81,12 +136,13 @@ export default function ExecutiveReport({ vacancy, candidates }) {
         )
       : 0
 
-    // Conversion rate sourced -> presented
-    const presented = (funnel.presented || 0) + (funnel.offer || 0) + (funnel.hired || 0)
-    const conversionRate = total > 0 ? Math.round((presented / total) * 100) : 0
+    // Conversion rate sourced -> presentado, sobre el HISTÓRICO (quien llegó a
+    // presentado cuenta aunque después haya sido rechazado).
+    const reachedPresented = histFunnel.find(s => s.key === 'presented')?.reached || 0
+    const conversionRate = total > 0 ? Math.round((reachedPresented / total) * 100) : 0
 
-    return { total, active, rejected, hired, funnel, sources, shortlist, avgDays, conversionRate }
-  }, [candidates])
+    return { total, active, rejected, hired, funnel, histFunnel, sources, shortlist, avgDays, conversionRate }
+  }, [candidates, history])
 
   function handlePrint() {
     window.print()
@@ -110,6 +166,11 @@ export default function ExecutiveReport({ vacancy, candidates }) {
       `- En proceso: ${metrics.active}`,
       `- Tasa de conversion: ${metrics.conversionRate}%`,
       `- Dias promedio en proceso: ${metrics.avgDays}`,
+      '',
+      `EMBUDO HISTORICO (llegaron a cada etapa)`,
+      ...metrics.histFunnel.filter(s => s.reached > 0).map(s =>
+        `- ${s.label}: llegaron ${s.reached}${s.current ? ` | ${s.current} actualmente` : ''}${s.rejectedAfter ? ` | ${s.rejectedAfter} rechazados tras llegar` : ''}`
+      ),
       '',
       `SHORTLIST`,
       ...metrics.shortlist.map((vc, i) =>
@@ -232,27 +293,36 @@ export default function ExecutiveReport({ vacancy, candidates }) {
               ))}
             </div>
 
-            {/* Funnel */}
+            {/* Funnel HISTÓRICO: cuántos LLEGARON a cada etapa (aunque hoy
+                estén rechazados) + cuántos siguen ahí y cuántos se quedaron */}
             <div className="mb-5">
-              <h3 className="text-[11px] font-medium text-gray-400 mb-3">Embudo de seleccion</h3>
+              <h3 className="text-[11px] font-medium text-gray-400 mb-1">Embudo de seleccion (historico)</h3>
+              <p className="text-[10px] text-gray-600 mb-3">
+                Cada barra cuenta a todos los que <span className="text-gray-400">llegaron</span> a la etapa,
+                incluyendo a quienes despues fueron rechazados o avanzaron.
+              </p>
               <div className="space-y-1.5">
-                {FUNNEL_ORDER.map(stage => {
-                  const count = metrics.funnel[stage] || 0
-                  const pct = metrics.total > 0 ? (count / metrics.total * 100) : 0
+                {metrics.histFunnel.map(step => {
+                  const pct = metrics.total > 0 ? (step.reached / metrics.total * 100) : 0
                   return (
-                    <div key={stage} className="flex items-center gap-3">
-                      <span className="text-[10px] text-gray-500 w-20 text-right">{STAGE_LABELS[stage]}</span>
+                    <div key={step.key} className="flex items-center gap-3">
+                      <span className="text-[10px] text-gray-500 w-20 text-right">{step.label}</span>
                       <div className="flex-1 h-5 bg-white/[0.03] rounded-md overflow-hidden">
                         <motion.div
                           initial={{ width: 0 }}
-                          animate={{ width: `${Math.max(pct, count > 0 ? 8 : 0)}%` }}
+                          animate={{ width: `${Math.max(pct, step.reached > 0 ? 8 : 0)}%` }}
                           transition={{ duration: 0.6, delay: 0.1 }}
-                          className={`h-full ${STAGE_COLORS[stage]} rounded-md flex items-center justify-end pr-2`}
+                          className={`h-full ${STAGE_COLORS[step.key]} rounded-md flex items-center justify-end pr-2`}
                         >
-                          {count > 0 && <span className="text-[9px] font-bold text-white">{count}</span>}
+                          {step.reached > 0 && <span className="text-[9px] font-bold text-white">{step.reached}</span>}
                         </motion.div>
                       </div>
                       <span className="text-[10px] text-gray-600 w-8">{pct.toFixed(0)}%</span>
+                      <span className="text-[9px] text-gray-600 w-40 hidden sm:block">
+                        {step.current > 0 && <span className="text-gray-400">{step.current} aqui ahora</span>}
+                        {step.current > 0 && step.rejectedAfter > 0 && ' · '}
+                        {step.rejectedAfter > 0 && <span className="text-red-400/80">{step.rejectedAfter} rechazados tras llegar</span>}
+                      </span>
                     </div>
                   )
                 })}
@@ -271,6 +341,7 @@ export default function ExecutiveReport({ vacancy, candidates }) {
                       </motion.div>
                     </div>
                     <span className="text-[10px] text-gray-600 w-8">{((metrics.funnel.rejected / metrics.total) * 100).toFixed(0)}%</span>
+                    <span className="w-40 hidden sm:block" />
                   </div>
                 )}
               </div>
