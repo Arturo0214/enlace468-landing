@@ -7,7 +7,7 @@ import { matchExcludedCompany, NEGATIVE_QUERY } from '../../src/lib/excludedComp
 import { isForeignProfile, detectForeignLocation, buildTargets, scoreProspect } from '../../src/lib/sourcingScore.js'
 // Import circular con auto-source (él importa buildSearchEngines de aquí):
 // seguro en ESM porque solo se usan declaraciones de función en runtime.
-import { scrapeQuery, buildProxyPool, getDispatcher, looksLikeCompany } from './auto-source.mjs'
+import { scrapeQuery, buildProxyPool, getDispatcher, looksLikeCompany, looksLikeHumanName } from './auto-source.mjs'
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -297,12 +297,19 @@ export async function handler(event) {
 
     {
       for (const p of raw) {
-        // El headline suele venir "Nombre - Puesto - Empresa"; sepáralo.
-        const parts = (p.headline || '').split(/\s*[-–—·|]\s*/).map(s => s.trim()).filter(Boolean)
-        const full_name = p.name || parts[0] || 'Perfil de LinkedIn'
+        // El headline suele venir "Nombre - Puesto - Empresa"; sepáralo (los
+        // segmentos con "LinkedIn" son basura del SERP, no un puesto).
+        const parts = (p.headline || '').split(/\s*[-–—·|]\s*/).map(s => s.trim())
+          .filter(Boolean).filter(s => !/linkedin/i.test(s))
+        let full_name = p.name || parts[0] || ''
+        if (!looksLikeHumanName(full_name) && looksLikeHumanName(parts[0])) full_name = parts[0]
         const current_title = parts[1] || null
         const current_company = parts[2] || null
         if (looksLikeCompany(full_name)) { stats.companies = (stats.companies || 0) + 1; continue } // páginas de empresa/marca, no personas
+        // Tarjetas basura: sin nombre humano presentable o sin ningún dato
+        // para juzgar (ni puesto, ni empresa, ni snippet) → fuera.
+        if (!looksLikeHumanName(full_name)) { stats.lowQuality = (stats.lowQuality || 0) + 1; continue }
+        if (!current_title && !current_company && !(p.description || '').trim()) { stats.lowQuality = (stats.lowQuality || 0) + 1; continue }
         // Perfiles "fantasma" (~20 contactos, cuentas muertas): el snippet trae
         // "N connections/contactos"; menos de 50 exactos → fuera.
         const connM = `${p.description || ''} ${p.headline || ''}`.match(/(\d+)\s*\+?\s*(?:connections?|conexiones|contactos)\b/i)
@@ -342,6 +349,7 @@ export async function handler(event) {
         ghost: stats.ghost || 0,
         companies: stats.companies || 0,
         offTopic: stats.offTopic || 0,
+        lowQuality: stats.lowQuality || 0,
         query,
         variants,
         offset,

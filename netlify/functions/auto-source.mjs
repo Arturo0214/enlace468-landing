@@ -82,6 +82,19 @@ export function looksLikeCompany(name) {
   return false
 }
 
+// ¿El texto parece nombre de PERSONA presentable? (2-6 palabras alfabéticas).
+// Los slugs concatenados ("rgamezg", "hdezfr", "pedroalvarezconsultor…") no lo
+// son — esas tarjetas sin nombre real son los "perfiles basura" del reporte de
+// Karina/Arturo 2026-08-31: no se puede ni saludar al candidato.
+export function looksLikeHumanName(s) {
+  const n = normalizeText(s || '').replace(/[^a-z\s]/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!n) return false
+  const toks = n.split(' ').filter(t => t.length >= 2)
+  if (toks.length < 2 || toks.length > 6) return false
+  if (/linkedin|perfil de|profile/.test(n)) return false
+  return true
+}
+
 // La descripción a veces es una OFERTA DE EMPLEO que el perfil publicó, no su
 // bio → no debe inflar el score. Se detecta y se ignora para el matching.
 // Señales de EMPRENDEDOR / dueño de negocio en headline+descripción (pedido de
@@ -580,7 +593,7 @@ export async function handler(event) {
 
   const seen = new Set()
   const scored = []
-  const counts = { found: 0, known: 0, excluded: 0, companies: 0, foreign: 0, ghost: 0, belowThreshold: 0, returned: 0 }
+  const counts = { found: 0, known: 0, excluded: 0, companies: 0, foreign: 0, ghost: 0, lowQuality: 0, belowThreshold: 0, returned: 0 }
 
   // Búsquedas base en PARALELO (cada una por una IP distinta) → mucho más rápido.
   const dbg = body.debug ? [] : null
@@ -630,11 +643,17 @@ export async function handler(event) {
         if (foreignSubdomain || foreignText) { counts.foreign++; continue }
       }
 
-      // El headline suele venir "Nombre - Puesto - Empresa"; sepáralo.
-      const parts = (p.headline || '').split(/\s*[-–—·|]\s*/).map(s => s.trim()).filter(Boolean)
+      // El headline suele venir "Nombre - Puesto - Empresa"; sepáralo. Los
+      // segmentos con "LinkedIn" son basura del SERP ("LinkedIn México"), no
+      // un puesto.
+      const parts = (p.headline || '').split(/\s*[-–—·|]\s*/).map(s => s.trim())
+        .filter(Boolean).filter(s => !/linkedin/i.test(s))
       const current_title = parts[1] || null
       const current_company = parts[2] || null
-      const full_name = p.name || parts[0] || 'Perfil de LinkedIn'
+      let full_name = p.name || parts[0] || ''
+      // Slug concatenado sin nombre ("ileanaramirez") pero el título del SERP
+      // sí lo trae ("Ileana Ramirez - Real Estate Agent") → usa el del título.
+      if (!looksLikeHumanName(full_name) && looksLikeHumanName(parts[0])) full_name = parts[0]
       // Ubicación desde la descripción ("... Location: Miguel Hidalgo ...")
       const locM = (p.description || '').match(/(?:Location|Ubicaci[oó]n|Ubicaci[oó]n actual)\s*[:：]\s*([^.·|]{2,40})/i)
       const location = locM ? locM[1].trim() : null
@@ -648,6 +667,15 @@ export async function handler(event) {
       // Filtra páginas de EMPRESA/marca (queremos individuos)
       if (looksLikeCompany(full_name)) {
         counts.companies++
+        continue
+      }
+
+      // Tarjeta BASURA: sin nombre humano presentable (slug concatenado que ni
+      // el título del SERP resolvió), o sin NINGÚN dato para juzgar (ni puesto,
+      // ni empresa, ni descripción). El reclutador no puede hacer nada con eso.
+      if (!looksLikeHumanName(full_name)) { counts.lowQuality = (counts.lowQuality || 0) + 1; continue }
+      if (!current_title && !current_company && !(p.description || '').trim()) {
+        counts.lowQuality = (counts.lowQuality || 0) + 1
         continue
       }
 

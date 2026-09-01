@@ -205,6 +205,14 @@ export function scoreProspect(vacancy, prospect = {}, targets = null) {
 
   let total = roleScore * 45 + compScore * 30 + kwScore * 15 + locScore * 10
 
+  // El match debe venir (también) del PUESTO del candidato, no solo del
+  // snippet: un abogado cuyo texto menciona "crédito hipotecario" no es un
+  // asesor hipotecario. Si su headline/puesto no trae ninguna señal del rol,
+  // se penaliza (reporte "perfiles basura" 2026-08-31).
+  const ownTitle = normalizeText(`${prospect.title || ''} ${prospect.current_title || ''}`)
+  const titleHasRole = targets.titleTokens.some(t => hasTerm(ownTitle, t))
+  if (titleHits.length && !titleHasRole) total -= 12
+
   // Seniority nudge
   const isJunior = JUNIOR_WORDS.some(w => text.includes(w))
   const isSenior = SENIOR_WORDS.some(w => text.includes(w))
@@ -233,6 +241,7 @@ export function scoreProspect(vacancy, prospect = {}, targets = null) {
   const missingComps = targets.compTokens.map(c => c.name).filter(n => !matchedComps.includes(n))
   if (missingComps.length) gaps.push(`Competencias no vistas: ${missingComps.slice(0, 2).join(', ')}`)
   if (targets.wantsSenior && isJunior) gaps.push('Perfil parece junior')
+  if (titleHits.length && !titleHasRole) gaps.push('Su puesto actual no coincide (match solo por descripción)')
   if (isForeign) gaps.push(`Ubicación fuera de México (${foreign})`)
 
   return {
