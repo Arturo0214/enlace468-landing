@@ -27,17 +27,17 @@ export default function UpgradePrompt({ action }) {
       {/* Decorative gradient accent */}
       <div
         className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-30 blur-2xl pointer-events-none"
-        style={{ background: 'linear-gradient(135deg, #6366f1, #06b6d4)' }}
+        style={{ background: 'linear-gradient(135deg, #071B49, #00A99D)' }}
       />
 
       <div className="relative z-10 flex flex-col items-center gap-4">
         <div
           className="w-14 h-14 rounded-xl flex items-center justify-center"
           style={{
-            background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(6,182,212,0.2))',
+            background: 'linear-gradient(135deg, rgba(7,27,73,0.35), rgba(0,169,157,0.2))',
           }}
         >
-          <Lock size={24} className="text-indigo-400" />
+          <Lock size={24} className="text-accent" />
         </div>
 
         <h3 className="text-lg font-display font-semibold text-white">
@@ -52,7 +52,7 @@ export default function UpgradePrompt({ action }) {
           href="/#precios"
           className="mt-2 inline-flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium text-white transition-all hover:scale-105"
           style={{
-            background: 'linear-gradient(135deg, #6366f1, #06b6d4)',
+            background: 'linear-gradient(135deg, #071B49, #00A99D)',
           }}
         >
           Ver planes

@@ -139,11 +139,11 @@ export default function DashboardHome() {
           href="/#precios"
           className="flex items-center gap-3 mb-6 px-5 py-3 rounded-xl transition-all hover:scale-[1.01]"
           style={{
-            background: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(6,182,212,0.1))',
-            border: '1px solid rgba(99,102,241,0.15)',
+            background: 'linear-gradient(135deg, rgba(7,27,73,0.25), rgba(0,169,157,0.12))',
+            border: '1px solid rgba(0,169,157,0.2)',
           }}
         >
-          <Sparkles size={18} className="text-indigo-400 flex-shrink-0" />
+          <Sparkles size={18} className="text-accent flex-shrink-0" />
           <span className="text-sm text-gray-300">
             Activa un plan para desbloquear todas las funciones
           </span>

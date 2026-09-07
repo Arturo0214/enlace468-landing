@@ -149,7 +149,9 @@ export default function CleanupCenter() {
         }
       }
       setTabState('foreign', { rows: found, scanned: true })
-      setSelected(new Set(found.map(r => r.key))) // default: todo marcado
+      // Default DESMARCADO: un clic accidental en "Descartar seleccionados" no
+      // debe poder vaciar la lista completa — se selecciona tras revisar.
+      setSelected(new Set())
     } catch (e) {
       setError(e.message || 'Error al diagnosticar')
     } finally {
@@ -199,7 +201,7 @@ export default function CleanupCenter() {
         })),
       ]
       setTabState('stale', { rows: found, scanned: true, unavailable: false })
-      setSelected(new Set(found.map(r => r.key)))
+      setSelected(new Set()) // default desmarcado — la cuarentena incluye perfiles rescatables
     } catch (e) {
       // Columnas verify_status aún no existen en prod (migración local sin
       // aplicar / el cron no ha corrido) → estado vacío informativo.
