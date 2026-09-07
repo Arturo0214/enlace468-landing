@@ -76,9 +76,9 @@ export async function handler() {
   const appUrl = (process.env.URL || process.env.DEPLOY_PRIME_URL || '').replace(/\/$/, '')
 
   // 1. Lo upserteado por el sourcing nocturno en las últimas 24h, ya rankeado.
-  const { data: rows, error } = await supabase
+  const { data: allRows, error } = await supabase
     .from('sourcing_bank')
-    .select('organization_id, vacancy_id, full_name, title, current_title, current_company, url, score, vacancies(title)')
+    .select('organization_id, vacancy_id, full_name, title, current_title, current_company, url, score, verify_status, vacancies(title)')
     .eq('source', 'auto-sourced')
     .gte('created_at', since)
     .order('score', { ascending: false, nullsFirst: false })
@@ -86,6 +86,15 @@ export async function handler() {
     console.error('[cron-daily-digest] no se pudo leer sourcing_bank:', error.message)
     return { statusCode: 500, body: JSON.stringify({ ok: false, error: error.message }) }
   }
+
+  // Solo CONFIRMADOS de México: la cuarentena geográfica del gate de calidad
+  // (geo_desconocida) y los extranjeros no se presumen en el digest — el cron
+  // de verificación los rescata o los manda a la basura. Filtro en JS (el set
+  // de 24h es chico) para no depender de sintaxis not.in de PostgREST.
+  const HIDDEN_STATUSES = new Set(['geo_desconocida', 'extranjero'])
+  const rows = (allRows || []).filter(r => !HIDDEN_STATUSES.has(r.verify_status))
+  const quarantinedCount = (allRows || []).length - rows.length
+  if (quarantinedCount) console.log(`[cron-daily-digest] ${quarantinedCount} fila(s) en cuarentena geográfica fuera del digest`)
 
   // 2. Orgs con sourcing nocturno activo — reciben digest aunque N=0.
   const { data: enabledVacs, error: vErr } = await supabase

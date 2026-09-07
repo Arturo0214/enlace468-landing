@@ -19,6 +19,27 @@
 [functions."cron-verify-profiles"]
   schedule = "0 8 * * *"
 
+# Motor de secuencias (Fase 5): cada 20 min de 14-23 UTC = 8am-5pm CDMX, L-V.
+# SOLO horario laboral — anti-ban: jamás enviar de madrugada ni en fin de semana.
+[functions."cron-sequence-runner"]
+  schedule = "*/20 14-23 * * 1-5"
+
+# Sync de actividad LinkedIn (Fase 5): persiste invitaciones aceptadas y
+# respuestas de Unipile → pausa secuencias al detectar respuesta. Solo lectura.
+[functions."cron-activity-sync"]
+  schedule = "*/30 13-23 * * *"
+
+# Vigilante de SLAs (Fase 6): 13:30 UTC = 7:30am CDMX, L-V — media hora
+# después del digest para no empalmar envíos de Resend.
+[functions."cron-sla-check"]
+  schedule = "30 13 * * 1-5"
+
+# Recordatorios de entrevista (Fase 7): cada hora de 14-23 UTC = 8am-5pm CDMX.
+# Ventana 20-28h al futuro ("mañana"); reminder_sent evita duplicados y solo
+# se marca cuando el email salió de verdad (sin RESEND_API_KEY reintenta).
+[functions."cron-interview-reminders"]
+  schedule = "0 14-23 * * *"
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"

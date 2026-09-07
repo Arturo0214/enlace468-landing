@@ -36,6 +36,7 @@
 import { getServiceClient } from './lib/supabase.mjs'
 import { enrichProfile, getDispatcher, slugOf } from './auto-source.mjs'
 import { normalizeText } from '../../src/lib/excludedCompanies.js'
+import { detectForeignLocation, hasMexicoSignal } from '../../src/lib/sourcingScore.js'
 
 const BUDGET_MS = 26000       // límite duro de Netlify Functions
 const RESERVE_MS = 8000       // para si quedan <8s (update+log también cuestan)
@@ -150,24 +151,52 @@ async function fetchPipelineCandidates(supabase, cutoffIso, limit) {
   }))
 }
 
-/** Lote (b): banco de sourcing sin promover, mejores scores primero. */
-async function fetchBankRows(supabase, cutoffIso, limit) {
+function mapBankRow(b) {
+  return {
+    table: 'sourcing_bank', id: b.id, url: b.url, notes: b.notes || null,
+    verify_status: b.verify_status, verify_details: b.verify_details,
+    saved: { title: b.current_title, company: b.current_company, extraText: [b.full_name || b.title, b.snippet].filter(Boolean).join(' '), createdAt: b.created_at },
+  }
+}
+
+const BANK_COLUMNS = 'id, title, url, snippet, full_name, current_title, current_company, notes, score, created_at, last_verified_at, verify_status, verify_details'
+
+/** Lote (0) — PRIORIDAD MÁXIMA: cuarentena geográfica del gate de calidad
+ *  (verify_status='geo_desconocida'). La búsqueda dirigida suele revelar la
+ *  ubicación real → aquí se rescatan los mexicanos buenos sin ubicación en el
+ *  snippet, o se manda a la basura a los extranjeros. */
+async function fetchQuarantined(supabase, cutoffIso, limit) {
   if (limit <= 0) return []
   const { data, error } = await supabase
     .from('sourcing_bank')
-    .select('id, title, url, snippet, full_name, current_title, current_company, score, created_at, last_verified_at, verify_status, verify_details')
+    .select(BANK_COLUMNS)
     .is('candidate_id', null)
     .neq('source', 'descartado')
+    .eq('verify_status', 'geo_desconocida')
     .ilike('url', '%linkedin.com/in/%')
     .or(`last_verified_at.is.null,last_verified_at.lt.${cutoffIso}`)
     .order('score', { ascending: false, nullsFirst: false })
     .limit(limit)
   if (error) throw Object.assign(new Error(error.message), { code: error.code })
-  return (data || []).map(b => ({
-    table: 'sourcing_bank', id: b.id, url: b.url,
-    verify_status: b.verify_status, verify_details: b.verify_details,
-    saved: { title: b.current_title, company: b.current_company, extraText: [b.full_name || b.title, b.snippet].filter(Boolean).join(' '), createdAt: b.created_at },
-  }))
+  return (data || []).map(mapBankRow)
+}
+
+/** Lote (b): banco de sourcing sin promover, mejores scores primero (los
+ *  cuarentenados ya salieron en el lote 0 → aquí se excluyen). */
+async function fetchBankRows(supabase, cutoffIso, limit) {
+  if (limit <= 0) return []
+  const { data, error } = await supabase
+    .from('sourcing_bank')
+    .select(BANK_COLUMNS)
+    .is('candidate_id', null)
+    .neq('source', 'descartado')
+    .or('verify_status.is.null,verify_status.neq.geo_desconocida')
+    .ilike('url', '%linkedin.com/in/%')
+    .or(`last_verified_at.is.null,last_verified_at.lt.${cutoffIso}`)
+    .order('score', { ascending: false, nullsFirst: false })
+    .limit(limit)
+  if (error) throw Object.assign(new Error(error.message), { code: error.code })
+  return (data || []).map(mapBankRow)
 }
 
 export async function handler() {
@@ -177,9 +206,12 @@ export async function handler() {
 
   let batch
   try {
-    const pipeline = await fetchPipelineCandidates(supabase, cutoffIso, BATCH_SIZE)
-    const bank = await fetchBankRows(supabase, cutoffIso, BATCH_SIZE - pipeline.length)
-    batch = [...pipeline, ...bank]
+    // Prioridad 0: cuarentena geográfica del gate (geo_desconocida) — resolver
+    // ubicación es lo que desbloquea/descartar candidatos para el equipo.
+    const quarantined = await fetchQuarantined(supabase, cutoffIso, BATCH_SIZE)
+    const pipeline = await fetchPipelineCandidates(supabase, cutoffIso, BATCH_SIZE - quarantined.length)
+    const bank = await fetchBankRows(supabase, cutoffIso, BATCH_SIZE - quarantined.length - pipeline.length)
+    batch = [...quarantined, ...pipeline, ...bank]
   } catch (e) {
     if (isMissingColumn(e)) {
       console.log('[cron-verify-profiles] columnas de verificación ausentes (¿migración 20260908 sin aplicar?) — nada que hacer:', e.message)
@@ -195,7 +227,7 @@ export async function handler() {
   }
 
   const dispatcher = await getDispatcher()
-  const summary = { checked: 0, activo: 0, cambio_empleo: 0, muerto: 0, fantasma: 0, desactualizado: 0, skipped: 0 }
+  const summary = { checked: 0, activo: 0, cambio_empleo: 0, muerto: 0, fantasma: 0, desactualizado: 0, extranjero: 0, geo_pendiente: 0, geo_rescatados: 0, skipped: 0 }
 
   // SECUENCIAL a propósito: 1 búsqueda dirigida por perfil, sin ráfagas que
   // quemen tráfico del proxy ni créditos de Serper de golpe.
@@ -218,18 +250,55 @@ export async function handler() {
       update.verify_details = { ...prevDetails, misses, last_miss_at: new Date().toISOString() }
       if (misses >= 2) { update.verify_status = 'link_muerto'; summary.muerto++ }
     } else {
-      const { status, details } = judgeProfile(found, row.saved)
-      // Resultado exitoso → resetea el contador de misses.
-      update.verify_details = { ...prevDetails, ...details, misses: 0 }
-      if (status) {
-        update.verify_status = status
-        if (status === 'activo') summary.activo++
-        else if (status === 'cambio_empleo') summary.cambio_empleo++
-        else if (status === 'fantasma') summary.fantasma++
-        else if (status === 'desactualizado') summary.desactualizado++
+      // ── GEO con texto fresco (solo banco): resolver cuarentena / basurear.
+      // La búsqueda dirigida suele traer la ubicación real que el listado
+      // amplio no mostró (gate de calidad 2026-09-07).
+      let geoHandled = false
+      if (row.table === 'sourcing_bank') {
+        const freshText = [found.headline, found.description].filter(Boolean).join(' ')
+        const subM = String(found.url || '').match(/https?:\/\/([a-z]{2,3})\.linkedin\.com/i)
+        const sub = subM ? subM[1].toLowerCase() : null
+        const foreignSignal = (sub && sub !== 'mx' && sub !== 'www')
+          ? `subdominio ${sub}.` : detectForeignLocation(freshText)
+        const mx = hasMexicoSignal(found.url || row.url, freshText)
+
+        if (foreignSignal) {
+          // Extranjero confirmado → a la basura (nada se borra: queda marcado).
+          const today = new Date().toISOString().slice(0, 10)
+          update.source = 'descartado'
+          update.notes = `${row.notes || ''} · auto-descartado: extranjero (${foreignSignal}) ${today}`.replace(/^ · /, '')
+          update.verify_status = 'extranjero'
+          update.verify_details = { ...prevDetails, foreign_signal: foreignSignal, checked_at: new Date().toISOString(), misses: 0 }
+          summary.extranjero++
+          geoHandled = true
+        } else if (!mx && row.verify_status === 'geo_desconocida') {
+          // Sigue sin señal → permanece en cuarentena; solo refresca el check.
+          update.verify_details = { ...prevDetails, checked_at: new Date().toISOString(), misses: 0 }
+          summary.geo_pendiente++
+          geoHandled = true
+        } else if (mx && row.verify_status === 'geo_desconocida') {
+          summary.geo_rescatados++ // señal MX → sale de cuarentena vía flujo normal
+        }
       }
-      // status null = ambiguo y fila joven → verify_status queda como está,
-      // solo se refresca last_verified_at (ya en `update`).
+
+      if (!geoHandled) {
+        const { status, details } = judgeProfile(found, row.saved)
+        // Resultado exitoso → resetea el contador de misses.
+        update.verify_details = { ...prevDetails, ...details, misses: 0 }
+        if (status) {
+          update.verify_status = status
+          if (status === 'activo') summary.activo++
+          else if (status === 'cambio_empleo') summary.cambio_empleo++
+          else if (status === 'fantasma') summary.fantasma++
+          else if (status === 'desactualizado') summary.desactualizado++
+        } else if (row.verify_status === 'geo_desconocida') {
+          // México confirmado pero comparación ambigua → LIMPIA la cuarentena
+          // (visible de nuevo; queda como no-verificado normal).
+          update.verify_status = null
+        }
+        // status null = ambiguo y fila joven → verify_status queda como está,
+        // solo se refresca last_verified_at (ya en `update`).
+      }
     }
 
     const { error: upErr } = await supabase.from(row.table).update(update).eq('id', row.id)

@@ -31,6 +31,7 @@
 
 import { getServiceClient } from './lib/supabase.mjs'
 import { runAutoSource } from './auto-source.mjs'
+import { hasMexicoSignal, isForeignProfile, nameLooksLikeRole } from '../../src/lib/sourcingScore.js'
 
 // Auto-promoción al pipeline según vacancies.auto_promote_min_score.
 // APAGADA hasta validar la calidad del sourcing nocturno con el equipo
@@ -76,6 +77,88 @@ function toBankRow(r, vacancy) {
     score: hasScore ? score : null,
     score_details: hasScore ? { strengths: r.strengths || [], gaps: r.gaps || [] } : null,
   }
+}
+
+// ── GATE DE CALIDAD (pedido del dueño 2026-09-07) ──────────────────────────
+// "Asegúrate de que siempre se escojan buenos candidatos, si no, mándalos a la
+// basura" + "que no aparezca gente de otros países". Tres niveles sobre CADA
+// resultado ANTES de tocar el banco:
+//   basura      → nombre de rol/giro, no de persona → NO se inserta
+//   extranjero  → señal de otro país (doble candado sobre los campos finales;
+//                 runAutoSource ya filtra, pero aquí van title/company parseados)
+//                 → NO se inserta
+//   México      → visible normal
+//   sin señal   → se inserta en CUARENTENA (verify_status='geo_desconocida');
+//                 cron-verify-profiles la resuelve con búsqueda dirigida y la
+//                 rescata (señal MX) o la manda a la basura (extranjero).
+/** @returns 'garbage' | 'foreign' | 'mx' | 'unknown' */
+function gateResult(r) {
+  const name = r.full_name || r.title || ''
+  if (nameLooksLikeRole(name)) return 'garbage'
+  if (isForeignProfile(r.url, r.title, r.current_title, r.current_company, r.snippet)) return 'foreign'
+  if (hasMexicoSignal(r.url, r.title, r.current_title, r.current_company, r.snippet)) return 'mx'
+  return 'unknown'
+}
+
+/** Aplica el gate: separa insertables (con verify_status de cuarentena cuando
+ *  toca) de los bloqueados, y cuenta cada caso. */
+function applyGate(results, vacancy, gateCounts) {
+  const rows = []
+  for (const r of results) {
+    const verdict = gateResult(r)
+    if (verdict === 'garbage') { gateCounts.garbage++; continue }
+    if (verdict === 'foreign') { gateCounts.foreign++; continue }
+    const row = toBankRow(r, vacancy)
+    if (verdict === 'unknown') { row.verify_status = 'geo_desconocida'; gateCounts.quarantined++ }
+    rows.push(row)
+  }
+  return rows
+}
+
+// ── Limpieza del banco (barata: solo queries) ──────────────────────────────
+// Repasa los auto-sourced de los últimos 7 días que siguen sin promover:
+//   (a) nombre de rol o señal extranjera en lo guardado → source='descartado'
+//       con nota de la razón (nada se borra);
+//   (b) sin señal de México y sin verify_status → cuarentena 'geo_desconocida'.
+// Paginado de a 200; updates fila por fila (notas distintas), sin .in() masivos.
+async function cleanupBank(supabase) {
+  const counts = { cleaned: 0, quarantined: 0 }
+  const sinceIso = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
+  const PAGE = 200
+  const today = new Date().toISOString().slice(0, 10)
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('sourcing_bank')
+      .select('id, title, full_name, current_title, current_company, snippet, url, notes, verify_status')
+      .eq('source', 'auto-sourced')
+      .is('candidate_id', null)
+      .gte('created_at', sinceIso)
+      .order('id')
+      .range(from, from + PAGE - 1)
+    if (error) throw new Error(error.message)
+    for (const b of data || []) {
+      const name = b.full_name || b.title || ''
+      let reason = null
+      if (nameLooksLikeRole(name)) reason = 'nombre de empresa/rol, no persona'
+      else if (isForeignProfile(b.url, b.title, b.current_title, b.current_company, b.snippet)) reason = 'perfil extranjero'
+      if (reason) {
+        const notes = `${b.notes || ''} · auto-descartado: ${reason} ${today}`.replace(/^ · /, '')
+        const { error: upErr } = await supabase.from('sourcing_bank')
+          .update({ source: 'descartado', notes }).eq('id', b.id)
+        if (upErr) console.error(`[cron-auto-source] limpieza no pudo descartar ${b.id}: ${upErr.message}`)
+        else counts.cleaned++
+        continue
+      }
+      if (!b.verify_status && !hasMexicoSignal(b.url, b.title, b.current_title, b.current_company, b.snippet)) {
+        const { error: upErr } = await supabase.from('sourcing_bank')
+          .update({ verify_status: 'geo_desconocida' }).eq('id', b.id)
+        if (upErr) console.error(`[cron-auto-source] limpieza no pudo poner en cuarentena ${b.id}: ${upErr.message}`)
+        else counts.quarantined++
+      }
+    }
+    if (!data || data.length < PAGE) break
+  }
+  return counts
 }
 
 /** Auto-promoción server-side (misma semántica que src/lib/promote.js).
@@ -160,11 +243,15 @@ export async function handler() {
         },
       })
 
+      // GATE DE CALIDAD: basura/extranjeros fuera, sin señal MX → cuarentena.
+      const gateCounts = { garbage: 0, foreign: 0, quarantined: 0 }
+      const gatedRows = applyGate(results, v, gateCounts)
+
       let inserted = []
-      if (results.length) {
+      if (gatedRows.length) {
         const { data, error: upErr } = await supabase
           .from('sourcing_bank')
-          .upsert(results.map(r => toBankRow(r, v)), { onConflict: 'vacancy_id,url', ignoreDuplicates: true })
+          .upsert(gatedRows, { onConflict: 'vacancy_id,url', ignoreDuplicates: true })
           .select('id, url, score')
         if (upErr) throw new Error(upErr.message)
         inserted = data || []
@@ -174,8 +261,8 @@ export async function handler() {
       if (AUTO_PROMOTE_ENABLED) promoted = await autoPromote(supabase, v, inserted)
 
       const filtered = Math.max(0, (counts.found || 0) - (counts.known || 0) - results.length)
-      console.log(`[cron-auto-source] "${v.title}": found=${counts.found} known=${counts.known} filtered=${filtered} returned=${results.length} new=${inserted.length}${AUTO_PROMOTE_ENABLED ? ` promoted=${promoted}` : ''}`)
-      summary.push({ vacancy_id: v.id, title: v.title, found: counts.found, returned: results.length, new: inserted.length })
+      console.log(`[cron-auto-source] "${v.title}": found=${counts.found} known=${counts.known} filtered=${filtered} returned=${results.length} garbage=${gateCounts.garbage} foreign=${gateCounts.foreign} quarantined=${gateCounts.quarantined} new=${inserted.length}${AUTO_PROMOTE_ENABLED ? ` promoted=${promoted}` : ''}`)
+      summary.push({ vacancy_id: v.id, title: v.title, found: counts.found, returned: results.length, garbage: gateCounts.garbage, foreign: gateCounts.foreign, quarantined: gateCounts.quarantined, new: inserted.length })
     } catch (e) {
       console.error(`[cron-auto-source] error en "${v.title}": ${e.message}`)
       summary.push({ vacancy_id: v.id, title: v.title, error: e.message })
@@ -187,6 +274,15 @@ export async function handler() {
     }
   }
 
-  console.log(`[cron-auto-source] listo en ${Date.now() - t0}ms · ${JSON.stringify(summary)}`)
-  return { statusCode: 200, body: JSON.stringify({ ok: true, processed: summary }) }
+  // Limpieza del banco al final del tick (tolerante: no tumba la corrida).
+  let cleanup = null
+  try {
+    cleanup = await cleanupBank(supabase)
+    console.log(`[cron-auto-source] limpieza del banco: cleaned=${cleanup.cleaned} quarantined=${cleanup.quarantined}`)
+  } catch (e) {
+    console.error(`[cron-auto-source] limpieza del banco falló: ${e.message}`)
+  }
+
+  console.log(`[cron-auto-source] listo en ${Date.now() - t0}ms · ${JSON.stringify({ processed: summary, cleanup })}`)
+  return { statusCode: 200, body: JSON.stringify({ ok: true, processed: summary, cleanup }) }
 }
