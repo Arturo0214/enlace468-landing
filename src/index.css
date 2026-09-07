@@ -31,13 +31,14 @@
   --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
   --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
 
-  --gradient-start: #2563EB;
-  --gradient-end: #0D9488;
+  /* Marca: navy #071B49 → turquesa #00A99D (sobre fondo claro) */
+  --gradient-start: #071B49;
+  --gradient-end: #00A99D;
 
   --hero-bg: #F8FAFC;
   --sidebar-bg: #FFFFFF;
   --topbar-bg: rgba(255,255,255,0.8);
-  --card-hover-bg: rgba(37,99,235,0.04);
+  --card-hover-bg: rgba(7,27,73,0.04);
 }
 
 .dark {
@@ -62,6 +63,10 @@
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
   --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+
+  /* Marca en oscuro: tonos claros legibles (navy #071B49 desaparece sobre fondo oscuro) */
+  --gradient-start: #4A6FC9;
+  --gradient-end: #1ABFB0;
 
   --hero-bg: #030014;
   --sidebar-bg: #0F1729;
@@ -152,8 +157,8 @@ body {
 }
 
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(13,148,136,0.0); }
-  50% { box-shadow: 0 0 40px rgba(13,148,136,0.15); }
+  0%, 100% { box-shadow: 0 0 20px rgba(0,169,157,0.0); }
+  50% { box-shadow: 0 0 40px rgba(0,169,157,0.15); }
 }
 
 .animate-float { animation: float 6s ease-in-out infinite; }
@@ -174,7 +179,7 @@ body {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, var(--border-strong), var(--border-default), rgba(13,148,136,0.2));
+  background: linear-gradient(135deg, var(--border-strong), var(--border-default), rgba(0,169,157,0.2));
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
   -webkit-mask-composite: xor;
@@ -204,8 +209,8 @@ body {
 
 .mesh-gradient {
   background:
-    radial-gradient(ellipse at 20% 50%, rgba(37,99,235,0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(13,148,136,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 50%, rgba(74,111,201,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(0,169,157,0.06) 0%, transparent 50%),
     radial-gradient(ellipse at 50% 80%, rgba(139,92,246,0.05) 0%, transparent 50%);
 }
 
@@ -215,8 +220,18 @@ body {
 
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-body); }
-::-webkit-scrollbar-thumb { background: rgba(37, 99, 235, 0.3); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(37, 99, 235, 0.5); }
+::-webkit-scrollbar-thumb { background: rgba(0, 169, 157, 0.3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 169, 157, 0.5); }
+
+/* ══════════════════════════════════════════════════════════════
+   ACCESIBILIDAD — anillo de foco visible (solo teclado)
+   Excluye la landing .tmv (protegida) para no alterar su diseño.
+   ══════════════════════════════════════════════════════════════ */
+
+:focus-visible:not(.tmv):not(.tmv *) {
+  outline: 2px solid #00A99D;
+  outline-offset: 2px;
+}
 
 select option {
   background: var(--bg-surface);
@@ -372,5 +387,21 @@ select option {
   body { background: white !important; color: #1a1a1a !important; }
   .no-print { display: none !important; }
   .glass, .glass-strong { background: white !important; border: 1px solid #e5e5e5 !important; backdrop-filter: none !important; }
-  .gradient-text { background: none !important; -webkit-text-fill-color: #1E3A5F !important; }
+  .gradient-text { background: none !important; -webkit-text-fill-color: #071B49 !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   "TU MARCA VENDE" LANDING (.tmv)
+   Landing light propia: neutraliza los overrides globales de modo
+   claro (que invierten .text-white y tintan bg/border-white) para
+   que el texto blanco sobre tarjetas/botones oscuros se lea bien.
+   Scopeado a .tmv → no afecta al resto del sitio.
+   ══════════════════════════════════════════════════════════════ */
+.tmv .text-white { color: #FFFFFF !important; }
+.tmv .bg-white\/5  { background: rgba(255,255,255,0.05) !important; }
+.tmv .bg-white\/10 { background: rgba(255,255,255,0.10) !important; }
+.tmv .bg-white\/20 { background: rgba(255,255,255,0.20) !important; }
+.tmv .border-white\/5  { border-color: rgba(255,255,255,0.05) !important; }
+.tmv .border-white\/10 { border-color: rgba(255,255,255,0.10) !important; }
+.tmv .border-white\/15 { border-color: rgba(255,255,255,0.15) !important; }
+.tmv .border-white\/20 { border-color: rgba(255,255,255,0.20) !important; }

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, FileText, Users, Search, Send, BarChart3, Loader2, CheckCircle, Copy, ChevronDown, ChevronUp, Star, Download, Filter } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import { useToast } from '../../lib/toast'
 import { duplicateVacancy } from '../../lib/duplicateVacancy'
 import VacancyPipeline from './VacancyPipeline'
 import SourcingTab from './SourcingTab'
@@ -47,6 +48,7 @@ export default function VacancyDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { profile } = useAuth()
+  const toast = useToast()
   const [vacancy, setVacancy] = useState(null)
   const [activeTab, setActiveTab] = useState('details')
   const [loading, setLoading] = useState(true)
@@ -116,7 +118,7 @@ export default function VacancyDetail() {
       setActiveTab('details')
       navigate(`/dashboard/vacancies/${copy.id}`)
     } catch (err) {
-      alert('Error al duplicar: ' + err.message)
+      toast.error('Error al duplicar: ' + err.message)
     } finally { setDuplicating(false) }
   }
 

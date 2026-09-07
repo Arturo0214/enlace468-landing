@@ -3,7 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Plus, Briefcase, Clock, CheckCircle, PauseCircle, XCircle, Copy, Loader2, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import { useToast } from '../../lib/toast'
 import { duplicateVacancy } from '../../lib/duplicateVacancy'
+import { ConfirmDialog, EmptyState, Spinner } from '../ui'
 
 const statusConfig = {
   draft: { label: 'Borrador', color: 'bg-gray-500/20 text-gray-300' },
@@ -23,11 +25,13 @@ const priorityColors = {
 export default function VacancyList() {
   const { profile } = useAuth()
   const navigate = useNavigate()
+  const toast = useToast()
   const [vacancies, setVacancies] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [duplicatingId, setDuplicatingId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
+  const [pendingDelete, setPendingDelete] = useState(null) // vacante a confirmar
 
   useEffect(() => { if (profile) loadVacancies() }, [profile])
 
@@ -52,27 +56,32 @@ export default function VacancyList() {
       const copy = await duplicateVacancy(vacancy, profile)
       navigate(`/dashboard/vacancies/${copy.id}`)
     } catch (err) {
-      alert('Error al duplicar: ' + err.message)
+      toast.error('Error al duplicar: ' + err.message)
     } finally { setDuplicatingId(null) }
   }
 
-  async function handleDelete(e, vacancy) {
+  function handleDelete(e, vacancy) {
     e.preventDefault()
     e.stopPropagation()
     if (deletingId) return
-    const count = vacancy.vacancy_candidates?.length || 0
-    const msg = count > 0
-      ? `¿Eliminar la vacante "${vacancy.title}"?\n\nSe borrarán también sus ${count} candidato${count > 1 ? 's' : ''} del pipeline y su banco de sourcing. Esta acción NO se puede deshacer.`
-      : `¿Eliminar la vacante "${vacancy.title}"?\n\nEsta acción NO se puede deshacer.`
-    if (!window.confirm(msg)) return
+    setPendingDelete(vacancy)
+  }
+
+  async function confirmDelete() {
+    const vacancy = pendingDelete
+    if (!vacancy) return
     setDeletingId(vacancy.id)
     try {
       const { error } = await supabase.from('vacancies').delete().eq('id', vacancy.id)
       if (error) throw error
       setVacancies(prev => prev.filter(v => v.id !== vacancy.id))
+      toast.success('Vacante eliminada')
     } catch (err) {
-      alert('Error al eliminar: ' + err.message)
-    } finally { setDeletingId(null) }
+      toast.error('Error al eliminar: ' + err.message)
+    } finally {
+      setDeletingId(null)
+      setPendingDelete(null)
+    }
   }
 
   return (
@@ -110,20 +119,22 @@ export default function VacancyList() {
 
       {loading ? (
         <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mx-auto" />
+          <Spinner size="lg" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-12 glass rounded-xl">
-          <Briefcase size={48} className="mx-auto text-gray-600 mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">No hay vacantes</h3>
-          <p className="text-gray-400 mb-4 text-sm">Crea tu primera vacante para comenzar</p>
-          <Link
-            to="/dashboard/vacancies/new"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-primary-light text-white rounded-lg text-sm font-medium"
-          >
-            <Plus size={16} /> Crear vacante
-          </Link>
-        </div>
+        <EmptyState
+          icon={Briefcase}
+          title="No hay vacantes"
+          description="Crea tu primera vacante para comenzar"
+          action={
+            <Link
+              to="/dashboard/vacancies/new"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-accent text-white rounded-lg text-sm font-medium"
+            >
+              <Plus size={16} /> Crear vacante
+            </Link>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {filtered.map(vacancy => {
@@ -177,6 +188,22 @@ export default function VacancyList() {
           })}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!pendingDelete}
+        danger
+        title={pendingDelete ? `¿Eliminar la vacante "${pendingDelete.title}"?` : ''}
+        message={(() => {
+          const count = pendingDelete?.vacancy_candidates?.length || 0
+          return count > 0
+            ? `Se borrarán también sus ${count} candidato${count > 1 ? 's' : ''} del pipeline y su banco de sourcing. Esta acción NO se puede deshacer.`
+            : 'Esta acción NO se puede deshacer.'
+        })()}
+        confirmLabel="Eliminar"
+        loading={!!deletingId}
+        onConfirm={confirmDelete}
+        onCancel={() => { if (!deletingId) setPendingDelete(null) }}
+      />
     </div>
   )
 }

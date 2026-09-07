@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Sparkles, ChevronDown, ChevronUp } from 'lucide-
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import { useToast } from '../../lib/toast'
 import { logActivity } from '../../lib/auditLog'
 import FeatureGate from '../ui/FeatureGate'
 import ComplianceBanner from '../ui/ComplianceBanner'
@@ -67,6 +68,7 @@ function extractFromJD(text) {
 export default function VacancyForm() {
   const navigate = useNavigate()
   const { profile } = useAuth()
+  const toast = useToast()
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
@@ -130,7 +132,7 @@ export default function VacancyForm() {
       await logActivity('vacancy', data.id, 'Vacante creada: ' + form.title, { data_purpose: form.data_purpose })
       navigate(`/dashboard/vacancies/${data.id}`)
     } catch (err) {
-      alert('Error: ' + err.message)
+      toast.error('Error: ' + err.message)
     } finally { setSaving(false) }
   }
 

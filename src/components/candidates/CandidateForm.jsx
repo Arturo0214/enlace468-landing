@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import { useToast } from '../../lib/toast'
 import { logActivity } from '../../lib/auditLog'
 import ComplianceBanner from '../ui/ComplianceBanner'
 
@@ -17,6 +18,7 @@ const purposeOptions = [
 
 export default function CandidateForm({ onClose, onSaved, initial }) {
   const { profile } = useAuth()
+  const toast = useToast()
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     full_name: initial?.full_name || '', email: initial?.email || '', phone: initial?.phone || '',
@@ -68,7 +70,7 @@ export default function CandidateForm({ onClose, onSaved, initial }) {
         })
       }
       onSaved()
-    } catch (err) { alert('Error: ' + err.message) }
+    } catch (err) { toast.error('Error: ' + err.message) }
     finally { setSaving(false) }
   }
 

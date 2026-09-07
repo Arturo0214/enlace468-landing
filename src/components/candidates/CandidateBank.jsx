@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { usePlan } from '../../lib/planContext'
 import { verifyBadge, hasVerifyProblem, verifyTooltip } from '../../lib/verifyBadge'
 import UpgradePrompt from '../ui/UpgradePrompt'
+import { EmptyState, Spinner } from '../ui'
 import CandidateForm from './CandidateForm'
 
 export default function CandidateBank() {
@@ -65,13 +66,13 @@ export default function CandidateBank() {
       </div>
 
       {loading ? (
-        <div className="text-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mx-auto" /></div>
+        <div className="text-center py-12"><Spinner size="lg" /></div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-12 glass rounded-xl">
-          <User size={48} className="mx-auto text-gray-600 mb-4" />
-          <h3 className="text-lg font-medium text-white mb-2">{search ? 'Sin resultados' : 'No hay candidatos'}</h3>
-          <p className="text-gray-400 text-sm">{search ? 'Intenta con otra busqueda' : 'Agrega tu primer candidato al banco'}</p>
-        </div>
+        <EmptyState
+          icon={User}
+          title={search ? 'Sin resultados' : 'No hay candidatos'}
+          description={search ? 'Intenta con otra busqueda' : 'Agrega tu primer candidato al banco'}
+        />
       ) : (
         <div className="glass rounded-xl divide-y divide-white/5">
           {filtered.map(candidate => (
