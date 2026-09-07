@@ -1,19 +1,9 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Printer, Copy, CheckCircle, Shield, Users, TrendingUp, Star, AlertTriangle, ChevronRight } from 'lucide-react'
+import { Printer, Copy, CheckCircle, Shield, Users, TrendingUp, Star, AlertTriangle, ChevronRight, Target, CalendarClock } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
-
-const STAGE_LABELS = {
-  sourced: 'Sourced',
-  contacted: 'Contactado',
-  screening: 'Screening',
-  interviewing: 'Entrevista',
-  shortlist: 'Shortlist',
-  presented: 'Presentado',
-  offer: 'Oferta',
-  hired: 'Contratado',
-  rejected: 'Rechazado',
-}
+import { computeFunnelStats, forecastNextHire, pipelineFromHistory } from '../../lib/funnelForecast'
+import { useStageLabels } from '../../lib/useStageLabels'
 
 const STAGE_COLORS = {
   sourced: 'bg-gray-500',
@@ -35,16 +25,25 @@ const FUNNEL_ORDER = ['sourced', 'contacted', 'screening', 'interviewing', 'shor
 // 'shortlist' son la misma altura del embudo (el pipeline usa una, el reporte
 // histórico las funde).
 const STAGE_ORDER = { sourced: 0, contacted: 1, screening: 2, interviewing: 3, evaluated: 4, shortlist: 4, presented: 5, offer: 6, hired: 7 }
+// Las etiquetas visibles salen de useStageLabels(); 'evaluated' funde
+// evaluado + finalista en el embudo histórico (misma altura).
 const FUNNEL_STEPS = [
-  { key: 'sourced', order: 0, label: 'Sourced' },
-  { key: 'contacted', order: 1, label: 'Contactado' },
-  { key: 'screening', order: 2, label: 'Screening' },
-  { key: 'interviewing', order: 3, label: 'Entrevista' },
-  { key: 'evaluated', order: 4, label: 'Evaluado / Shortlist' },
-  { key: 'presented', order: 5, label: 'Presentado' },
-  { key: 'offer', order: 6, label: 'Oferta' },
-  { key: 'hired', order: 7, label: 'Contratado' },
+  { key: 'sourced', order: 0 },
+  { key: 'contacted', order: 1 },
+  { key: 'screening', order: 2 },
+  { key: 'interviewing', order: 3 },
+  { key: 'evaluated', order: 4 },
+  { key: 'presented', order: 5 },
+  { key: 'offer', order: 6 },
+  { key: 'hired', order: 7 },
 ]
+
+// Formatea un ETA en semanas: si es menor a 1 semana, en días.
+function fmtEta(weeks) {
+  if (weeks == null) return null
+  if (weeks < 1) return `${Math.max(1, Math.round(weeks * 7))} dias`
+  return `${weeks} semanas`
+}
 
 function scoreColor(score) {
   if (score >= 80) return 'text-emerald-400'
@@ -59,23 +58,39 @@ function scoreBg(score) {
 }
 
 export default function ExecutiveReport({ vacancy, candidates }) {
+  const { getLabel } = useStageLabels()
+  // Etiqueta de un paso del embudo; 'evaluated' agrupa dos etapas internas.
+  const stepLabel = key => (key === 'evaluated' ? `${getLabel('evaluated')} / ${getLabel('shortlist')}` : getLabel(key))
   const [copied, setCopied] = useState(false)
   // Transiciones de etapa registradas en BD (trigger en vacancy_candidates +
   // backfill desde activity_log) → permite contar quiénes PASARON por cada
   // etapa aunque hoy estén en rechazados.
   const [history, setHistory] = useState(null)
+  // Historia de TODA la org (RLS la acota): benchmark agregado para el
+  // pronóstico cuando la vacante es nueva y no tiene historia propia.
+  const [orgHistory, setOrgHistory] = useState(null)
 
   useEffect(() => {
     if (!vacancy?.id) return
     let alive = true
     supabase
       .from('stage_history')
-      .select('vacancy_candidate_id, to_stage')
+      .select('vacancy_candidate_id, from_stage, to_stage, changed_at')
       .eq('vacancy_id', vacancy.id)
       .limit(10000)
       .then(({ data, error }) => { if (alive) setHistory(error ? [] : (data || [])) })
     return () => { alive = false }
   }, [vacancy?.id])
+
+  useEffect(() => {
+    let alive = true
+    supabase
+      .from('stage_history')
+      .select('vacancy_candidate_id, from_stage, to_stage, changed_at')
+      .limit(10000)
+      .then(({ data, error }) => { if (alive) setOrgHistory(error ? [] : (data || [])) })
+    return () => { alive = false }
+  }, [])
 
   // Process metrics
   const metrics = useMemo(() => {
@@ -144,6 +159,29 @@ export default function ExecutiveReport({ vacancy, candidates }) {
     return { total, active, rejected, hired, funnel, histFunnel, sources, shortlist, avgDays, conversionRate }
   }, [candidates, history])
 
+  // ── Pronóstico de clave (FASE 3) ──
+  // Estadísticas de la vacante; si su historia es corta (sin claves o pocos
+  // candidatos), caemos al agregado de toda la org. El RITMO de prospección
+  // siempre es el propio de la vacante.
+  const forecast = useMemo(() => {
+    if (!candidates?.length || history == null) return null
+    const vacStats = computeFunnelStats(history)
+    let stats = vacStats
+    let scope = 'vacante'
+    if ((vacStats.hires === 0 || vacStats.candidateCount < 40) && orgHistory?.length) {
+      stats = computeFunnelStats(orgHistory)
+      scope = 'global'
+    }
+    // Pipeline vivo desde la historia (excluye estancados >30 días, que
+    // inflaban el valor esperado); si no hay historia, los candidatos de hoy.
+    const pipe = pipelineFromHistory(history)
+    const pipelineInput = pipe.activeTotal > 0 ? pipe.counts : candidates
+    const fc = forecastNextHire(stats, pipelineInput, {
+      throughputPerWeek: vacStats.throughput.recentPerWeek,
+    })
+    return { stats, vacStats, scope, fc, staleCount: pipe.staleCount }
+  }, [candidates, history, orgHistory])
+
   function handlePrint() {
     window.print()
   }
@@ -169,8 +207,18 @@ export default function ExecutiveReport({ vacancy, candidates }) {
       '',
       `EMBUDO HISTORICO (llegaron a cada etapa)`,
       ...metrics.histFunnel.filter(s => s.reached > 0).map(s =>
-        `- ${s.label}: llegaron ${s.reached}${s.current ? ` | ${s.current} actualmente` : ''}${s.rejectedAfter ? ` | ${s.rejectedAfter} rechazados tras llegar` : ''}`
+        `- ${stepLabel(s.key)}: llegaron ${s.reached}${s.current ? ` | ${s.current} actualmente` : ''}${s.rejectedAfter ? ` | ${s.rejectedAfter} descartados tras llegar` : ''}`
       ),
+      ...(forecast ? [
+        '',
+        `PRONOSTICO DE CLAVE`,
+        forecast.fc.etaWeeks.probable != null
+          ? `- ETA proxima clave: ~${fmtEta(forecast.fc.etaWeeks.probable)} (rango ${fmtEta(forecast.fc.etaWeeks.optimista) ?? '?'} - ${fmtEta(forecast.fc.etaWeeks.pesimista) ?? '78+ semanas'})${forecast.fc.etaDate ? ` → ${forecast.fc.etaDate.toLocaleDateString('es-MX')}` : ''}`
+          : `- ETA proxima clave: fuera de horizonte (>78 semanas) al ritmo actual`,
+        `- Claves esperadas del pipeline actual: ${forecast.fc.expectedHires}`,
+        `- Ritmo: ${forecast.fc.currentSourcedPerWeek} prospectados/semana vs ~${forecast.fc.sourcedPerWeekNeeded} necesarios para 1 clave/mes (${forecast.fc.paceStatus})`,
+        `- Confianza ${forecast.fc.confidence} (${forecast.stats.totalTransitions} transiciones historicas${forecast.scope === 'global' ? ', benchmark global' : ''})`,
+      ] : []),
       '',
       `SHORTLIST`,
       ...metrics.shortlist.map((vc, i) =>
@@ -306,7 +354,7 @@ export default function ExecutiveReport({ vacancy, candidates }) {
                   const pct = metrics.total > 0 ? (step.reached / metrics.total * 100) : 0
                   return (
                     <div key={step.key} className="flex items-center gap-3">
-                      <span className="text-[10px] text-gray-500 w-20 text-right">{step.label}</span>
+                      <span className="text-[10px] text-gray-500 w-20 text-right">{stepLabel(step.key)}</span>
                       <div className="flex-1 h-5 bg-white/[0.03] rounded-md overflow-hidden">
                         <motion.div
                           initial={{ width: 0 }}
@@ -370,6 +418,118 @@ export default function ExecutiveReport({ vacancy, candidates }) {
             )}
           </motion.div>
 
+          {/* Pronóstico de clave (FASE 3): composición actual del pipeline ×
+              conversiones históricas de stage_history × velocidad por etapa */}
+          {forecast && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12 }}
+              className="glass rounded-xl p-5"
+            >
+              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Target size={13} className="text-accent" /> Pronostico de clave
+              </h2>
+              {forecast.scope === 'global' && (
+                <p className="text-[10px] text-amber-400/80 mb-3">
+                  Esta vacante aun no tiene historia suficiente para pronosticar por si sola —
+                  el calculo usa el benchmark agregado de toda la organizacion.
+                </p>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                {/* (a) ETA de próxima clave */}
+                <div className="bg-white/[0.03] rounded-xl p-4">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <CalendarClock size={13} className="text-primary-light" />
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wide">ETA proxima clave</span>
+                  </div>
+                  {forecast.fc.etaWeeks.probable != null ? (
+                    <>
+                      <div className="text-xl font-bold font-display text-white">
+                        ~{fmtEta(forecast.fc.etaWeeks.probable)}
+                      </div>
+                      <div className="text-[11px] text-gray-500 mt-0.5">
+                        rango {fmtEta(forecast.fc.etaWeeks.optimista) ?? '?'} – {fmtEta(forecast.fc.etaWeeks.pesimista) ?? '78+ semanas'}
+                        {forecast.fc.etaDate && (
+                          <> · est. <span className="text-gray-300">{forecast.fc.etaDate.toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })}</span></>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-sm font-medium text-amber-400">
+                      Fuera de horizonte ({'>'}78 semanas) al ritmo y conversion actuales
+                    </div>
+                  )}
+                  <div className="text-[10px] text-gray-600 mt-1.5">
+                    {forecast.fc.expectedHires} clave{forecast.fc.expectedHires === 1 ? '' : 's'} esperada{forecast.fc.expectedHires === 1 ? '' : 's'} del pipeline vivo
+                    {forecast.staleCount > 0 && <> (excluye {forecast.staleCount} sin movimiento en 30+ dias)</>}
+                  </div>
+                </div>
+
+                {/* (b) Ritmo de prospección: semáforo actual vs necesario */}
+                <div className="bg-white/[0.03] rounded-xl p-4">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span className={`w-2 h-2 rounded-full ${forecast.fc.paceStatus === 'verde' ? 'bg-emerald-400' : forecast.fc.paceStatus === 'amarillo' ? 'bg-amber-400' : 'bg-red-400'}`} />
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wide">Ritmo para 1 clave/mes</span>
+                  </div>
+                  <div className="text-xl font-bold font-display text-white">
+                    ~{forecast.fc.sourcedPerWeekNeeded} <span className="text-xs font-normal text-gray-500">prospectados/semana</span>
+                  </div>
+                  <div className="text-[11px] mt-0.5">
+                    <span className={forecast.fc.paceStatus === 'verde' ? 'text-emerald-400' : forecast.fc.paceStatus === 'amarillo' ? 'text-amber-400' : 'text-red-400'}>
+                      ritmo actual: {forecast.fc.currentSourcedPerWeek}/semana
+                    </span>
+                    <span className="text-gray-600"> ({Math.round(forecast.fc.paceRatio * 100)}% de lo necesario)</span>
+                  </div>
+                  <div className="text-[10px] text-gray-600 mt-1.5">
+                    al ritmo de conversion historica de {forecast.scope === 'global' ? 'la organizacion' : 'esta vacante'}
+                  </div>
+                </div>
+              </div>
+
+              {/* (c) Embudo con números: conversión y días por etapa */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="text-[9px] text-gray-600 uppercase tracking-wide">
+                      <th className="py-1.5 pr-2 font-medium">Etapa</th>
+                      <th className="py-1.5 px-2 font-medium text-right">Llegaron</th>
+                      <th className="py-1.5 px-2 font-medium text-right">Pasan a la sig.</th>
+                      <th className="py-1.5 px-2 font-medium text-right">Dias medianos</th>
+                      <th className="py-1.5 pl-2 font-medium text-right">Prob. de clave</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {forecast.stats.stages.map(s => (
+                      <tr key={s.key} className="border-t border-white/[0.04] text-[11px]">
+                        <td className="py-1.5 pr-2 text-gray-300">{stepLabel(s.key)}</td>
+                        <td className="py-1.5 px-2 text-right text-gray-400">{s.reached}</td>
+                        <td className="py-1.5 px-2 text-right text-gray-300">
+                          {Math.round(s.conversion * 100)}%{s.conversionSource === 'fallback' && <span className="text-amber-500/70">*</span>}
+                        </td>
+                        <td className="py-1.5 px-2 text-right text-gray-400">
+                          {s.medianDays}{s.daysSource === 'fallback' && <span className="text-amber-500/70">*</span>}
+                        </td>
+                        <td className="py-1.5 pl-2 text-right text-gray-400">
+                          {(forecast.fc.pHireByStage[s.key] * 100).toFixed(1)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* (d) Nota de confianza */}
+              <p className="text-[10px] text-gray-600 mt-3 leading-relaxed">
+                Confianza <span className={forecast.fc.confidence === 'alta' ? 'text-emerald-400' : forecast.fc.confidence === 'media' ? 'text-amber-400' : 'text-red-400'}>{forecast.fc.confidence}</span> —
+                basado en {forecast.stats.totalTransitions} transiciones historicas de {forecast.stats.candidateCount} candidatos
+                ({forecast.scope === 'global' ? 'toda la organizacion' : 'esta vacante'}), {forecast.stats.hires} clave{forecast.stats.hires === 1 ? '' : 's'} registrada{forecast.stats.hires === 1 ? '' : 's'}.
+                {' '}<span className="text-amber-500/70">*</span> = estimado con el agregado/benchmark por muestra chica.
+              </p>
+            </motion.div>
+          )}
+
           {/* Shortlist - top candidates */}
           {metrics.shortlist.length > 0 && (
             <motion.div
@@ -427,7 +587,7 @@ export default function ExecutiveReport({ vacancy, candidates }) {
                           {/* Stage badge */}
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-[10px] px-2 py-0.5 rounded bg-white/[0.05] text-gray-400">
-                              {STAGE_LABELS[vc.stage] || vc.stage}
+                              {getLabel(vc.stage)}
                             </span>
                             {c.years_experience && (
                               <span className="text-[10px] text-gray-500">{c.years_experience} anos exp.</span>
@@ -498,13 +658,13 @@ export default function ExecutiveReport({ vacancy, candidates }) {
             <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Proximos pasos</h2>
             <div className="space-y-2">
               {[
-                (metrics.funnel.sourced || 0) > 0 && `Contactar ${metrics.funnel.sourced} candidato${metrics.funnel.sourced > 1 ? 's' : ''} en etapa sourced`,
+                (metrics.funnel.sourced || 0) > 0 && `Contactar ${metrics.funnel.sourced} candidato${metrics.funnel.sourced > 1 ? 's' : ''} en etapa "${getLabel('sourced')}"`,
                 (metrics.funnel.contacted || 0) > 0 && `Dar seguimiento a ${metrics.funnel.contacted} candidato${metrics.funnel.contacted > 1 ? 's' : ''} contactado${metrics.funnel.contacted > 1 ? 's' : ''}`,
                 (metrics.funnel.interviewing || 0) > 0 && `Agendar/completar entrevistas con ${metrics.funnel.interviewing} candidato${metrics.funnel.interviewing > 1 ? 's' : ''}`,
-                (metrics.funnel.shortlist || 0) > 0 && `Preparar presentacion de ${metrics.funnel.shortlist} candidato${metrics.funnel.shortlist > 1 ? 's' : ''} en shortlist`,
+                (metrics.funnel.shortlist || 0) > 0 && `Preparar presentacion de ${metrics.funnel.shortlist} candidato${metrics.funnel.shortlist > 1 ? 's' : ''} en "${getLabel('shortlist')}"`,
                 (metrics.funnel.presented || 0) > 0 && `Esperar feedback de cliente sobre ${metrics.funnel.presented} candidato${metrics.funnel.presented > 1 ? 's' : ''} presentado${metrics.funnel.presented > 1 ? 's' : ''}`,
                 (metrics.funnel.offer || 0) > 0 && `Dar seguimiento a ${metrics.funnel.offer} oferta${metrics.funnel.offer > 1 ? 's' : ''} en curso`,
-                metrics.shortlist.length < 3 && metrics.total < 10 && 'Ampliar base de candidatos — se recomienda minimo 10 candidatos sourced',
+                metrics.shortlist.length < 3 && metrics.total < 10 && `Ampliar base de candidatos — se recomienda minimo 10 en "${getLabel('sourced')}"`,
               ].filter(Boolean).map((step, i) => (
                 <div key={i} className="flex items-start gap-2.5 text-xs text-gray-300">
                   <span className="w-5 h-5 rounded bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary-light flex-shrink-0 mt-0.5">
