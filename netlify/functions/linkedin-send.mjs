@@ -8,6 +8,8 @@
 //
 // OJO: acción hacia afuera e irreversible. La dispara el reclutador (1 clic).
 
+import { getUnipileConfig, createUnipile } from './lib/unipile.mjs'
+
 function extractSlug(url = '') {
   const m = String(url).match(/\/in\/([^/?#]+)/i)
   if (m) { try { return decodeURIComponent(m[1]) } catch { return m[1] } }
@@ -25,10 +27,10 @@ export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' }
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) }
 
-  const KEY = process.env.UNIPILE_API_KEY
-  const DSN = process.env.UNIPILE_DSN
-  const accountId = (JSON.parse(event.body || '{}').account_id) || process.env.UNIPILE_ACCOUNT_ID
-  if (!KEY || !DSN || !accountId) {
+  let requestedAccountId
+  try { requestedAccountId = JSON.parse(event.body || '{}').account_id } catch { /* se valida abajo */ }
+  const { key: KEY, dsn: DSN, accountId, configured } = getUnipileConfig(requestedAccountId)
+  if (!configured) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: 'NOT_CONFIGURED', hint: 'Faltan UNIPILE_API_KEY / UNIPILE_DSN / UNIPILE_ACCOUNT_ID.' }) }
   }
 
@@ -44,12 +46,7 @@ export async function handler(event) {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'NOTE_TOO_LONG', hint: `La nota de conexión no puede exceder 200 caracteres (tiene ${message.length}).` }) }
   }
 
-  const base = `https://${DSN}/api/v1`
-  const uni = (path, opts = {}) => fetch(`${base}${path}`, {
-    ...opts,
-    headers: { 'X-API-KEY': KEY, 'accept': 'application/json', 'content-type': 'application/json', ...(opts.headers || {}) },
-    signal: AbortSignal.timeout(25000),
-  })
+  const { request: uni } = createUnipile({ key: KEY, dsn: DSN })
 
   try {
     // 1) Resolver el perfil → provider_id + distancia de red

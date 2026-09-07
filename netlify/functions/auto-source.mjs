@@ -422,15 +422,16 @@ export async function buildProxyPool(size) {
   return pool
 }
 
-function slugOf(url = '') {
+export function slugOf(url = '') {
   const m = String(url).match(/\/in\/([^/?#]+)/i)
   return m ? m[1] : ''
 }
 
 /** Targeted search for ONE profile → richer headline/description (often reveals
  *  the current employer, e.g. an insurer, que el listado amplio no muestra).
- *  Prioriza Brave (el motor que devuelve datos server-side) y reintenta. */
-async function enrichProfile(slug, dispatcher) {
+ *  Prioriza Brave (el motor que devuelve datos server-side) y reintenta.
+ *  Exportado: lo reutiliza cron-verify-profiles.mjs (Fase 4, higiene de base). */
+export async function enrichProfile(slug, dispatcher) {
   if (!slug) return null
   // Serper primero (búsqueda dirigida = 1 crédito, revela empleador real)
   const viaSerper = await serperSearch(`site:linkedin.com/in/${slug}`, 10)
@@ -520,54 +521,51 @@ export async function scrapeQuery(query, dispatcher, dbg, offset = 0) {
   return merged
 }
 
-export async function handler(event) {
+/**
+ * Motor central de sourcing — compartido por el handler HTTP (front) y el
+ * cron nocturno (cron-auto-source.mjs). Busca, filtra, dedupe y puntúa.
+ *
+ * @param {object} args
+ * @param {object}   args.vacancy      { title (requerido), location, department, company_name, description, challenges, competencies }
+ * @param {string[]} [args.excludeUrls]  URLs ya conocidas (banco/bloqueados) — solo se devuelven NUEVOS
+ * @param {object}   [args.options]    { platform, minScore, maxResults, excludeSector, excludeForeign, seeds, searchTerms, onlyEntrepreneurs, debug }
+ * @returns {Promise<{results:Array, counts:object, minScore:number, queries:string[], excludeSector:boolean, excludeForeign:boolean, proxied:boolean, serper:boolean, engineLog:Array|null, hint:string|null}>}
+ */
+export async function runAutoSource({ vacancy: rawVacancy, excludeUrls = [], options = {} }) {
   const t0 = Date.now()
-  const headers = {
-    'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  }
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' }
-  if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) }
-
-  let body
-  try { body = JSON.parse(event.body || '{}') } catch { return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON' }) } }
-
-  const rawVacancy = body.vacancy
-  if (!rawVacancy?.title) return { statusCode: 400, headers, body: JSON.stringify({ error: 'vacancy.title requerido' }) }
+  if (!rawVacancy?.title) throw new Error('vacancy.title requerido')
   // Títulos internos con marca ("Consultor Inmobiliario Senior | Célula Cero
   // Hipoteca") ensucian queries y scoring: la parte después de | / · es nombre
   // de producto, no de puesto — con ella las búsquedas regresan EMPRESAS del
   // producto (reporte Karina 2026-08-31). Nos quedamos con el puesto.
   const vacancy = { ...rawVacancy, title: String(rawVacancy.title).split(/[|·]/)[0].trim() || rawVacancy.title }
 
-  const prefix = PLATFORM_PREFIX[body.platform] || PLATFORM_PREFIX.linkedin
-  const minScore = Number.isFinite(body.minScore) ? body.minScore : 50
-  const maxResults = Math.min(Math.max(parseInt(body.maxResults, 10) || 40, 1), 100)
+  const prefix = PLATFORM_PREFIX[options.platform] || PLATFORM_PREFIX.linkedin
+  const minScore = Number.isFinite(options.minScore) ? options.minScore : 50
+  const maxResults = Math.min(Math.max(parseInt(options.maxResults, 10) || 40, 1), 100)
   // Exclusión sector asegurador/inversiones: ON por defecto (crítico para
   // Prudential); el front puede apagarla cuando SÍ quieren gente del sector.
-  const excludeSector = body.excludeSector !== false
+  const excludeSector = options.excludeSector !== false
   // Filtro geográfico: fuera perfiles de otros países (Perú, Chile, Argentina…).
   // ON por defecto; el front puede apagarlo para vacantes fuera de México.
-  const excludeForeign = body.excludeForeign !== false
+  const excludeForeign = options.excludeForeign !== false
   // URLs ya conocidas (banco/bloqueados) → se excluyen server-side para devolver
   // solo candidatos NUEVOS (clave cuando el banco ya tiene decenas de perfiles).
-  const known = new Set((Array.isArray(body.excludeUrls) ? body.excludeUrls : [])
+  const known = new Set((Array.isArray(excludeUrls) ? excludeUrls : [])
     .map(u => String(u).split('?')[0].replace(/\/$/, '')))
 
   // Semillas lookalike: perfiles manuales de la vacante → queries extra y
   // boost de score a prospectos parecidos (título/empresa).
-  const seeds = Array.isArray(body.seeds) ? body.seeds.slice(0, 8) : []
+  const seeds = Array.isArray(options.seeds) ? options.seeds.slice(0, 8) : []
   const seedTokens = new Set(
     seeds.flatMap(s => normalizeText(`${s?.title || ''} ${s?.company || ''}`).split(/\s+/))
       .filter(tk => tk.length > 3)
   )
 
-  const winnerTerms = Array.isArray(body.searchTerms) ? body.searchTerms.map(s => String(s).trim()).filter(Boolean).slice(0, 4) : []
+  const winnerTerms = Array.isArray(options.searchTerms) ? options.searchTerms.map(s => String(s).trim()).filter(Boolean).slice(0, 4) : []
   // Modo emprendedores (Ingrid): solo perfiles con señales de negocio propio;
   // agrega queries dirigidas a fundadores/emprendedores del giro.
-  const onlyEntrepreneurs = body.onlyEntrepreneurs === true
+  const onlyEntrepreneurs = options.onlyEntrepreneurs === true
   let queries = buildQueries(vacancy, prefix, 7, seeds, winnerTerms)
   if (onlyEntrepreneurs) {
     // Modo emprendedores: las queries van DIRIGIDAS a fundadores/dueños; las
@@ -596,7 +594,7 @@ export async function handler(event) {
   const counts = { found: 0, known: 0, excluded: 0, companies: 0, foreign: 0, ghost: 0, lowQuality: 0, belowThreshold: 0, returned: 0 }
 
   // Búsquedas base en PARALELO (cada una por una IP distinta) → mucho más rápido.
-  const dbg = body.debug ? [] : null
+  const dbg = options.debug ? [] : null
   let pool = await buildProxyPool(Math.max(queries.length + 2, 9))
   let activeDispatcher = dispatcher
   // Proxy caído (suscripción vencida, credenciales…) → detectarlo UNA vez aquí
@@ -770,13 +768,60 @@ export async function handler(event) {
   counts.returned = results.length
 
   return {
+    results, counts, minScore, queries, excludeSector, excludeForeign,
+    proxied: !!activeDispatcher,
+    serper: !!process.env.SERPER_API_KEY,
+    engineLog: dbg,
+    hint: counts.found === 0
+      ? (process.env.SERPER_API_KEY ? 'Serper no devolvió perfiles (¿créditos agotados? revisa serper.dev) y los motores de respaldo tampoco.' : (dispatcher ? 'Los buscadores no devolvieron perfiles (revisa el proxy).' : 'Sin resultados — configura SERPER_API_KEY (serper.dev) o PROXY_URL residencial para mayor confiabilidad.'))
+      : null,
+  }
+}
+
+/** Handler HTTP: wrapper delgado sobre runAutoSource. MISMO contrato que
+ *  siempre — mismos params del body, misma forma de la respuesta. */
+export async function handler(event) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  }
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' }
+  if (event.httpMethod !== 'POST') return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) }
+
+  let body
+  try { body = JSON.parse(event.body || '{}') } catch { return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON' }) } }
+  if (!body.vacancy?.title) return { statusCode: 400, headers, body: JSON.stringify({ error: 'vacancy.title requerido' }) }
+
+  let out
+  try {
+    out = await runAutoSource({
+      vacancy: body.vacancy,
+      excludeUrls: body.excludeUrls,
+      options: {
+        platform: body.platform,
+        minScore: body.minScore,
+        maxResults: body.maxResults,
+        excludeSector: body.excludeSector,
+        excludeForeign: body.excludeForeign,
+        seeds: body.seeds,
+        searchTerms: body.searchTerms,
+        onlyEntrepreneurs: body.onlyEntrepreneurs,
+        debug: body.debug,
+      },
+    })
+  } catch (e) {
+    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message || 'auto-source failed' }) }
+  }
+
+  const { engineLog, hint, ...rest } = out
+  return {
     statusCode: 200, headers,
     body: JSON.stringify({
-      results, counts, minScore, queries, excludeSector, excludeForeign,
-      proxied: !!activeDispatcher,
-      serper: !!process.env.SERPER_API_KEY,
-      ...(dbg ? { engineLog: dbg } : {}),
-      ...(counts.found === 0 ? { hint: process.env.SERPER_API_KEY ? 'Serper no devolvió perfiles (¿créditos agotados? revisa serper.dev) y los motores de respaldo tampoco.' : (dispatcher ? 'Los buscadores no devolvieron perfiles (revisa el proxy).' : 'Sin resultados — configura SERPER_API_KEY (serper.dev) o PROXY_URL residencial para mayor confiabilidad.') } : {}),
+      ...rest,
+      ...(engineLog ? { engineLog } : {}),
+      ...(hint ? { hint } : {}),
     }),
   }
 }

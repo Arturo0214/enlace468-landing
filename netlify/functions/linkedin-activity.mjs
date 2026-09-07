@@ -5,6 +5,8 @@
 // Env (Netlify): UNIPILE_API_KEY, UNIPILE_DSN, UNIPILE_ACCOUNT_ID
 // GET /api/linkedin-activity   (o POST { account_id? })
 
+import { getUnipileConfig, createUnipile } from './lib/unipile.mjs'
+
 export async function handler(event) {
   const headers = {
     'Content-Type': 'application/json',
@@ -14,20 +16,15 @@ export async function handler(event) {
   }
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers, body: '' }
 
-  const KEY = process.env.UNIPILE_API_KEY
-  const DSN = process.env.UNIPILE_DSN
-  let accountId = process.env.UNIPILE_ACCOUNT_ID
-  try { const b = JSON.parse(event.body || '{}'); if (b.account_id) accountId = b.account_id } catch { /* GET */ }
-  if (event.queryStringParameters?.account_id) accountId = event.queryStringParameters.account_id
-  if (!KEY || !DSN || !accountId) {
+  let requestedAccountId
+  try { const b = JSON.parse(event.body || '{}'); if (b.account_id) requestedAccountId = b.account_id } catch { /* GET */ }
+  if (event.queryStringParameters?.account_id) requestedAccountId = event.queryStringParameters.account_id
+  const { key: KEY, dsn: DSN, accountId, configured } = getUnipileConfig(requestedAccountId)
+  if (!configured) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: 'NOT_CONFIGURED', hint: 'Faltan credenciales de Unipile.' }) }
   }
 
-  const base = `https://${DSN}/api/v1`
-  const get = (path) => fetch(`${base}${path}`, {
-    headers: { 'X-API-KEY': KEY, accept: 'application/json' },
-    signal: AbortSignal.timeout(25000),
-  }).then(async r => ({ ok: r.ok, data: await r.json().catch(() => ({})) }))
+  const { getJson: get } = createUnipile({ key: KEY, dsn: DSN })
 
   try {
     // En paralelo: invitaciones pendientes, conexiones (aceptadas), chats (respuestas)

@@ -5,6 +5,20 @@
 [functions]
   directory = "netlify/functions"
 
+# Sourcing nocturno automático: 10/11/12 UTC = 4/5/6am CDMX (UTC-6 fijo), L-V.
+# Tres corridas escalonadas acumulan volumen con motores gratuitos.
+[functions."cron-auto-source"]
+  schedule = "0 10,11,12 * * 1-5"
+
+# Digest matutino: 13 UTC = 7am CDMX, L-V (después de las corridas nocturnas).
+[functions."cron-daily-digest"]
+  schedule = "0 13 * * 1-5"
+
+# Higiene de base (Fase 4): re-verificación de perfiles con el scraper propio.
+# 8 UTC = 2am CDMX, diario — no empalma con el sourcing (10-12) ni el digest (13).
+[functions."cron-verify-profiles"]
+  schedule = "0 8 * * *"
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
