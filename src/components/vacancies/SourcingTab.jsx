@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabase'
 import FeatureGate from '../ui/FeatureGate'
 import { matchExcludedCompany, NEGATIVE_QUERY, EXCLUDED_LABELS_SHORT } from '../../lib/excludedCompanies'
 import { isForeignProfile } from '../../lib/sourcingScore'
+import { promoteBankItem } from '../../lib/promote'
+import { verifyBadge, hasVerifyProblem, verifyTooltip } from '../../lib/verifyBadge'
 
 const CSE_ID = '234e26a7d970d4e6f'
 
@@ -35,6 +37,10 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   // responde, ej. los filtros de Karina) — persisten en la vacante.
   const [autoTerms, setAutoTerms] = useState('')
   const [excludeSector, setExcludeSector] = useState(true) // excluir aseguradoras/inversiones (Prudential)
+  // Sourcing nocturno automático (cron L-V 4/5/6am CDMX) — persiste en la vacante
+  const [autoNightly, setAutoNightly] = useState(false)
+  const [autoPromoteMin, setAutoPromoteMin] = useState('')
+  const [savingNightly, setSavingNightly] = useState(false)
   const [onlyEntrepreneurs, setOnlyEntrepreneurs] = useState(false) // solo perfiles con negocio propio (Ingrid)
   const [discardingUrl, setDiscardingUrl] = useState(null)
   const [importUrl, setImportUrl] = useState('')
@@ -78,6 +84,12 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
 
   // Carga los términos ganadores guardados en la vacante
   useEffect(() => { setAutoTerms((vacancy?.search_terms || []).join(', ')) }, [vacancy?.id])
+
+  // Carga la config del sourcing nocturno guardada en la vacante
+  useEffect(() => {
+    setAutoNightly(!!vacancy?.auto_source_enabled)
+    setAutoPromoteMin(vacancy?.auto_promote_min_score ?? '')
+  }, [vacancy?.id])
 
   // Carga los candidatos DESCARTADOS de toda la organización → nunca reaparecen
   // en ninguna búsqueda (no solo en esta vacante).
@@ -409,12 +421,19 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
       if (match) { name = match[1].trim(); title = match[2].trim(); company = match[3].trim() }
       else { name = name.replace(/\s*\|.*$/, '').trim() }
     }
+    // Score del sourcing automático (auto-source.mjs devuelve score/strengths/gaps):
+    // se persiste para que el banco quede rankeado y no se pierda el ranking.
+    const hasScore = typeof result.score === 'number'
     return {
       organization_id: profile.organization_id, vacancy_id: vacancyId,
       title: result.title, url: result.url, display_url: result.displayUrl || null,
       snippet: result.snippet || null, platform,
       full_name: name || result.title, current_title: title, current_company: company,
       source: isLinkedin ? 'linkedin' : 'web-sourced', created_by: profile.id,
+      score: hasScore ? result.score : null,
+      score_details: hasScore
+        ? { strengths: result.strengths || [], gaps: result.gaps || [] }
+        : null,
     }
   }
 
@@ -459,20 +478,9 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   async function promoteToPipeline(item) {
     setPromotingId(item.id)
     try {
-      const isLinkedin = item.url?.includes('linkedin.com')
-      // El origen viaja del banco al pipeline: manual (link pegado por el
-      // reclutador) vs web-sourced (búsqueda) — clave para medir conversión.
-      const isManual = item.source === 'manual'
-      const { data } = await supabase.from('candidates').insert({
-        organization_id: profile.organization_id, full_name: item.full_name || item.title,
-        current_title: item.current_title || null, current_company: item.current_company || null,
-        linkedin_url: isLinkedin ? item.url : null,
-        source: isManual ? 'manual' : 'web-sourced', notes: item.snippet || null,
-        tags: isManual ? ['candidato-manual'] : ['web-sourced'],
-      }).select().single()
+      // Lógica compartida con "Candidatos de hoy" (src/lib/promote.js)
+      const data = await promoteBankItem(supabase, { item, vacancyId, profile })
       if (data) {
-        await supabase.from('vacancy_candidates').insert({ vacancy_id: vacancyId, candidate_id: data.id, stage: 'sourced', assigned_to: profile.id })
-        await supabase.from('sourcing_bank').update({ candidate_id: data.id }).eq('id', item.id)
         setBankItems(prev => prev.map(b => b.id === item.id ? { ...b, candidate_id: data.id } : b))
         setAddedIds(prev => new Set([...prev, data.id]))
       }
@@ -568,6 +576,34 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   }
 
   const autoUnsaved = autoResults.filter(r => !bankUrls.has(r.url)).length
+
+  // ── Sourcing nocturno automático (toggle por vacante) ─────
+  // El cron (cron-auto-source.mjs) corre L-V a las 4, 5 y 6am CDMX y solo
+  // procesa vacantes con auto_source_enabled=true.
+  async function toggleNightly() {
+    const next = !autoNightly
+    setAutoNightly(next)
+    setSavingNightly(true)
+    try {
+      const { error } = await supabase.from('vacancies')
+        .update({ auto_source_enabled: next }).eq('id', vacancyId)
+      if (error) { console.error(error); setAutoNightly(!next) }
+    } catch (e) { console.error(e); setAutoNightly(!next) }
+    finally { setSavingNightly(false) }
+  }
+
+  // Umbral de auto-promoción (vacío = no auto-promover). El cron lo LEE pero
+  // la auto-promoción arranca apagada (flag interno) hasta validar calidad.
+  async function savePromoteMin(raw) {
+    const value = String(raw).trim() === '' ? null
+      : Math.min(Math.max(parseInt(raw, 10) || 0, 0), 100)
+    setAutoPromoteMin(value ?? '')
+    try {
+      const { error } = await supabase.from('vacancies')
+        .update({ auto_promote_min_score: value }).eq('id', vacancyId)
+      if (error) console.error(error)
+    } catch (e) { console.error(e) }
+  }
 
   // Bloquear/descartar un candidato: lo persiste en el banco como 'descartado'
   // para que NO vuelva a aparecer en futuras búsquedas de esta vacante.
@@ -721,6 +757,11 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
           contact_channel: draft.channel, contacted_at: new Date().toISOString(),
           contact_message: draft.body, provider_id: data.providerId || null,
           invitation_id: data.result?.invitation_id || null,
+          // Solo si el candidato trae score (auto-source); condicional para no
+          // pisar con null un score ya guardado (este upsert SÍ sobreescribe).
+          ...(typeof cand.score === 'number'
+            ? { score: cand.score, score_details: cand.score_details || { strengths: cand.strengths || [], gaps: cand.gaps || [] } }
+            : {}),
         }
         await supabase.from('sourcing_bank').upsert(row, { onConflict: 'vacancy_id,url' })
         loadOurOutreach()
@@ -829,6 +870,37 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
             ? <>Excluyendo del sourcing: {EXCLUDED_LABELS_SHORT} y otras aseguradoras / casas de inversión.</>
             : <span className="text-amber-400/80">⚠ Exclusión de sector APAGADA — se incluirán perfiles de aseguradoras/inversiones.</span>}
         </p>
+
+        {/* Sourcing nocturno automático (cron L-V 4-6am CDMX) */}
+        <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="flex flex-wrap items-center gap-4">
+            <button type="button" onClick={toggleNightly} disabled={savingNightly}
+              className="flex items-center gap-2 text-[11px] text-gray-300 hover:text-white transition-colors disabled:opacity-60"
+              title="El robot busca solo, de madrugada (L-V 4, 5 y 6am CDMX) y deja los candidatos rankeados en 'Candidatos de hoy' del dashboard.">
+              <span className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${autoNightly ? 'bg-[#00A99D]' : 'bg-white/15'}`}>
+                <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${autoNightly ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+              </span>
+              {savingNightly ? <Loader2 size={12} className="animate-spin" /> : null}
+              Sourcing nocturno automático
+            </button>
+            {autoNightly && (
+              <label className="flex items-center gap-2 text-[11px] text-gray-400">
+                Auto-promover si score ≥
+                <input type="number" min="0" max="100" value={autoPromoteMin}
+                  onChange={e => setAutoPromoteMin(e.target.value)}
+                  onBlur={e => savePromoteMin(e.target.value)}
+                  placeholder="—"
+                  className="w-16 px-2 py-1 rounded-lg bg-white/5 border border-white/10 focus:border-[#00A99D]/50 outline-none text-white text-xs" />
+                <span className="text-gray-600">(vacío = no auto-promover)</span>
+              </label>
+            )}
+          </div>
+          {autoNightly && (
+            <p className="mt-1.5 text-[10px] text-gray-500 leading-relaxed">
+              Corre L-V a las 4, 5 y 6am (CDMX). Los nuevos aparecen rankeados en el banco y en "Candidatos de hoy"; el digest por correo sale a las 7am.
+            </p>
+          )}
+        </div>
 
         {/* Importar por URL de LinkedIn (agregar gente de tu red al CRM) */}
         <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
@@ -1053,6 +1125,15 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
                         {contactStatus(b.url) === 'connected'
                           ? <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(16,185,129,0.2)', color: '#34d399' }}>✓ Conectado</span>
                           : contactStatus(b.url) === 'invited' && <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(10,102,194,0.2)', color: '#5aa0e6' }}>✓ Invitado</span>}
+                        {hasVerifyProblem(b.verify_status) && (() => {
+                          const vb = verifyBadge(b.verify_status)
+                          return vb && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: vb.bg, color: vb.fg }}
+                              title={verifyTooltip(b.verify_status, b.verify_details)}>
+                              {vb.icon} {vb.label}
+                            </span>
+                          )
+                        })()}
                       </div>
                       {(b.current_title || b.current_company) && (
                         <p className="text-[11px] text-gray-400 truncate mt-0.5">{[b.current_title, b.current_company].filter(Boolean).join(' · ')}</p>

@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { usePlan } from '../../lib/planContext'
 import PlanBadge from '../ui/PlanBadge'
+import TodayCandidates from './TodayCandidates'
 
 /* ── KPI card definitions ─────────────────────────────────────── */
 const kpiCards = [
@@ -129,6 +130,9 @@ export default function DashboardHome() {
         </div>
         <p className="text-gray-400 mt-1">Resumen de tu actividad de reclutamiento</p>
       </div>
+
+      {/* ── Candidatos de hoy (sourcing nocturno automático) ──── */}
+      <TodayCandidates />
 
       {!currentPlan && (
         <a
