@@ -4,17 +4,20 @@ import { Users, Clock, AlertTriangle, TrendingUp, Star, Zap, ExternalLink, Globe
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import { useStageLabels } from '../../lib/useStageLabels'
 
-const STAGES = [
-  { id: 'sourced', label: 'Sourced', color: 'border-gray-400', bg: 'bg-gray-400', sla: 3 },
-  { id: 'contacted', label: 'Contactado', color: 'border-blue-400', bg: 'bg-blue-400', sla: 2 },
-  { id: 'screening', label: 'Screening', color: 'border-cyan-400', bg: 'bg-cyan-400', sla: 3 },
-  { id: 'interviewing', label: 'Entrevista', color: 'border-purple-400', bg: 'bg-purple-400', sla: 5 },
-  { id: 'shortlist', label: 'Shortlist', color: 'border-amber-400', bg: 'bg-amber-400', sla: 3 },
-  { id: 'presented', label: 'Presentado', color: 'border-accent', bg: 'bg-accent', sla: 5 },
-  { id: 'offer', label: 'Oferta', color: 'border-green-400', bg: 'bg-green-400', sla: 3 },
-  { id: 'hired', label: 'Contratado', color: 'border-emerald-500', bg: 'bg-emerald-500', sla: null },
-  { id: 'rejected', label: 'Rechazado', color: 'border-red-400', bg: 'bg-red-400', sla: null },
+// Estilos/SLA por etapa; las ETIQUETAS visibles salen de useStageLabels()
+// (configurables por org en Configuración → Etapas del proceso).
+const STAGE_DEFS = [
+  { id: 'sourced', color: 'border-gray-400', bg: 'bg-gray-400', sla: 3 },
+  { id: 'contacted', color: 'border-blue-400', bg: 'bg-blue-400', sla: 2 },
+  { id: 'screening', color: 'border-cyan-400', bg: 'bg-cyan-400', sla: 3 },
+  { id: 'interviewing', color: 'border-purple-400', bg: 'bg-purple-400', sla: 5 },
+  { id: 'shortlist', color: 'border-amber-400', bg: 'bg-amber-400', sla: 3 },
+  { id: 'presented', color: 'border-accent', bg: 'bg-accent', sla: 5 },
+  { id: 'offer', color: 'border-green-400', bg: 'bg-green-400', sla: 3 },
+  { id: 'hired', color: 'border-emerald-500', bg: 'bg-emerald-500', sla: null },
+  { id: 'rejected', color: 'border-red-400', bg: 'bg-red-400', sla: null },
 ]
 
 const SOURCE_ICONS = {
@@ -63,6 +66,8 @@ function scoreColor(score) {
 
 export default function PipelineKanban({ vacancyId, vacancyTitle }) {
   const { profile } = useAuth()
+  const { getLabel } = useStageLabels()
+  const STAGES = STAGE_DEFS.map(s => ({ ...s, label: getLabel(s.id) }))
   const [candidates, setCandidates] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedVC, setSelectedVC] = useState(null)

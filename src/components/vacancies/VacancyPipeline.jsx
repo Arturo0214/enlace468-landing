@@ -4,6 +4,7 @@ import { Plus, User, Star, X, Mail, Phone, MapPin, ExternalLink, Briefcase, Cale
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { usePlan } from '../../lib/planContext'
+import { useStageLabels } from '../../lib/useStageLabels'
 import { getFirefliesEmails, matchEmailToCandidate, getCalendarEvents, matchEventToCandidate } from '../../lib/googleApi'
 
 // Origen del candidato → etiqueta en la tarjeta. Permite comparar conversión
@@ -17,20 +18,24 @@ function originBadge(source) {
   return { label: 'Auto', cls: 'bg-blue-500/15 text-blue-300' }
 }
 
-const stages = [
-  { id: 'sourced', label: 'Sourced', color: 'border-gray-400', bg: 'bg-gray-50 dark:bg-gray-900/30' },
-  { id: 'contacted', label: 'Contactado', color: 'border-blue-400', bg: 'bg-gray-100/60 dark:bg-gray-800/30' },
-  { id: 'screening', label: 'Screening', color: 'border-cyan-400', bg: 'bg-gray-100 dark:bg-gray-800/40' },
-  { id: 'interviewing', label: 'Entrevista', color: 'border-purple-400', bg: 'bg-gray-200/50 dark:bg-gray-700/30' },
-  { id: 'evaluated', label: 'Evaluado', color: 'border-gold', bg: 'bg-gray-200/70 dark:bg-gray-700/40' },
-  { id: 'presented', label: 'Presentado', color: 'border-accent', bg: 'bg-gray-200 dark:bg-gray-700/50' },
-  { id: 'offer', label: 'Oferta', color: 'border-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/30' },
-  { id: 'hired', label: 'Contratado', color: 'border-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/40' },
-  { id: 'rejected', label: 'Rechazado', color: 'border-red-500', bg: 'bg-red-50 dark:bg-red-950/30' },
+// Estilos por etapa; las ETIQUETAS visibles salen de useStageLabels()
+// (configurables por org en Configuración → Etapas del proceso).
+const STAGE_DEFS = [
+  { id: 'sourced', color: 'border-gray-400', bg: 'bg-gray-50 dark:bg-gray-900/30' },
+  { id: 'contacted', color: 'border-blue-400', bg: 'bg-gray-100/60 dark:bg-gray-800/30' },
+  { id: 'screening', color: 'border-cyan-400', bg: 'bg-gray-100 dark:bg-gray-800/40' },
+  { id: 'interviewing', color: 'border-purple-400', bg: 'bg-gray-200/50 dark:bg-gray-700/30' },
+  { id: 'evaluated', color: 'border-gold', bg: 'bg-gray-200/70 dark:bg-gray-700/40' },
+  { id: 'presented', color: 'border-accent', bg: 'bg-gray-200 dark:bg-gray-700/50' },
+  { id: 'offer', color: 'border-blue-500', bg: 'bg-blue-50 dark:bg-blue-950/30' },
+  { id: 'hired', color: 'border-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/40' },
+  { id: 'rejected', color: 'border-red-500', bg: 'bg-red-50 dark:bg-red-950/30' },
 ]
 
 export default function VacancyPipeline({ vacancyId }) {
   const { profile, session, getProviderToken } = useAuth()
+  const { getLabel } = useStageLabels()
+  const stages = STAGE_DEFS.map(s => ({ ...s, label: getLabel(s.id) }))
   const { canDo } = usePlan()
   const hasBankAccess = canDo('access_candidate_bank')
   const [candidates, setCandidates] = useState([])
@@ -615,7 +620,7 @@ Enlace 468`)
                               {stage.id === 'offer' && (
                                 <div className="absolute -top-1 -right-1 w-12 h-12 overflow-hidden z-10">
                                   <div className="absolute top-[6px] right-[-14px] w-16 text-center text-[7px] font-bold text-white uppercase tracking-wider py-[2px]" style={{ background: 'linear-gradient(90deg, #DC2626, #EF4444)', transform: 'rotate(45deg)', boxShadow: '0 2px 4px rgba(220,38,38,0.3)' }}>
-                                    Oferta
+                                    {getLabel('offer')}
                                   </div>
                                 </div>
                               )}
@@ -623,7 +628,7 @@ Enlace 468`)
                               {stage.id === 'hired' && (
                                 <div className="absolute -top-1 -right-1 w-14 h-14 overflow-hidden z-10">
                                   <div className="absolute top-[8px] right-[-12px] w-[72px] text-center text-[7px] font-bold text-white uppercase tracking-wider py-[2px]" style={{ background: 'linear-gradient(90deg, #059669, #10B981)', transform: 'rotate(45deg)', boxShadow: '0 2px 4px rgba(5,150,105,0.3)' }}>
-                                    Hired
+                                    {getLabel('hired')}
                                   </div>
                                 </div>
                               )}

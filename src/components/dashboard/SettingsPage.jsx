@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Save, Building2, User, Shield, Package, Crown } from 'lucide-react'
+import { Save, Building2, User, Shield, Package, Crown, ListOrdered, RotateCcw } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import { DEFAULT_STAGE_LABELS, STAGE_KEYS, setCachedStageLabels } from '../../lib/stageLabels'
+import { useStageLabels } from '../../lib/useStageLabels'
 
 const inputClass = "w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none text-white placeholder-gray-500 text-sm"
 const labelClass = "block text-sm font-medium text-gray-400 mb-1"
@@ -22,6 +24,48 @@ export default function SettingsPage() {
 
   const [members, setMembers] = useState([])
   const [subscriptions, setSubscriptions] = useState([])
+
+  // ── Etapas del proceso (solo admin/super_admin) ──
+  // Los stages internos (sourced, contacted…) no cambian en BD; aquí se editan
+  // las etiquetas visibles, guardadas en organizations.settings.stage_labels.
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin'
+  const { labels: orgStageLabels, loading: stageLabelsLoading } = useStageLabels()
+  const [stageForm, setStageForm] = useState(null)
+  const [savingStages, setSavingStages] = useState(false)
+  const [stagesSaved, setStagesSaved] = useState(false)
+  const [stagesError, setStagesError] = useState(null)
+  // Antes de que el usuario edite, el formulario muestra las etiquetas
+  // actuales de la org (derivado — sin setState en effect).
+  const stageFormValues = stageForm ?? (stageLabelsLoading ? null : orgStageLabels)
+
+  async function saveStageLabels() {
+    setSavingStages(true)
+    setStagesError(null)
+    try {
+      // Solo guardamos los overrides (etiqueta distinta al default y no vacía).
+      const overrides = {}
+      for (const key of STAGE_KEYS) {
+        const v = (stageFormValues?.[key] || '').trim()
+        if (v && v !== DEFAULT_STAGE_LABELS[key]) overrides[key] = v
+      }
+      // Merge sobre settings FRESCOS para no pisar otras keys del jsonb.
+      const { data: org, error: readError } = await supabase
+        .from('organizations').select('settings').eq('id', profile.organization_id).single()
+      if (readError) throw readError
+      const newSettings = { ...(org?.settings || {}), stage_labels: overrides }
+      const { error: updateError } = await supabase
+        .from('organizations').update({ settings: newSettings }).eq('id', profile.organization_id)
+      if (updateError) throw updateError
+      // Refresca el cache module-level → todos los componentes montados se enteran.
+      setCachedStageLabels(profile.organization_id, overrides)
+      setStagesSaved(true)
+      setTimeout(() => setStagesSaved(false), 2000)
+    } catch (err) {
+      setStagesError(err.message || 'No se pudo guardar')
+    } finally {
+      setSavingStages(false)
+    }
+  }
 
   useEffect(() => {
     if (profile) {
@@ -78,6 +122,7 @@ export default function SettingsPage() {
     { id: 'profile', label: 'Mi perfil', icon: User },
     { id: 'plan', label: 'Mi plan', icon: Package },
     { id: 'org', label: 'Organizacion', icon: Building2 },
+    ...(isAdmin ? [{ id: 'stages', label: 'Etapas', icon: ListOrdered }] : []),
     { id: 'team', label: 'Equipo', icon: Shield },
   ]
 
@@ -223,6 +268,66 @@ export default function SettingsPage() {
             </button>
             {saved && <span className="text-sm text-green-400">Guardado</span>}
           </div>
+        </div>
+      )}
+
+      {/* Etapas del proceso */}
+      {activeTab === 'stages' && isAdmin && (
+        <div className="glass-strong rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+              <ListOrdered size={20} className="text-primary-light" />
+            </div>
+            <div>
+              <h2 className="font-display font-semibold text-white">Etapas del proceso</h2>
+              <p className="text-sm text-gray-400">Personaliza como se llama cada etapa del journey en toda la plataforma</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mb-5 mt-3">
+            Los nombres aplican para toda tu organizacion (kanban, reportes, campanas). El orden y la logica del proceso no cambian.
+          </p>
+
+          {stageFormValues == null ? (
+            <div className="flex items-center justify-center py-10">
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent" />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2.5">
+                {STAGE_KEYS.map((key, i) => (
+                  <div key={key} className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded bg-primary/15 flex items-center justify-center text-[10px] font-bold text-primary-light flex-shrink-0">
+                      {i + 1}
+                    </span>
+                    <span className="w-28 text-xs text-gray-500 font-mono flex-shrink-0" title="Nombre interno (no cambia)">{key}</span>
+                    <input
+                      type="text"
+                      value={stageFormValues[key] ?? ''}
+                      onChange={e => setStageForm({ ...stageFormValues, [key]: e.target.value })}
+                      placeholder={DEFAULT_STAGE_LABELS[key]}
+                      className={inputClass}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {stagesError && (
+                <p className="text-sm text-red-400 mt-4">Error al guardar: {stagesError}</p>
+              )}
+
+              <div className="flex items-center gap-3 pt-5">
+                <button onClick={saveStageLabels} disabled={savingStages}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary to-accent text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:opacity-90">
+                  <Save size={16} /> {savingStages ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+                <button onClick={() => setStageForm({ ...DEFAULT_STAGE_LABELS })} disabled={savingStages}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 transition-all disabled:opacity-50">
+                  <RotateCcw size={14} /> Restaurar nombres sugeridos
+                </button>
+                {stagesSaved && <span className="text-sm text-green-400">Guardado</span>}
+              </div>
+            </>
+          )}
         </div>
       )}
 

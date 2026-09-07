@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, User, Mail, Phone, MapPin, Tag, Edit2, ExternalLink } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { verifyBadge, verifyTooltip } from '../../lib/verifyBadge'
+import { useStageLabels } from '../../lib/useStageLabels'
 import CandidateForm from './CandidateForm'
 
-const stageLabels = { sourced: 'Sourced', contacted: 'Contactado', interviewing: 'Entrevista', evaluated: 'Evaluado', presented: 'Presentado', offer: 'Oferta', hired: 'Contratado', rejected: 'Rechazado' }
-const stageColors = { sourced: 'bg-gray-500/20 text-gray-300', contacted: 'bg-blue-500/20 text-blue-400', interviewing: 'bg-purple-500/20 text-purple-400', evaluated: 'bg-gold/20 text-gold', presented: 'bg-accent/20 text-accent', offer: 'bg-green-500/20 text-green-400', hired: 'bg-green-600/20 text-green-300', rejected: 'bg-red-500/20 text-red-400' }
+// Etiquetas de etapa: configurables por org vía useStageLabels().
+const stageColors = { sourced: 'bg-gray-500/20 text-gray-300', contacted: 'bg-blue-500/20 text-blue-400', screening: 'bg-cyan-500/20 text-cyan-400', interviewing: 'bg-purple-500/20 text-purple-400', evaluated: 'bg-gold/20 text-gold', presented: 'bg-accent/20 text-accent', shortlist: 'bg-amber-500/20 text-amber-400', offer: 'bg-green-500/20 text-green-400', hired: 'bg-green-600/20 text-green-300', rejected: 'bg-red-500/20 text-red-400' }
 
 export default function CandidateProfile() {
+  const { getLabel } = useStageLabels()
   const { id } = useParams()
   const navigate = useNavigate()
   const [candidate, setCandidate] = useState(null)
@@ -42,6 +45,17 @@ export default function CandidateProfile() {
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-1">
               <h1 className="text-2xl font-display font-bold text-white">{candidate.full_name}</h1>
+              {(() => {
+                // Badge de frescura (Fase 4) — en el perfil se muestra también
+                // 'activo'; si la columna no existe aún, no se pinta nada.
+                const vb = verifyBadge(candidate.verify_status)
+                return vb && (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: vb.bg, color: vb.fg }}
+                    title={verifyTooltip(candidate.verify_status, candidate.verify_details)}>
+                    {vb.icon} {vb.label}
+                  </span>
+                )
+              })()}
               <button onClick={() => setShowEdit(true)} className="text-gray-400 hover:text-primary transition-colors"><Edit2 size={16} /></button>
             </div>
             {candidate.current_title && <p className="text-gray-300">{candidate.current_title}{candidate.current_company ? ` en ${candidate.current_company}` : ''}</p>}
@@ -87,7 +101,7 @@ export default function CandidateProfile() {
                 </div>
                 <div className="flex items-center gap-2">
                   {vc.match_score != null && <span className="text-xs font-medium text-gold">{Math.round(vc.match_score)}%</span>}
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stageColors[vc.stage] || ''}`}>{stageLabels[vc.stage] || vc.stage}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stageColors[vc.stage] || ''}`}>{getLabel(vc.stage)}</span>
                 </div>
               </div>
             ))}

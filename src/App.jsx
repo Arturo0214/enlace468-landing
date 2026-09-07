@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import LandingPage from './components/landing/LandingPage'
+import CvLandingPage from './components/cv-landing/CvLandingPage'
 import CoursePage from './components/landing/CoursePage'
 import LoginPage from './components/auth/LoginPage'
 import CheckoutPage from './components/cart/CheckoutPage'
@@ -12,6 +13,7 @@ import VacancyForm from './components/vacancies/VacancyForm'
 import VacancyDetail from './components/vacancies/VacancyDetail'
 import CandidateBank from './components/candidates/CandidateBank'
 import CandidateProfile from './components/candidates/CandidateProfile'
+import CleanupCenter from './components/candidates/CleanupCenter'
 import CursosList from './components/cursos/CursosList'
 import AcademyDashboard from './components/academy/AcademyDashboard'
 import ResourceViewer from './components/academy/ResourceViewer'
@@ -22,6 +24,7 @@ import SubscriptionsDashboard from './components/dashboard/SubscriptionsDashboar
 import MarcaVendeDashboard from './components/marca-vende/MarcaVendeDashboard'
 import DiagnosticoPage from './components/marca-vende/DiagnosticoPage'
 import PerfilProPage from './components/marca-vende/PerfilProPage'
+import CvOptimizer from './components/marca-vende/CvOptimizer'
 import RecruiterToolsDashboard from './components/recruiter-tools/RecruiterToolsDashboard'
 import PromptsGenerator from './components/recruiter-tools/PromptsGenerator'
 import OutreachTemplates from './components/recruiter-tools/OutreachTemplates'
@@ -41,15 +44,27 @@ import ExtendedLibrary from './components/academy/ExtendedLibrary'
 import EnterpriseDashboard from './components/enterprise/EnterpriseDashboard'
 import StrategicConfig from './components/enterprise/StrategicConfig'
 import BestPractices from './components/recruiter-tools/BestPractices'
+import PrivacyPolicy from './components/legal/PrivacyPolicy'
+import TermsOfService from './components/legal/TermsOfService'
+import DataDeletion from './components/legal/DataDeletion'
+import CampaignsDashboard from './components/campaigns/CampaignsDashboard'
+import CampaignBuilder from './components/campaigns/CampaignBuilder'
+import CampaignDetail from './components/campaigns/CampaignDetail'
 
 function App() {
   return (
     <Routes>
       {/* Public */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/tu-marca-vende" element={<CvLandingPage />} />
+      <Route path="/optimiza-tu-cv" element={<CvLandingPage />} />
+      <Route path="/cv-linkedin" element={<CvLandingPage />} />
       <Route path="/curso" element={<CoursePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/candidate" element={<CandidatePortal />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/data-deletion" element={<DataDeletion />} />
       <Route path="/checkout" element={<CheckoutPage />} />
       <Route path="/checkout/success" element={<CheckoutPage />} />
 
@@ -70,6 +85,7 @@ function App() {
         <Route path="vacancies/:id" element={<VacancyDetail />} />
         <Route path="candidates" element={<CandidateBank />} />
         <Route path="candidates/:id" element={<CandidateProfile />} />
+        <Route path="cleanup" element={<CleanupCenter />} />
         <Route path="cursos" element={<CursosList />} />
         <Route path="academy" element={<AcademyDashboard />} />
         <Route path="academy/:resourceId" element={<ResourceViewer />} />
@@ -80,6 +96,7 @@ function App() {
         <Route path="marca-vende" element={<MarcaVendeDashboard />} />
         <Route path="marca-vende/diagnostico" element={<DiagnosticoPage />} />
         <Route path="marca-vende/perfil-pro" element={<PerfilProPage />} />
+        <Route path="marca-vende/cv" element={<CvOptimizer />} />
         <Route path="recruiter-tools" element={<RecruiterToolsDashboard />} />
         <Route path="recruiter-tools/prompts" element={<PromptsGenerator />} />
         <Route path="recruiter-tools/outreach" element={<OutreachTemplates />} />
@@ -98,6 +115,9 @@ function App() {
         <Route path="enterprise/config" element={<StrategicConfig />} />
         <Route path="academy/library" element={<ExtendedLibrary />} />
         <Route path="recruiter-tools/best-practices" element={<BestPractices />} />
+        <Route path="campaigns" element={<CampaignsDashboard />} />
+        <Route path="campaigns/new" element={<CampaignBuilder />} />
+        <Route path="campaigns/:id" element={<CampaignDetail />} />
       </Route>
     </Routes>
   )
