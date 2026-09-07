@@ -1,0 +1,69 @@
+// Badges de frescura de perfil (Fase 4, higiene de base).
+//
+// El cron nocturno cron-verify-profiles.mjs marca verify_status en
+// sourcing_bank y candidates:
+//   'activo' | 'cambio_empleo' | 'desactualizado' | 'link_muerto' | 'fantasma'
+//
+// Este helper es la ÚNICA fuente de label/color/icono para SourcingTab,
+// CandidateBank y CandidateProfile. Tolerante a drift: si la fila no trae
+// verify_status (migración sin aplicar o perfil aún no verificado),
+// verifyBadge() devuelve null y no se pinta nada.
+
+const BADGES = {
+  activo: {
+    label: 'Verificado activo',
+    icon: '✓',
+    bg: 'rgba(16,185,129,0.15)',
+    fg: '#34d399',
+  },
+  cambio_empleo: {
+    label: 'Cambió de empleo',
+    icon: '⚠️',
+    bg: 'rgba(245,158,11,0.15)',
+    fg: '#fbbf24',
+  },
+  desactualizado: {
+    label: 'Desactualizado',
+    icon: '🕐',
+    bg: 'rgba(148,163,184,0.15)',
+    fg: '#94a3b8',
+  },
+  link_muerto: {
+    label: 'Link muerto',
+    icon: '💀',
+    bg: 'rgba(239,68,68,0.15)',
+    fg: '#f87171',
+  },
+  fantasma: {
+    label: 'Fantasma',
+    icon: '👻',
+    bg: 'rgba(168,85,247,0.15)',
+    fg: '#c084fc',
+  },
+}
+
+/** status → { label, icon, bg, fg } | null si no hay/no se reconoce. */
+export function verifyBadge(status) {
+  if (!status) return null
+  return BADGES[status] || null
+}
+
+/** ¿verify_status indica un problema? ('activo' y sin verificar NO lo son). */
+export function hasVerifyProblem(status) {
+  return !!status && status !== 'activo'
+}
+
+/** Tooltip legible a partir de verify_details (jsonb del cron). */
+export function verifyTooltip(status, details) {
+  const badge = verifyBadge(status)
+  if (!badge) return ''
+  const d = (details && typeof details === 'object') ? details : {}
+  const parts = [badge.label]
+  if (d.new_title) parts.push(`Nuevo puesto: ${d.new_title}`)
+  if (d.new_company) parts.push(`Nueva empresa: ${d.new_company}`)
+  if (status === 'link_muerto' && d.misses) parts.push(`${d.misses} corridas sin resultado`)
+  if (d.checked_at) {
+    try { parts.push(`Revisado: ${new Date(d.checked_at).toLocaleDateString('es-MX')}`) } catch { /* fecha inválida */ }
+  }
+  return parts.join(' · ')
+}
