@@ -10,9 +10,16 @@ import { promoteBankItem } from '../../lib/promote'
 
 const scoreBadgeColor = s => (s >= 75 ? '#00A99D' : s >= 60 ? '#f59e0b' : '#9ca3af')
 
+// Gate de calidad: la cuarentena geográfica (geo_desconocida) y los extranjeros
+// NO se muestran como candidatos de hoy — solo confirmados de México. Los
+// cuarentenados se cuentan en una línea discreta mientras el cron de
+// verificación resuelve su ubicación.
+const HIDDEN_STATUSES = new Set(['geo_desconocida', 'extranjero'])
+
 export default function TodayCandidates() {
   const { profile } = useAuth()
   const [items, setItems] = useState([])
+  const [quarantined, setQuarantined] = useState(0) // en verificación de ubicación
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null) // id en promoción/descarte
   const [collapsed, setCollapsed] = useState(false)
@@ -32,7 +39,11 @@ export default function TodayCandidates() {
           .gte('created_at', since)
           .order('score', { ascending: false, nullsFirst: false })
         if (error) throw error
-        if (!cancelled) setItems(data || [])
+        if (!cancelled) {
+          const visible = (data || []).filter(i => !HIDDEN_STATUSES.has(i.verify_status))
+          setItems(visible)
+          setQuarantined((data || []).filter(i => i.verify_status === 'geo_desconocida').length)
+        }
       } catch (e) {
         console.error('TodayCandidates:', e)
         if (!cancelled) setItems([])
@@ -75,6 +86,7 @@ export default function TodayCandidates() {
         <p className="text-xs text-gray-400">
           <span className="font-semibold text-white">Candidatos de hoy — 0 nuevos.</span>{' '}
           El sourcing nocturno corre L-V a las 4-6am (CDMX); actívalo con el switch "Sourcing nocturno automático" en la pestaña Sourcing de tus vacantes.
+          {quarantined > 0 && <span className="text-gray-500"> {quarantined} más en verificación de ubicación.</span>}
         </p>
       </div>
     )
@@ -164,6 +176,11 @@ export default function TodayCandidates() {
               </div>
             </div>
           ))}
+          {quarantined > 0 && (
+            <p className="text-[11px] text-gray-500 pt-1">
+              {quarantined} más en verificación de ubicación
+            </p>
+          )}
         </div>
       )}
     </div>

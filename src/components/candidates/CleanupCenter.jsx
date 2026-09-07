@@ -19,7 +19,10 @@ import { checkForeign } from '../../lib/promote'
 import { verifyBadge } from '../../lib/verifyBadge'
 
 const PAGE = 1000 // paginado de lectura (el límite de 80 es solo para .in() con ids)
-const STALE_STATUSES = ['cambio_empleo', 'desactualizado', 'link_muerto', 'fantasma']
+// 'geo_desconocida' = cuarentena del gate de calidad: perfiles auto-sourced sin
+// señal de México aún — se listan aquí con badge "🌎 Ubicación por confirmar"
+// para que el reclutador pueda revisarlos/descartarlos sin esperar al cron.
+const STALE_STATUSES = ['cambio_empleo', 'desactualizado', 'link_muerto', 'fantasma', 'geo_desconocida']
 
 /** Trae todas las páginas de una query supabase (fn recibe from,to y regresa el builder). */
 async function fetchAll(buildQuery) {

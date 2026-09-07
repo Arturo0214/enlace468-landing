@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Briefcase, Users, GraduationCap, Calendar, Settings, LogOut, ChevronsLeft, ChevronsRight, Shield, Sparkles, Zap, CreditCard, Package, UserCircle, Building2, Megaphone, Eraser } from 'lucide-react'
+import { LayoutDashboard, Briefcase, Users, GraduationCap, Calendar, Settings, LogOut, ChevronsLeft, ChevronsRight, Shield, Sparkles, Zap, CreditCard, Package, UserCircle, Building2, Megaphone, Eraser, Workflow } from 'lucide-react'
 import { useAuth } from '../../lib/auth'
 
 const navItems = [
@@ -9,6 +9,7 @@ const navItems = [
   { to: '/dashboard/candidates', icon: Users, label: 'Candidatos' },
   { to: '/dashboard/cleanup', icon: Eraser, label: 'Depuracion' },
   { to: '/dashboard/campaigns', icon: Megaphone, label: 'Campanas' },
+  { to: '/dashboard/sequences', icon: Workflow, label: 'Secuencias' },
   { to: '/dashboard/recruiter-tools', icon: Zap, label: 'Recruiting Lab' },
   { to: '/dashboard/academy', icon: GraduationCap, label: 'Academy' },
   { to: '/dashboard/calendar', icon: Calendar, label: 'Calendario' },

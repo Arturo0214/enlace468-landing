@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Globe, ExternalLink, Plus, Loader2, CheckCircle, Download, Users, X, Mail, Phone, MapPin, Star, Archive, Trash2, Save, Sparkles, SlidersHorizontal, Ban, Link2, Copy, MessageSquare, Send } from 'lucide-react'
+import { Search, Globe, ExternalLink, Plus, Loader2, CheckCircle, Download, Users, X, Mail, Phone, MapPin, Star, Archive, Trash2, Save, Sparkles, SlidersHorizontal, Ban, Link2, Copy, MessageSquare, Send, Workflow } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useToast } from '../../lib/toast'
+import EnrollModal from '../outreach/EnrollModal'
 import FeatureGate from '../ui/FeatureGate'
+import ConfirmDialog from '../ui/ConfirmDialog'
 import { matchExcludedCompany, NEGATIVE_QUERY, EXCLUDED_LABELS_SHORT } from '../../lib/excludedCompanies'
 import { isForeignProfile } from '../../lib/sourcingScore'
 import { promoteBankItem } from '../../lib/promote'
@@ -10,6 +13,7 @@ import { verifyBadge, hasVerifyProblem, verifyTooltip } from '../../lib/verifyBa
 const CSE_ID = '234e26a7d970d4e6f'
 
 export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, setAddedIds, addingId, setAddingId, setActiveTab }) {
+  const toast = useToast()
   const [searchQuery, setSearchQuery] = useState('')
   const [activeSearch, setActiveSearch] = useState('')
   const [localResults, setLocalResults] = useState([])
@@ -57,6 +61,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const [activityLoading, setActivityLoading] = useState(false)
   const [activityOpen, setActivityOpen] = useState(false)
   const [ourOutreach, setOurOutreach] = useState([]) // envíos registrados por el CRM (sourcing_bank)
+  const [enrollTarget, setEnrollTarget] = useState(null) // { type:'bank', id, name } → modal de secuencias (Fase 5)
   const cseRendered = useRef(false)
   const observerRef = useRef(null)
   const debounceRef = useRef(null)
@@ -666,8 +671,8 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
       })
       const data = await res.json()
       if (data.ok && data.url) window.open(data.url, '_blank', 'noopener')
-      else alert(data.hint || 'No se pudo generar el link de conexión.')
-    } catch (e) { alert('No se pudo conectar con el servicio.') }
+      else toast.error(data.hint || 'No se pudo generar el link de conexión.')
+    } catch (e) { toast.error('No se pudo conectar con el servicio.') }
     finally { setConnectingAccount(false) }
   }
 
@@ -729,12 +734,22 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
     setDraftCopied(true); setTimeout(() => setDraftCopied(false), 2000)
   }
 
+  // Confirmación previa al envío por LinkedIn (reemplaza window.confirm).
+  const [pendingSend, setPendingSend] = useState(null) // { cand, action, label }
+
   // Envía la conexión/InMail por LinkedIn vía Unipile (acción real, 1 clic).
-  async function sendLinkedIn(cand, action) {
+  function sendLinkedIn(cand, action) {
     if (!cand?.linkedin_url) { setSendResult({ type: 'err', text: 'Este candidato no tiene URL de LinkedIn.' }); return }
     if (!draft?.body) { setSendResult({ type: 'err', text: 'Genera un mensaje primero.' }); return }
     const label = action === 'inmail' ? 'InMail' : 'solicitud de conexión'
-    if (!window.confirm(`¿Enviar ${label} a ${cand.full_name || 'este candidato'} por LinkedIn?\n\n"${draft.body.slice(0, 180)}"`)) return
+    setPendingSend({ cand, action, label })
+  }
+
+  // Ejecuta el envío una vez confirmado en el diálogo.
+  async function doSendLinkedIn() {
+    const { cand, action, label } = pendingSend || {}
+    if (!cand) return
+    setPendingSend(null)
     setSending(true); setSendResult(null)
     try {
       const res = await fetch('/api/linkedin-send', {
@@ -1156,6 +1171,11 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
                           {promotingId === b.id ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Pipeline
                         </button>
                       )}
+                      <button onClick={() => setEnrollTarget({ type: 'bank', id: b.id, name: b.full_name || b.title })}
+                        className="p-1.5 rounded-lg text-gray-600 hover:text-teal-400 hover:bg-teal-400/10 transition-all"
+                        title="Inscribir en secuencia de outreach">
+                        <Workflow size={14} />
+                      </button>
                       <a href={b.url} target="_blank" rel="noopener" className="p-1.5 rounded-lg text-gray-600 hover:text-primary-light hover:bg-primary-light/10 transition-all">
                         <ExternalLink size={14} />
                       </a>
@@ -1399,12 +1419,35 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
                   </button>
                 )
               })()}
+              {(() => {
+                // Si el candidato ya vive en el banco → puede inscribirse a una secuencia (Fase 5)
+                const bankRow = bankItems.find(x => x.url && (x.url === selectedCandidate.url || x.url === selectedCandidate.linkedin_url) && x.source !== 'descartado')
+                return bankRow ? (
+                  <button onClick={() => setEnrollTarget({ type: 'bank', id: bankRow.id, name: bankRow.full_name || bankRow.title })}
+                    className="ml-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white flex items-center gap-1.5"
+                    style={{ background: 'linear-gradient(90deg, #00A99D, #071B49)' }}>
+                    <Workflow size={14} /> Secuencia
+                  </button>
+                ) : null
+              })()}
               <div className="flex-1" />
               <button onClick={() => setSelectedCandidate(null)} className="px-4 py-2 text-sm text-gray-500 hover:text-white">Cerrar</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Inscribir en secuencia (Fase 5) */}
+      {enrollTarget && <EnrollModal target={enrollTarget} profile={profile} onClose={() => setEnrollTarget(null)} />}
+
+      <ConfirmDialog
+        open={!!pendingSend}
+        title={pendingSend ? `¿Enviar ${pendingSend.label} a ${pendingSend.cand.full_name || 'este candidato'} por LinkedIn?` : ''}
+        message={pendingSend && draft?.body ? `"${draft.body.slice(0, 180)}"` : ''}
+        confirmLabel="Enviar"
+        onConfirm={doSendLinkedIn}
+        onCancel={() => setPendingSend(null)}
+      />
     </div>
     </FeatureGate>
   )

@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
+import { ToastProvider } from './components/ui/Toast'
 import LandingPage from './components/landing/LandingPage'
 import CvLandingPage from './components/cv-landing/CvLandingPage'
 import CoursePage from './components/landing/CoursePage'
@@ -48,11 +49,13 @@ import PrivacyPolicy from './components/legal/PrivacyPolicy'
 import TermsOfService from './components/legal/TermsOfService'
 import DataDeletion from './components/legal/DataDeletion'
 import CampaignsDashboard from './components/campaigns/CampaignsDashboard'
+import SequenceBuilder from './components/outreach/SequenceBuilder'
 import CampaignBuilder from './components/campaigns/CampaignBuilder'
 import CampaignDetail from './components/campaigns/CampaignDetail'
 
 function App() {
   return (
+    <ToastProvider>
     <Routes>
       {/* Public */}
       <Route path="/" element={<LandingPage />} />
@@ -115,11 +118,13 @@ function App() {
         <Route path="enterprise/config" element={<StrategicConfig />} />
         <Route path="academy/library" element={<ExtendedLibrary />} />
         <Route path="recruiter-tools/best-practices" element={<BestPractices />} />
+        <Route path="sequences" element={<SequenceBuilder />} />
         <Route path="campaigns" element={<CampaignsDashboard />} />
         <Route path="campaigns/new" element={<CampaignBuilder />} />
         <Route path="campaigns/:id" element={<CampaignDetail />} />
       </Route>
     </Routes>
+    </ToastProvider>
   )
 }
 

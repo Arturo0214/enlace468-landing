@@ -40,6 +40,21 @@ const BADGES = {
     bg: 'rgba(168,85,247,0.15)',
     fg: '#c084fc',
   },
+  // Gate de calidad del sourcing (2026-09-07): sin señal de México en el
+  // snippet → cuarentena hasta que la verificación dirigida confirme ubicación.
+  geo_desconocida: {
+    label: 'Ubicación por confirmar',
+    icon: '🌎',
+    bg: 'rgba(59,130,246,0.15)',
+    fg: '#93c5fd',
+  },
+  // Verificación dirigida confirmó que vive fuera de México → descartado.
+  extranjero: {
+    label: 'Extranjero',
+    icon: '🚫',
+    bg: 'rgba(239,68,68,0.15)',
+    fg: '#f87171',
+  },
 }
 
 /** status → { label, icon, bg, fg } | null si no hay/no se reconoce. */
@@ -61,6 +76,7 @@ export function verifyTooltip(status, details) {
   const parts = [badge.label]
   if (d.new_title) parts.push(`Nuevo puesto: ${d.new_title}`)
   if (d.new_company) parts.push(`Nueva empresa: ${d.new_company}`)
+  if (d.foreign_signal) parts.push(`Señal: ${d.foreign_signal}`)
   if (status === 'link_muerto' && d.misses) parts.push(`${d.misses} corridas sin resultado`)
   if (d.checked_at) {
     try { parts.push(`Revisado: ${new Date(d.checked_at).toLocaleDateString('es-MX')}`) } catch { /* fecha inválida */ }

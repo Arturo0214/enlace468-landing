@@ -155,6 +155,51 @@ export function isForeignProfile(url, ...texts) {
   return !!detectForeignLocation(texts.filter(Boolean).join(' '))
 }
 
+/** SEÑAL POSITIVA de México: subdominio mx.linkedin.com o alguna mención de
+ *  México/ciudad mexicana (word boundary) en los textos. Complementa a
+ *  isForeignProfile: un perfil puede no ser "extranjero detectable" y aun así
+ *  NO tener ninguna señal de México (snippet sin ubicación) → cuarentena
+ *  'geo_desconocida' hasta que la verificación dirigida revele su ubicación
+ *  (gate de calidad 2026-09-07: "que no aparezca gente de otros países"). */
+export function hasMexicoSignal(url, ...texts) {
+  const m = String(url || '').match(/https?:\/\/([a-z]{2,3})\.linkedin\.com/i)
+  if (m && m[1].toLowerCase() === 'mx') return true
+  const t = normalizeText(texts.filter(Boolean).join(' '))
+  if (!t) return false
+  return MEXICO_SIGNALS.some(w => wordRe(w).test(t))
+}
+
+// "Nombres" que en realidad son un rol o giro de negocio ("Trade Finance
+// Consultant", "Contfie Control Financiero Y", "Fundar Centro de Análisis e
+// Investigación"): pasan looksLikeHumanName (2-6 palabras alfabéticas) pero no
+// son personas — basura directa para el gate.
+const ROLE_NAME_WORDS = [
+  'finance', 'financial', 'financiero', 'financiera', 'finanzas',
+  'consultant', 'consulting', 'consultancy', 'consultor', 'consultora', 'consultoria',
+  'control', 'controller', 'analisis', 'analysis', 'analyst', 'analista',
+  'centro', 'center', 'trade', 'trading', 'group', 'grupo', 'servicios', 'services',
+  'solutions', 'soluciones', 'capital', 'credit', 'credito', 'creditos',
+  'asesoria', 'asesores', 'advisory', 'advisors', 'investigacion', 'research',
+  'fundacion', 'foundation', 'instituto', 'institute', 'corporativo', 'corporate',
+  'banking', 'banca', 'insurance', 'seguros', 'inversiones', 'investments',
+  'management', 'gestion', 'estrategia', 'strategy', 'negocios', 'business',
+  'consultores', 'despacho', 'agencia', 'agency', 'firma', 'firm',
+  'patrimonial', 'contable', 'contabilidad', 'accounting', 'auditoria', 'audit',
+  'fiscal', 'legal', 'juridico', 'inmobiliaria', 'realty', 'broker', 'hipotecario',
+  'hipotecaria', 'marketing', 'recruitment', 'reclutamiento', 'staffing',
+  'tecnologia', 'technology', 'software', 'digital', 'holdings', 'partners',
+  'associates', 'asociados', 'company', 'compania',
+]
+const ROLE_NAME_RE = new RegExp(`\\b(?:${ROLE_NAME_WORDS.join('|')})\\b`)
+
+/** True si el "nombre" trae palabras de rol/giro (word boundary sobre texto
+ *  normalizado) → no es una persona saludable por su nombre. */
+export function nameLooksLikeRole(name) {
+  const n = normalizeText(name || '')
+  if (!n) return false
+  return ROLE_NAME_RE.test(n)
+}
+
 /** True if `text` contains `token` or any of its bilingual synonyms. */
 function hasTerm(text, token) {
   const group = SYNONYM_INDEX.get(token)

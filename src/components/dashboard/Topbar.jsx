@@ -1,6 +1,7 @@
-import { Menu, Bell } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { useAuth } from '../../lib/auth'
 import ThemeToggle from '../ui/ThemeToggle'
+import NotificationBell from '../ui/NotificationBell'
 
 export default function Topbar({ onMenuToggle }) {
   const { profile } = useAuth()
@@ -21,9 +22,7 @@ export default function Topbar({ onMenuToggle }) {
 
       <div className="flex items-center gap-3">
         <ThemeToggle />
-        <button className="p-2 rounded-lg text-gray-400 hover:bg-white/5 hover:text-white relative transition-colors">
-          <Bell size={20} />
-        </button>
+        <NotificationBell />
         {profile?.avatar_url ? (
           <img src={profile.avatar_url} alt="" className="w-8 h-8 rounded-full" />
         ) : (

@@ -1,15 +1,30 @@
 import { useState, useEffect } from 'react'
-import { Save, Building2, User, Shield, Package, Crown, ListOrdered, RotateCcw } from 'lucide-react'
+import { Save, Building2, User, Shield, Package, Crown, ListOrdered, RotateCcw, Timer } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import { useToast } from '../../lib/toast'
 import { DEFAULT_STAGE_LABELS, STAGE_KEYS, setCachedStageLabels } from '../../lib/stageLabels'
 import { useStageLabels } from '../../lib/useStageLabels'
 
 const inputClass = "w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/30 outline-none text-white placeholder-gray-500 text-sm"
 const labelClass = "block text-sm font-medium text-gray-400 mb-1"
 
+// ── SLAs por etapa (FASE 6) ──
+// Etapas con SLA (hired/rejected son terminales, sin límite) y días default —
+// espejo del seed de la migración 20260908020000_sla_notifications.sql.
+const SLA_STAGES = ['sourced', 'contacted', 'screening', 'interviewing', 'evaluated', 'presented', 'shortlist', 'offer']
+const DEFAULT_SLA_DAYS = { sourced: 5, contacted: 3, screening: 5, interviewing: 7, evaluated: 3, presented: 7, shortlist: 5, offer: 5 }
+
+/** ¿El error es "la tabla no existe"? (42P01 = Postgres, PGRST205 = PostgREST) */
+function isMissingTable(error) {
+  if (!error) return false
+  if (error.code === '42P01' || error.code === 'PGRST205') return true
+  return /does not exist|could not find the table/i.test(error.message || '')
+}
+
 export default function SettingsPage() {
   const { profile, session } = useAuth()
+  const toast = useToast()
   const [activeTab, setActiveTab] = useState('profile')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -67,6 +82,66 @@ export default function SettingsPage() {
     }
   }
 
+  // ── SLAs por etapa (solo admin/super_admin) ──
+  // slaForm: map stage → { max_days, is_active }; null = cargando.
+  // slaMissing: la tabla sla_rules no existe en prod (migración pendiente).
+  const [slaForm, setSlaForm] = useState(null)
+  const [slaMissing, setSlaMissing] = useState(false)
+  const [savingSla, setSavingSla] = useState(false)
+  const [slaSaved, setSlaSaved] = useState(false)
+  const [slaError, setSlaError] = useState(null)
+
+  async function loadSlaRules() {
+    const { data, error } = await supabase
+      .from('sla_rules')
+      .select('stage, max_days, is_active')
+      .eq('organization_id', profile.organization_id)
+    if (error) {
+      if (isMissingTable(error)) setSlaMissing(true)
+      else setSlaError(error.message)
+      return
+    }
+    const byStage = {}
+    for (const r of data || []) byStage[r.stage] = r
+    const form = {}
+    for (const stage of SLA_STAGES) {
+      // Sin fila para la etapa (org creada antes del seed) → default editable.
+      form[stage] = {
+        max_days: byStage[stage]?.max_days ?? DEFAULT_SLA_DAYS[stage],
+        is_active: byStage[stage]?.is_active ?? true,
+      }
+    }
+    setSlaForm(form)
+  }
+
+  async function saveSlaRules() {
+    setSavingSla(true)
+    setSlaError(null)
+    try {
+      const rows = SLA_STAGES.map(stage => {
+        const days = parseInt(slaForm[stage]?.max_days, 10)
+        if (!Number.isFinite(days) || days < 1) throw new Error(`"${orgStageLabels[stage] || stage}" necesita un límite de al menos 1 día`)
+        return {
+          organization_id: profile.organization_id,
+          stage,
+          max_days: days,
+          is_active: !!slaForm[stage].is_active,
+          updated_at: new Date().toISOString(),
+        }
+      })
+      const { error } = await supabase
+        .from('sla_rules')
+        .upsert(rows, { onConflict: 'organization_id,stage' })
+      if (error) throw error
+      setSlaSaved(true)
+      setTimeout(() => setSlaSaved(false), 2000)
+    } catch (err) {
+      setSlaError(err.message || 'No se pudo guardar')
+    } finally {
+      setSavingSla(false)
+    }
+  }
+
   useEffect(() => {
     if (profile) {
       setProfileForm({ full_name: profile.full_name || '', email: profile.email || '', phone: profile.phone || '' })
@@ -75,6 +150,7 @@ export default function SettingsPage() {
       }
       loadMembers()
       loadSubscriptions()
+      if (profile.role === 'admin' || profile.role === 'super_admin') loadSlaRules()
     }
   }, [profile])
 
@@ -101,7 +177,7 @@ export default function SettingsPage() {
       }).eq('id', profile.id)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
-    } catch (err) { alert('Error: ' + err.message) }
+    } catch (err) { toast.error('Error: ' + err.message) }
     finally { setSaving(false) }
   }
 
@@ -114,7 +190,7 @@ export default function SettingsPage() {
       }).eq('id', profile.organization_id)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
-    } catch (err) { alert('Error: ' + err.message) }
+    } catch (err) { toast.error('Error: ' + err.message) }
     finally { setSaving(false) }
   }
 
@@ -123,6 +199,7 @@ export default function SettingsPage() {
     { id: 'plan', label: 'Mi plan', icon: Package },
     { id: 'org', label: 'Organizacion', icon: Building2 },
     ...(isAdmin ? [{ id: 'stages', label: 'Etapas', icon: ListOrdered }] : []),
+    ...(isAdmin ? [{ id: 'sla', label: 'SLAs', icon: Timer }] : []),
     { id: 'team', label: 'Equipo', icon: Shield },
   ]
 
@@ -325,6 +402,94 @@ export default function SettingsPage() {
                   <RotateCcw size={14} /> Restaurar nombres sugeridos
                 </button>
                 {stagesSaved && <span className="text-sm text-green-400">Guardado</span>}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* SLAs por etapa */}
+      {activeTab === 'sla' && isAdmin && (
+        <div className="glass-strong rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+              <Timer size={20} className="text-primary-light" />
+            </div>
+            <div>
+              <h2 className="font-display font-semibold text-white">SLAs por etapa</h2>
+              <p className="text-sm text-gray-400">Días máximos que un candidato puede llevar en cada etapa antes de alertar</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mb-5 mt-3">
+            Cada mañana (L-V, 7:30am) el sistema revisa el pipeline: los candidatos que exceden el límite de su etapa generan una notificación en la campana y un email resumen. Un candidato atorado se re-alerta cada 72 horas como máximo.
+          </p>
+
+          {slaMissing ? (
+            <div className="rounded-xl p-4 text-sm text-amber-300" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+              La tabla de SLAs no existe todavía en la base de datos — aplica la migración <code className="font-mono text-xs">20260908020000_sla_notifications.sql</code> para activar esta sección.
+            </div>
+          ) : slaForm == null ? (
+            <div className="flex items-center justify-center py-10">
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent" />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-3 px-1 text-[10px] uppercase tracking-wide text-gray-500 font-semibold">
+                  <span className="flex-1">Etapa</span>
+                  <span className="w-28 text-center">Días máximos</span>
+                  <span className="w-16 text-center">Activa</span>
+                </div>
+                {SLA_STAGES.map((stage, i) => {
+                  const row = slaForm[stage]
+                  return (
+                    <div key={stage} className={`flex items-center gap-3 rounded-lg px-1 py-1 ${row.is_active ? '' : 'opacity-50'}`}>
+                      <span className="w-6 h-6 rounded bg-primary/15 flex items-center justify-center text-[10px] font-bold text-primary-light flex-shrink-0">
+                        {i + 1}
+                      </span>
+                      <span className="flex-1 text-sm text-white truncate">{orgStageLabels[stage] || stage}</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="365"
+                        value={row.max_days}
+                        disabled={!row.is_active}
+                        onChange={e => setSlaForm(f => ({ ...f, [stage]: { ...f[stage], max_days: e.target.value } }))}
+                        className={inputClass + ' !w-28 text-center disabled:cursor-not-allowed'}
+                      />
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={row.is_active}
+                        aria-label={`SLA de ${orgStageLabels[stage] || stage} ${row.is_active ? 'activo' : 'inactivo'}`}
+                        onClick={() => setSlaForm(f => ({ ...f, [stage]: { ...f[stage], is_active: !f[stage].is_active } }))}
+                        className={`w-16 flex justify-center flex-shrink-0`}
+                      >
+                        <span className={`w-9 h-5 rounded-full relative transition-colors ${row.is_active ? 'bg-accent' : 'bg-white/10'}`}>
+                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${row.is_active ? 'left-[18px]' : 'left-0.5'}`} />
+                        </span>
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {slaError && (
+                <p className="text-sm text-red-400 mt-4">Error al guardar: {slaError}</p>
+              )}
+
+              <div className="flex items-center gap-3 pt-5">
+                <button onClick={saveSlaRules} disabled={savingSla}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary to-accent text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:opacity-90">
+                  <Save size={16} /> {savingSla ? 'Guardando...' : 'Guardar cambios'}
+                </button>
+                <button
+                  onClick={() => setSlaForm(Object.fromEntries(SLA_STAGES.map(s => [s, { max_days: DEFAULT_SLA_DAYS[s], is_active: true }])))}
+                  disabled={savingSla}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 transition-all disabled:opacity-50">
+                  <RotateCcw size={14} /> Restaurar sugeridos
+                </button>
+                {slaSaved && <span className="text-sm text-green-400">Guardado</span>}
               </div>
             </>
           )}

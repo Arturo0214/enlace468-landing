@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
-import { Plus, User, Star, X, Mail, Phone, MapPin, ExternalLink, Briefcase, Calendar, Tag, Clock, MessageCircle, Send, Loader2, CheckCircle, ArrowUpRight, ArrowDownLeft, FileText, Video, Link2, UserPlus, Lock, Crown, AlertTriangle, Heart, Copy, Trash2, Search } from 'lucide-react'
+import { Plus, User, Star, X, Mail, Phone, MapPin, ExternalLink, Briefcase, Calendar, Tag, Clock, MessageCircle, Send, Loader2, CheckCircle, ArrowUpRight, ArrowDownLeft, FileText, Video, Link2, UserPlus, Lock, Crown, AlertTriangle, Heart, Copy, Trash2, Search, Workflow } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import EnrollModal from '../outreach/EnrollModal'
 import { useAuth } from '../../lib/auth'
 import { usePlan } from '../../lib/planContext'
 import { useStageLabels } from '../../lib/useStageLabels'
@@ -46,6 +47,7 @@ export default function VacancyPipeline({ vacancyId }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [boardSearch, setBoardSearch] = useState('') // filtro del tablero por nombre
   const [selectedVC, setSelectedVC] = useState(null)
+  const [enrollTarget, setEnrollTarget] = useState(null) // { type:'vc', id, name } → secuencias (Fase 5)
   const [contactNote, setContactNote] = useState('')
   const [savingContact, setSavingContact] = useState(false)
   const [interactions, setInteractions] = useState([])
@@ -61,12 +63,50 @@ export default function VacancyPipeline({ vacancyId }) {
   const [thankYouBody, setThankYouBody] = useState('')
   const [keepInBank, setKeepInBank] = useState(true)
   const [sendingEmails, setSendingEmails] = useState(false)
-  const [emailsSent, setEmailsSent] = useState(false)
+  const [emailsSent, setEmailsSent] = useState(false) // fallback mailto: abierto
+  const [sendResult, setSendResult] = useState(null) // { sent, skipped, failed, reason? } de /api/send-email
+  const [sendError, setSendError] = useState(null)
   const [messageDirection, setMessageDirection] = useState('outbound')
   const [firefliesNotes, setFirefliesNotes] = useState([])
   const [calendarEvents, setCalendarEvents] = useState([])
   const [loadingGoogle, setLoadingGoogle] = useState(false)
   const [googleError, setGoogleError] = useState(null)
+
+  // ── SLAs por etapa (FASE 6) ── map stage → max_days de las reglas activas
+  // de la org (se carga UNA vez). null = tabla sin migrar / sin reglas / error
+  // → simplemente no se pintan badges (tolerante a prod sin la migración).
+  const [slaRules, setSlaRules] = useState(null)
+  useEffect(() => {
+    if (!profile?.organization_id) return
+    let alive = true
+    supabase
+      .from('sla_rules')
+      .select('stage, max_days')
+      .eq('organization_id', profile.organization_id)
+      .eq('is_active', true)
+      .then(({ data, error }) => {
+        if (!alive || error || !data?.length) return
+        const map = {}
+        for (const r of data) map[r.stage] = r.max_days
+        setSlaRules(map)
+      })
+    return () => { alive = false }
+  }, [profile?.organization_id])
+
+  // Badge SLA por tarjeta (por TIEMPO en etapa — adicional al semáforo de
+  // no-respuesta que sale de las interacciones): ámbar al llegar al 80% del
+  // límite de la etapa, rojo al excederlo.
+  function slaBadge(vc) {
+    if (!slaRules || vc.stage === 'hired' || vc.stage === 'rejected') return null
+    const max = slaRules[vc.stage]
+    if (!max) return null
+    const ref = vc.stage_changed_at || vc.created_at
+    if (!ref) return null
+    const days = Math.floor((Date.now() - new Date(ref).getTime()) / 86400000)
+    if (days > max) return { days, cls: 'bg-red-500/15 text-red-400', title: `SLA vencido: ${days} días en etapa (límite ${max})` }
+    if (days >= Math.ceil(max * 0.8)) return { days, cls: 'bg-amber-500/15 text-amber-400', title: `SLA por vencer: ${days} días en etapa (límite ${max})` }
+    return null
+  }
 
   useEffect(() => { loadPipeline() }, [vacancyId])
 
@@ -472,13 +512,14 @@ Cordialmente,
 ${profile?.full_name || 'El equipo de reclutamiento'}
 Enlace 468`)
     setEmailsSent(false)
+    setSendResult(null)
+    setSendError(null)
     setShowThankYouModal(true)
   }
 
-  async function sendThankYouEmails() {
-    setSendingEmails(true)
-    const rejected = candidates.filter(c => c.stage === 'rejected' && c.candidates?.email)
-
+  // Bitácora local (timeline + activity) de los correos de agradecimiento —
+  // compartida por el envío desde plataforma y el fallback mailto:.
+  async function logThankYouInteractions(rejected) {
     for (const vc of rejected) {
       const c = vc.candidates
       const personalizedBody = thankYouBody.replace(/\{\{nombre\}\}/g, c.full_name?.split(' ')[0] || 'candidato/a')
@@ -502,6 +543,58 @@ Enlace 468`)
         performed_by: profile.id,
       })
     }
+  }
+
+  // Envío desde la plataforma (Resend vía /api/send-email): 1 email por
+  // candidato con {{nombre}} personalizado — nada de BCC masivo.
+  async function sendThankYouEmails() {
+    setSendingEmails(true)
+    setSendResult(null)
+    setSendError(null)
+    const rejected = candidates.filter(c => c.stage === 'rejected' && c.candidates?.email)
+
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const token = sess?.session?.access_token
+      if (!token) throw new Error('Tu sesión expiró — vuelve a iniciar sesión')
+
+      const res = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          type: 'rejection_thanks',
+          recipients: rejected.map(vc => ({
+            email: vc.candidates.email,
+            name: vc.candidates.full_name,
+            candidate_id: vc.candidate_id || vc.candidates?.id,
+            vacancy_candidate_id: vc.id,
+          })),
+          subject: thankYouSubject,
+          body: thankYouBody,
+          vacancy_id: vacancyId,
+          organization_id: profile.organization_id,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || `Error ${res.status} al enviar`)
+
+      setSendResult(data)
+      // Bitácora solo si de verdad salió algo (si skip por falta de key, el
+      // usuario decidirá si usa el fallback mailto:, que loggea por su cuenta).
+      if (data.sent > 0) await logThankYouInteractions(rejected)
+    } catch (e) {
+      setSendError(e.message)
+    }
+    setSendingEmails(false)
+  }
+
+  // Fallback mailto: (flujo original) — abre el cliente de correo del usuario
+  // con BCC masivo. Útil mientras no exista RESEND_API_KEY en Netlify.
+  async function openThankYouMailto() {
+    setSendingEmails(true)
+    const rejected = candidates.filter(c => c.stage === 'rejected' && c.candidates?.email)
+
+    await logThankYouInteractions(rejected)
 
     // Open mailto with BCC for mass send
     const emails = rejected.map(vc => vc.candidates?.email).filter(Boolean)
@@ -643,6 +736,7 @@ Enlace 468`)
                               </div>
                               <div className="mt-2 flex items-center gap-1">
                                 {(() => { const o = originBadge(vc.candidates?.source); return o ? <span className={`text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${o.cls}`}>{o.label}</span> : null })()}
+                                {(() => { const s = slaBadge(vc); return s ? <span className={`text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${s.cls}`} title={s.title}>SLA {s.days}d</span> : null })()}
                                 {vc.match_score != null && (
                                   <>
                                     <Star size={12} className="text-gold" />
@@ -763,6 +857,14 @@ Enlace 468`)
 
                   {/* Notes */}
                   {c.notes && <div><p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Notas</p><p className="text-xs text-gray-300 whitespace-pre-wrap">{c.notes}</p></div>}
+
+                  {/* Secuencia de outreach (Fase 5) */}
+                  <button onClick={() => setEnrollTarget({ type: 'vc', id: selectedVC.id, name: c.full_name })}
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium text-white"
+                    style={{ background: 'linear-gradient(90deg, #00A99D, #071B49)' }}
+                    title="Inscribir al candidato en una secuencia multi-touch automática">
+                    <Workflow size={13} /> Inscribir en secuencia
+                  </button>
 
                   {/* Contact actions */}
                   {!selectedVC.contacted_at && (
@@ -1109,7 +1211,38 @@ Enlace 468`)
                   </div>
                 </label>
 
-                {/* Success state */}
+                {/* Resultado del envío desde plataforma */}
+                {sendResult && sendResult.sent > 0 && (
+                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <CheckCircle size={16} className="text-emerald-400" />
+                    <p className="text-sm text-emerald-300">
+                      {sendResult.sent} enviado{sendResult.sent === 1 ? '' : 's'} desde la plataforma.
+                      {sendResult.failed > 0 && ` ${sendResult.failed} fallaron — revisa los emails e intenta de nuevo.`}
+                      {' '}Las interacciones fueron registradas.
+                    </p>
+                  </div>
+                )}
+
+                {/* Sin RESEND_API_KEY: aviso claro + fallback mailto */}
+                {sendResult && sendResult.sent === 0 && sendResult.skipped > 0 && (
+                  <div className="px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle size={16} className="text-amber-400 shrink-0" />
+                      <p className="text-sm text-amber-300">Configura RESEND_API_KEY para enviar desde la plataforma.</p>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-1.5 ml-6">Mientras tanto puedes usar "Abrir en mi correo" para mandarlos desde tu cliente de email.</p>
+                  </div>
+                )}
+
+                {/* Error de red / auth / servidor */}
+                {sendError && (
+                  <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                    <AlertTriangle size={16} className="text-red-400 shrink-0" />
+                    <p className="text-sm text-red-300">{sendError}</p>
+                  </div>
+                )}
+
+                {/* Fallback mailto abierto */}
                 {emailsSent && (
                   <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                     <CheckCircle size={16} className="text-emerald-400" />
@@ -1120,18 +1253,25 @@ Enlace 468`)
 
               {/* Footer */}
               <div className="flex items-center justify-between p-6" style={{ borderTop: '1px solid var(--border-default)' }}>
-                <button onClick={() => {
-                  const text = thankYouBody.replace(/\{\{nombre\}\}/g, '[Nombre]')
-                  navigator.clipboard.writeText(text)
-                }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 transition-all">
-                  <Copy size={12} /> Copiar mensaje
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => {
+                    const text = thankYouBody.replace(/\{\{nombre\}\}/g, '[Nombre]')
+                    navigator.clipboard.writeText(text)
+                  }} className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 transition-all">
+                    <Copy size={12} /> Copiar mensaje
+                  </button>
+                  <button onClick={openThankYouMailto} disabled={sendingEmails || withEmail.length === 0}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 disabled:opacity-40 transition-all"
+                    title="Abre tu cliente de correo con los destinatarios en BCC">
+                    <Mail size={12} /> Abrir en mi correo
+                  </button>
+                </div>
                 <div className="flex items-center gap-3">
                   <button onClick={() => setShowThankYouModal(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancelar</button>
                   <button onClick={sendThankYouEmails} disabled={sendingEmails || withEmail.length === 0}
                     className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-rose-500 to-rose-600 text-white rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40 shadow-lg shadow-rose-500/15 transition-all">
                     {sendingEmails ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                    {sendingEmails ? 'Enviando...' : `Enviar a ${withEmail.length} candidatos`}
+                    {sendingEmails ? 'Enviando...' : `Enviar a ${withEmail.length} candidato${withEmail.length === 1 ? '' : 's'}`}
                   </button>
                 </div>
               </div>
@@ -1303,6 +1443,9 @@ Enlace 468`)
           </div>
         </div>
       )}
+
+      {/* Inscribir en secuencia (Fase 5) */}
+      {enrollTarget && <EnrollModal target={enrollTarget} profile={profile} onClose={() => setEnrollTarget(null)} />}
     </div>
   )
 }
