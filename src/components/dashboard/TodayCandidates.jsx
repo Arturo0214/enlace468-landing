@@ -144,7 +144,9 @@ export default function TodayCandidates() {
                           <button onClick={() => promote(it)} disabled={busy}
                             className="px-2.5 py-1.5 text-[11px] bg-primary-light/15 text-primary-light rounded-lg font-medium hover:bg-primary-light/25 disabled:opacity-40 flex items-center gap-1 transition-all"
                             title="Crear candidato y agregarlo al pipeline de la vacante">
-                            {busy ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Promover al pipeline
+                            {busy ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                            <span className="hidden sm:inline">Promover al pipeline</span>
+                            <span className="sm:hidden">Promover</span>
                           </button>
                           <button onClick={() => discard(it)} disabled={busy}
                             className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-all disabled:opacity-40"

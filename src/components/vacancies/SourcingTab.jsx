@@ -1122,6 +1122,12 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <a href={b.url} target="_blank" rel="noopener" className="text-sm font-semibold text-white hover:text-primary-light transition-colors line-clamp-1">{b.full_name || b.title}</a>
+                        {b.score != null && (
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0 ${Number(b.score) >= 70 ? 'bg-emerald-500/20 text-emerald-300' : Number(b.score) >= 55 ? 'bg-amber-400/20 text-amber-300' : 'bg-white/10 text-gray-400'}`}
+                            title={[...(b.score_details?.strengths || []), ...(b.score_details?.gaps || []).map(g => `⚠ ${g}`)].join(' · ') || undefined}>
+                            {Math.round(Number(b.score))}
+                          </span>
+                        )}
                         {contactStatus(b.url) === 'connected'
                           ? <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(16,185,129,0.2)', color: '#34d399' }}>✓ Conectado</span>
                           : contactStatus(b.url) === 'invited' && <span className="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(10,102,194,0.2)', color: '#5aa0e6' }}>✓ Invitado</span>}
