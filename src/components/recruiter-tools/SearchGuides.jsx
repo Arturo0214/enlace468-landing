@@ -244,16 +244,16 @@ export default function SearchGuides() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <Link to="/dashboard/recruiter-tools" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors mb-4">
+        <Link to="/dashboard/recruiter-tools" className="inline-flex items-center gap-1 text-sm text-ink-secondary hover:text-ink transition-colors mb-4">
           <ChevronLeft size={16} /> Recruiter Pro Tools
         </Link>
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gold/20 to-primary/10 flex items-center justify-center">
             <Search size={20} className="text-gold" />
           </div>
-          <h1 className="text-2xl font-display font-bold text-white">Guias de Busqueda</h1>
+          <h1 className="text-2xl font-display font-bold text-ink">Guias de Busqueda</h1>
         </div>
-        <p className="text-gray-400 mt-1 max-w-2xl">
+        <p className="text-ink-secondary mt-1 max-w-2xl">
           Estrategias probadas, boolean strings y tecnicas avanzadas de sourcing para encontrar al candidato ideal.
         </p>
       </motion.div>
@@ -272,22 +272,22 @@ export default function SearchGuides() {
                 className="w-full flex items-center justify-between px-5 py-4 text-left group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-surface-1 flex items-center justify-center">
                     <BookOpen size={16} className="text-gold" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-white group-hover:text-primary-light transition-colors">
+                    <h3 className="text-sm font-semibold text-ink group-hover:text-primary-light transition-colors">
                       {guide.title}
                     </h3>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-medium text-gray-500 bg-white/5 px-2.5 py-1 rounded-full">
+                  <span className="text-xs font-medium text-ink-tertiary bg-surface-1 px-2.5 py-1 rounded-full">
                     {guide.tag}
                   </span>
                   <ChevronDown
                     size={16}
-                    className={`text-gray-400 transition-transform ${openIdx === idx ? 'rotate-180' : ''}`}
+                    className={`text-ink-secondary transition-transform ${openIdx === idx ? 'rotate-180' : ''}`}
                   />
                 </div>
               </button>
@@ -301,19 +301,19 @@ export default function SearchGuides() {
                     transition={{ duration: 0.25 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-5 pb-5 border-t border-white/5 pt-4">
-                      <p className="text-sm text-gray-300 leading-relaxed mb-5">
+                    <div className="px-5 pb-5 border-t border-line pt-4">
+                      <p className="text-sm text-ink-secondary leading-relaxed mb-5">
                         {guide.content.intro}
                       </p>
                       {guide.content.sections.map((section, si) => (
                         <div key={si} className="mb-5 last:mb-0">
-                          <h4 className="text-sm font-semibold text-white mb-2">{section.subtitle}</h4>
-                          <p className="text-sm text-gray-400 leading-relaxed mb-3">{section.text}</p>
+                          <h4 className="text-sm font-semibold text-ink mb-2">{section.subtitle}</h4>
+                          <p className="text-sm text-ink-secondary leading-relaxed mb-3">{section.text}</p>
                           <div className="space-y-2">
                             {section.bullets.map((bullet, bi) => (
                               <div key={bi} className="flex items-start gap-2">
                                 <div className="w-1.5 h-1.5 rounded-full bg-primary-light/60 mt-1.5 flex-shrink-0" />
-                                <code className="text-xs text-gray-300 bg-white/5 px-2 py-1 rounded border border-white/10 leading-relaxed block w-full">
+                                <code className="text-xs text-ink-secondary bg-surface-1 px-2 py-1 rounded border border-line leading-relaxed block w-full">
                                   {bullet}
                                 </code>
                               </div>

@@ -147,13 +147,13 @@ export default function StrategicConfig() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-6"
       >
-        <Link to="/dashboard/enterprise" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white mb-4 transition-colors">
+        <Link to="/dashboard/enterprise" className="inline-flex items-center gap-1 text-sm text-ink-secondary hover:text-ink mb-4 transition-colors">
           <ChevronLeft size={16} /> Enterprise Dashboard
         </Link>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-display font-bold text-white">Configuracion estrategica</h1>
-            <p className="text-sm text-gray-400 mt-1">Administra tu organizacion, equipo, scorecards y SLAs</p>
+            <h1 className="text-2xl font-display font-bold text-ink">Configuracion estrategica</h1>
+            <p className="text-sm text-ink-secondary mt-1">Administra tu organizacion, equipo, scorecards y SLAs</p>
           </div>
           <button
             onClick={handleSave}
@@ -177,7 +177,7 @@ export default function StrategicConfig() {
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'bg-primary/20 text-primary-light'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  : 'text-ink-secondary hover:text-ink hover:bg-white/5'
               }`}
             >
               <Icon size={14} />
@@ -199,7 +199,7 @@ export default function StrategicConfig() {
           {/* Organization Profile */}
           {activeTab === 'org' && (
             <div className="glass rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-6">Perfil de la organizacion</h2>
+              <h2 className="text-lg font-semibold text-ink mb-6">Perfil de la organizacion</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {[
                   { key: 'name', label: 'Nombre de la empresa', placeholder: 'Mi Empresa S.A. de C.V.' },
@@ -208,24 +208,24 @@ export default function StrategicConfig() {
                   { key: 'website', label: 'Sitio web', placeholder: 'https://miempresa.com' },
                 ].map(field => (
                   <div key={field.key}>
-                    <label className="block text-xs font-medium text-gray-400 mb-1.5">{field.label}</label>
+                    <label className="block text-xs font-medium text-ink-secondary mb-1.5">{field.label}</label>
                     <input
                       type="text"
                       value={org[field.key]}
                       onChange={e => setOrg({ ...org, [field.key]: e.target.value })}
                       placeholder={field.placeholder}
-                      className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-600 focus:border-primary/50 focus:outline-none transition-colors"
+                      className="w-full px-3 py-2.5 rounded-lg bg-surface-1 border border-line text-ink text-sm placeholder-gray-600 focus:border-primary/50 focus:outline-none transition-colors"
                     />
                   </div>
                 ))}
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Descripcion</label>
+                  <label className="block text-xs font-medium text-ink-secondary mb-1.5">Descripcion</label>
                   <textarea
                     value={org.description}
                     onChange={e => setOrg({ ...org, description: e.target.value })}
                     placeholder="Breve descripcion de la empresa para contexto en reportes..."
                     rows={3}
-                    className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-600 focus:border-primary/50 focus:outline-none transition-colors resize-none"
+                    className="w-full px-3 py-2.5 rounded-lg bg-surface-1 border border-line text-ink text-sm placeholder-gray-600 focus:border-primary/50 focus:outline-none transition-colors resize-none"
                   />
                 </div>
               </div>
@@ -236,7 +236,7 @@ export default function StrategicConfig() {
           {activeTab === 'team' && (
             <div className="glass rounded-xl p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-white">Equipo de reclutamiento</h2>
+                <h2 className="text-lg font-semibold text-ink">Equipo de reclutamiento</h2>
                 <button className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/20 text-primary-light text-sm font-medium hover:bg-primary/30 transition-colors">
                   <Plus size={14} />
                   Agregar miembro
@@ -244,14 +244,14 @@ export default function StrategicConfig() {
               </div>
               <div className="space-y-3">
                 {team.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between p-4 rounded-lg bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
+                  <div key={member.id} className="flex items-center justify-between p-4 rounded-lg bg-surface-1 border border-line hover:border-line transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary-light text-xs font-bold">
                         {member.name[0]}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-white">{member.name}</p>
-                        <p className="text-[11px] text-gray-500">{member.email}</p>
+                        <p className="text-sm font-medium text-ink">{member.name}</p>
+                        <p className="text-[11px] text-ink-tertiary">{member.email}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -263,7 +263,7 @@ export default function StrategicConfig() {
                         {ROLE_LABELS[member.role]}
                       </span>
                       <span className={`w-2 h-2 rounded-full ${member.active ? 'bg-emerald-400' : 'bg-gray-600'}`} />
-                      <button className="p-1.5 rounded text-gray-500 hover:text-white hover:bg-white/5 transition-colors">
+                      <button className="p-1.5 rounded text-ink-tertiary hover:text-ink hover:bg-white/5 transition-colors">
                         <Edit2 size={14} />
                       </button>
                     </div>
@@ -277,7 +277,7 @@ export default function StrategicConfig() {
           {activeTab === 'scoring' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">Plantillas de scorecard por familia de puesto</h2>
+                <h2 className="text-lg font-semibold text-ink">Plantillas de scorecard por familia de puesto</h2>
                 <button
                   onClick={() => {
                     setScorecards([...scorecards, {
@@ -306,21 +306,21 @@ export default function StrategicConfig() {
                         onChange={e => setScorecards(scorecards.map(c => c.id === card.id ? { ...c, name: e.target.value } : c))}
                         onBlur={() => setEditingScorecard(null)}
                         onKeyDown={e => e.key === 'Enter' && setEditingScorecard(null)}
-                        className="text-sm font-semibold text-white bg-white/5 border border-white/10 px-2 py-1 rounded focus:outline-none focus:border-primary/50"
+                        className="text-sm font-semibold text-ink bg-surface-1 border border-line px-2 py-1 rounded focus:outline-none focus:border-primary/50"
                       />
                     ) : (
                       <h3
-                        className="text-sm font-semibold text-white cursor-pointer hover:text-primary-light transition-colors flex items-center gap-2"
+                        className="text-sm font-semibold text-ink cursor-pointer hover:text-primary-light transition-colors flex items-center gap-2"
                         onClick={() => setEditingScorecard(card.id)}
                       >
                         <Star size={14} className="text-amber-400" />
                         {card.name}
-                        <Edit2 size={12} className="text-gray-600" />
+                        <Edit2 size={12} className="text-ink-tertiary" />
                       </h3>
                     )}
                     <button
                       onClick={() => setScorecards(scorecards.filter(c => c.id !== card.id))}
-                      className="p-1.5 rounded text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      className="p-1.5 rounded text-ink-tertiary hover:text-red-400 hover:bg-red-500/10 transition-colors"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -328,7 +328,7 @@ export default function StrategicConfig() {
                   <div className="space-y-2">
                     {card.competencies.map((comp, ci) => (
                       <div key={ci} className="flex items-center gap-2 group">
-                        <span className="text-xs text-gray-500 w-5 text-right">{ci + 1}.</span>
+                        <span className="text-xs text-ink-tertiary w-5 text-right">{ci + 1}.</span>
                         <input
                           value={comp}
                           onChange={e => {
@@ -336,7 +336,7 @@ export default function StrategicConfig() {
                             updated[ci] = e.target.value
                             setScorecards(scorecards.map(c => c.id === card.id ? { ...c, competencies: updated } : c))
                           }}
-                          className="flex-1 text-sm text-gray-300 bg-transparent border-b border-transparent hover:border-white/10 focus:border-primary/30 py-1 focus:outline-none transition-colors"
+                          className="flex-1 text-sm text-ink-secondary bg-transparent border-b border-transparent hover:border-line focus:border-primary/30 py-1 focus:outline-none transition-colors"
                         />
                         <button
                           onClick={() => {
@@ -363,7 +363,7 @@ export default function StrategicConfig() {
                             setNewCompetency('')
                           }
                         }}
-                        className="text-xs text-gray-500 bg-transparent border-b border-dashed border-white/10 py-1 focus:outline-none focus:border-primary/30 placeholder-gray-700 flex-1"
+                        className="text-xs text-ink-tertiary bg-transparent border-b border-dashed border-line py-1 focus:outline-none focus:border-primary/30 placeholder-gray-700 flex-1"
                       />
                       <Plus size={12} className="text-gray-700" />
                     </div>
@@ -376,13 +376,13 @@ export default function StrategicConfig() {
           {/* SLA Configuration */}
           {activeTab === 'sla' && (
             <div className="glass rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-2">Configuracion de SLAs por etapa</h2>
-              <p className="text-xs text-gray-500 mb-6">Define los dias maximo que un candidato debe permanecer en cada etapa antes de generar una alerta.</p>
+              <h2 className="text-lg font-semibold text-ink mb-2">Configuracion de SLAs por etapa</h2>
+              <p className="text-xs text-ink-tertiary mb-6">Define los dias maximo que un candidato debe permanecer en cada etapa antes de generar una alerta.</p>
               <div className="space-y-4">
                 {slas.map((sla, i) => (
-                  <div key={i} className="flex items-center gap-4 p-4 rounded-lg bg-white/[0.02] border border-white/5">
+                  <div key={i} className="flex items-center gap-4 p-4 rounded-lg bg-surface-1 border border-line">
                     <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: sla.color }} />
-                    <span className="text-sm text-white font-medium flex-1">{sla.stage}</span>
+                    <span className="text-sm text-ink font-medium flex-1">{sla.stage}</span>
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
@@ -394,9 +394,9 @@ export default function StrategicConfig() {
                           updated[i] = { ...sla, days: parseInt(e.target.value) || 1 }
                           setSlas(updated)
                         }}
-                        className="w-16 px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm text-center focus:border-primary/50 focus:outline-none"
+                        className="w-16 px-2 py-1.5 rounded-lg bg-surface-1 border border-line text-ink text-sm text-center focus:border-primary/50 focus:outline-none"
                       />
-                      <span className="text-xs text-gray-500">dias</span>
+                      <span className="text-xs text-ink-tertiary">dias</span>
                     </div>
                   </div>
                 ))}
@@ -413,47 +413,47 @@ export default function StrategicConfig() {
           {/* Branding */}
           {activeTab === 'branding' && (
             <div className="glass rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-2">Branding de reportes</h2>
-              <p className="text-xs text-gray-500 mb-6">Personaliza como aparece tu empresa en reportes ejecutivos y documentos generados.</p>
+              <h2 className="text-lg font-semibold text-ink mb-2">Branding de reportes</h2>
+              <p className="text-xs text-ink-tertiary mb-6">Personaliza como aparece tu empresa en reportes ejecutivos y documentos generados.</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5">Nombre en reportes</label>
+                  <label className="block text-xs font-medium text-ink-secondary mb-1.5">Nombre en reportes</label>
                   <input
                     type="text"
                     value={branding.companyName}
                     onChange={e => setBranding({ ...branding, companyName: e.target.value })}
                     placeholder="Nombre de la empresa"
-                    className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-600 focus:border-primary/50 focus:outline-none transition-colors"
+                    className="w-full px-3 py-2.5 rounded-lg bg-surface-1 border border-line text-ink text-sm placeholder-gray-600 focus:border-primary/50 focus:outline-none transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-400 mb-1.5">URL del logotipo</label>
+                  <label className="block text-xs font-medium text-ink-secondary mb-1.5">URL del logotipo</label>
                   <input
                     type="text"
                     value={branding.logoUrl}
                     onChange={e => setBranding({ ...branding, logoUrl: e.target.value })}
                     placeholder="https://miempresa.com/logo.png"
-                    className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-600 focus:border-primary/50 focus:outline-none transition-colors"
+                    className="w-full px-3 py-2.5 rounded-lg bg-surface-1 border border-line text-ink text-sm placeholder-gray-600 focus:border-primary/50 focus:outline-none transition-colors"
                   />
                 </div>
               </div>
               {branding.logoUrl && (
                 <div className="mt-6">
-                  <p className="text-xs text-gray-500 mb-2">Vista previa:</p>
-                  <div className="p-4 rounded-lg bg-white/5 border border-white/10 inline-block">
+                  <p className="text-xs text-ink-tertiary mb-2">Vista previa:</p>
+                  <div className="p-4 rounded-lg bg-surface-1 border border-line inline-block">
                     <img src={branding.logoUrl} alt="Logo preview" className="h-12 object-contain" onError={e => e.target.style.display = 'none'} />
                   </div>
                 </div>
               )}
               <div className="mt-6 p-4 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                <p className="text-sm text-white font-medium mb-1">Vista previa de encabezado de reporte</p>
+                <p className="text-sm text-ink font-medium mb-1">Vista previa de encabezado de reporte</p>
                 <div className="flex items-center gap-3 mt-3">
                   {branding.logoUrl && (
                     <img src={branding.logoUrl} alt="" className="h-8 object-contain" onError={e => e.target.style.display = 'none'} />
                   )}
                   <div>
-                    <p className="text-sm font-semibold text-white">{branding.companyName || 'Mi Empresa'}</p>
-                    <p className="text-[10px] text-gray-500">Reporte de reclutamiento | Mayo 2026</p>
+                    <p className="text-sm font-semibold text-ink">{branding.companyName || 'Mi Empresa'}</p>
+                    <p className="text-[10px] text-ink-tertiary">Reporte de reclutamiento | Mayo 2026</p>
                   </div>
                 </div>
               </div>
@@ -463,8 +463,8 @@ export default function StrategicConfig() {
           {/* Notifications */}
           {activeTab === 'notifications' && (
             <div className="glass rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-2">Preferencias de notificaciones</h2>
-              <p className="text-xs text-gray-500 mb-6">Configura que notificaciones recibir para tu equipo de reclutamiento.</p>
+              <h2 className="text-lg font-semibold text-ink mb-2">Preferencias de notificaciones</h2>
+              <p className="text-xs text-ink-tertiary mb-6">Configura que notificaciones recibir para tu equipo de reclutamiento.</p>
               <div className="space-y-4">
                 {[
                   { key: 'slaWarning', label: 'Alerta de SLA proximo a vencer', desc: 'Notificar cuando una vacante este al 80% de su SLA' },
@@ -475,10 +475,10 @@ export default function StrategicConfig() {
                   { key: 'candidateStuck', label: 'Candidato estancado', desc: 'Alerta cuando un candidato lleva mas de 5 dias sin avance' },
                   { key: 'teamActivity', label: 'Actividad del equipo', desc: 'Resumen diario de acciones realizadas por cada recruiter' },
                 ].map(item => (
-                  <div key={item.key} className="flex items-center justify-between p-4 rounded-lg bg-white/[0.02] border border-white/5">
+                  <div key={item.key} className="flex items-center justify-between p-4 rounded-lg bg-surface-1 border border-line">
                     <div>
-                      <p className="text-sm text-white font-medium">{item.label}</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">{item.desc}</p>
+                      <p className="text-sm text-ink font-medium">{item.label}</p>
+                      <p className="text-[11px] text-ink-tertiary mt-0.5">{item.desc}</p>
                     </div>
                     <button
                       onClick={() => setNotifications({ ...notifications, [item.key]: !notifications[item.key] })}

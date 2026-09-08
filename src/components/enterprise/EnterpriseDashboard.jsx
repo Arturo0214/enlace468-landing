@@ -193,15 +193,15 @@ export default function EnterpriseDashboard() {
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center">
               <Building2 size={20} className="text-primary-light" />
             </div>
-            <h1 className="text-2xl font-display font-bold text-white">Enterprise Dashboard</h1>
+            <h1 className="text-2xl font-display font-bold text-ink">Enterprise Dashboard</h1>
           </div>
-          <p className="text-gray-400 text-sm">
+          <p className="text-ink-secondary text-sm">
             Vista ejecutiva de tu operacion de reclutamiento
           </p>
         </div>
         <Link
           to="/dashboard/enterprise/config"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white transition-all text-sm font-medium"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-1 text-ink-secondary hover:bg-white/10 hover:text-ink transition-all text-sm font-medium"
         >
           <Settings size={16} />
           Configuracion estrategica
@@ -266,8 +266,8 @@ export default function EnterpriseDashboard() {
               <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${kpi.bg} flex items-center justify-center ${kpi.color} mb-3`}>
                 <Icon size={16} />
               </div>
-              <div className="text-xl font-bold text-white">{kpi.value}</div>
-              <div className="text-[11px] text-gray-500 mt-0.5">{kpi.label}</div>
+              <div className="text-xl font-bold text-ink">{kpi.value}</div>
+              <div className="text-[11px] text-ink-tertiary mt-0.5">{kpi.label}</div>
             </motion.div>
           )
         })}
@@ -282,11 +282,11 @@ export default function EnterpriseDashboard() {
           transition={{ delay: 0.1 }}
           className="glass rounded-xl p-5"
         >
-          <h3 className="text-sm font-semibold text-white mb-4">Velocidad de pipeline</h3>
+          <h3 className="text-sm font-semibold text-ink mb-4">Velocidad de pipeline</h3>
           <div className="space-y-3">
             {pipeline.map((stage) => (
               <div key={stage.stage} className="flex items-center gap-3">
-                <span className="text-[11px] text-gray-400 w-20 text-right flex-shrink-0">{stage.stage}</span>
+                <span className="text-[11px] text-ink-secondary w-20 text-right flex-shrink-0">{stage.stage}</span>
                 <div className="flex-1 h-5 rounded-md overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
                   <div
                     className="h-full rounded-md transition-all duration-700 flex items-center justify-end pr-2"
@@ -296,7 +296,7 @@ export default function EnterpriseDashboard() {
                       minWidth: '24px',
                     }}
                   >
-                    <span className="text-[10px] font-bold text-white">{stage.count}</span>
+                    <span className="text-[10px] font-bold text-ink">{stage.count}</span>
                   </div>
                 </div>
               </div>
@@ -311,15 +311,15 @@ export default function EnterpriseDashboard() {
           transition={{ delay: 0.15 }}
           className="glass rounded-xl p-5"
         >
-          <h3 className="text-sm font-semibold text-white mb-4">Efectividad por fuente</h3>
+          <h3 className="text-sm font-semibold text-ink mb-4">Efectividad por fuente</h3>
           <div className="space-y-3">
             {sources.map((source) => {
               const SIcon = SOURCE_ICONS[source.name] || Globe
               return (
                 <div key={source.name} className="flex items-center gap-3">
                   <div className="flex items-center gap-2 w-24 flex-shrink-0">
-                    <SIcon size={12} className="text-gray-500" />
-                    <span className="text-[11px] text-gray-400 truncate">{source.name}</span>
+                    <SIcon size={12} className="text-ink-tertiary" />
+                    <span className="text-[11px] text-ink-secondary truncate">{source.name}</span>
                   </div>
                   <div className="flex-1 h-5 rounded-md overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
                     <div
@@ -330,14 +330,14 @@ export default function EnterpriseDashboard() {
                         minWidth: '24px',
                       }}
                     >
-                      <span className="text-[10px] font-bold text-white">{source.hires}</span>
+                      <span className="text-[10px] font-bold text-ink">{source.hires}</span>
                     </div>
                   </div>
-                  <span className="text-[10px] text-gray-500 w-8 text-right flex-shrink-0">{source.quality}</span>
+                  <span className="text-[10px] text-ink-tertiary w-8 text-right flex-shrink-0">{source.quality}</span>
                 </div>
               )
             })}
-            <div className="flex items-center gap-2 text-[10px] text-gray-600 mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="flex items-center gap-2 text-[10px] text-ink-tertiary mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               <span>Contrataciones</span>
               <span className="ml-auto">Calidad (1-5)</span>
             </div>
@@ -351,16 +351,16 @@ export default function EnterpriseDashboard() {
           transition={{ delay: 0.2 }}
           className="glass rounded-xl p-5"
         >
-          <h3 className="text-sm font-semibold text-white mb-4">Tendencia de contratacion (6 meses)</h3>
+          <h3 className="text-sm font-semibold text-ink mb-4">Tendencia de contratacion (6 meses)</h3>
           <div className="flex items-end gap-3 h-32">
             {trend.map((m) => (
               <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[10px] font-bold text-white">{m.hires}</span>
+                <span className="text-[10px] font-bold text-ink">{m.hires}</span>
                 <div
                   className="w-full rounded-t-md bg-gradient-to-t from-primary to-primary-light transition-all duration-500"
                   style={{ height: `${(m.hires / maxTrend) * 100}%`, minHeight: '8px' }}
                 />
-                <span className="text-[10px] text-gray-500">{m.month}</span>
+                <span className="text-[10px] text-ink-tertiary">{m.month}</span>
               </div>
             ))}
           </div>
@@ -375,18 +375,18 @@ export default function EnterpriseDashboard() {
         className="glass rounded-xl p-5 mb-8"
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-white">Vacantes activas</h3>
+          <h3 className="text-sm font-semibold text-ink">Vacantes activas</h3>
           <Link to="/dashboard/vacancies" className="text-xs text-primary-light hover:underline flex items-center gap-1">
             Ver todas <ChevronRight size={12} />
           </Link>
         </div>
         {vacancies.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-8">No hay vacantes activas.</p>
+          <p className="text-sm text-ink-tertiary text-center py-8">No hay vacantes activas.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="text-[11px] text-gray-500 uppercase tracking-wider">
+                <tr className="text-[11px] text-ink-tertiary uppercase tracking-wider">
                   <th className="pb-3 pr-4 font-medium">Vacante</th>
                   <th className="pb-3 pr-4 font-medium">Prioridad</th>
                   <th className="pb-3 pr-4 font-medium text-center">Candidatos</th>
@@ -402,16 +402,16 @@ export default function EnterpriseDashboard() {
                   const stageMax = Math.max(...stageValues, 1)
                   const stageColors = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981']
                   return (
-                    <tr key={v.id} className="border-t border-white/5 hover:bg-white/[0.02] transition-colors">
+                    <tr key={v.id} className="border-t border-line hover:bg-white/[0.02] transition-colors">
                       <td className="py-3 pr-4">
-                        <span className="text-white font-medium">{v.title}</span>
+                        <span className="text-ink font-medium">{v.title}</span>
                       </td>
                       <td className="py-3 pr-4">
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${PRIORITY_STYLES[v.priority]}`}>
                           {v.priority}
                         </span>
                       </td>
-                      <td className="py-3 pr-4 text-center text-gray-300">{v.candidates}</td>
+                      <td className="py-3 pr-4 text-center text-ink-secondary">{v.candidates}</td>
                       <td className="py-3 pr-4">
                         <div className="flex items-center gap-0.5 h-3">
                           {Object.entries(v.stages).map(([stage, count], si) => (
@@ -430,11 +430,11 @@ export default function EnterpriseDashboard() {
                         </div>
                       </td>
                       <td className="py-3 pr-4 text-center">
-                        <span className={v.daysOpen > 25 ? 'text-red-400 font-semibold' : 'text-gray-300'}>
+                        <span className={v.daysOpen > 25 ? 'text-red-400 font-semibold' : 'text-ink-secondary'}>
                           {v.daysOpen}
                         </span>
                       </td>
-                      <td className="py-3 pr-4 text-gray-400">{v.recruiter}</td>
+                      <td className="py-3 pr-4 text-ink-secondary">{v.recruiter}</td>
                       <td className="py-3 text-center">
                         {v.slaOk ? (
                           <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" title="Dentro de SLA" />
@@ -462,17 +462,17 @@ export default function EnterpriseDashboard() {
         >
           <div className="flex items-center gap-2 mb-4">
             <AlertTriangle size={16} className="text-red-400" />
-            <h3 className="text-sm font-semibold text-white">Vacantes fuera de SLA</h3>
+            <h3 className="text-sm font-semibold text-ink">Vacantes fuera de SLA</h3>
           </div>
           {alerts.overSLA.length === 0 ? (
-            <p className="text-xs text-gray-500 text-center py-4">Todo dentro de SLA</p>
+            <p className="text-xs text-ink-tertiary text-center py-4">Todo dentro de SLA</p>
           ) : (
             <div className="space-y-3">
               {alerts.overSLA.map((a, i) => (
                 <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-red-500/5 border border-red-500/10">
                   <div>
-                    <p className="text-sm text-white font-medium">{a.vacancy}</p>
-                    <p className="text-[11px] text-gray-500">{a.days} dias (SLA: {a.sla}d)</p>
+                    <p className="text-sm text-ink font-medium">{a.vacancy}</p>
+                    <p className="text-[11px] text-ink-tertiary">{a.days} dias (SLA: {a.sla}d)</p>
                   </div>
                   <span className="text-xs text-red-400 font-semibold">+{a.days - a.sla}d</span>
                 </div>
@@ -490,17 +490,17 @@ export default function EnterpriseDashboard() {
         >
           <div className="flex items-center gap-2 mb-4">
             <Clock size={16} className="text-amber-400" />
-            <h3 className="text-sm font-semibold text-white">Candidatos estancados</h3>
+            <h3 className="text-sm font-semibold text-ink">Candidatos estancados</h3>
           </div>
           {alerts.stuck.length === 0 ? (
-            <p className="text-xs text-gray-500 text-center py-4">Sin candidatos estancados</p>
+            <p className="text-xs text-ink-tertiary text-center py-4">Sin candidatos estancados</p>
           ) : (
             <div className="space-y-3">
               {alerts.stuck.map((s, i) => (
                 <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
                   <div>
-                    <p className="text-sm text-white font-medium">{s.candidate}</p>
-                    <p className="text-[11px] text-gray-500">{s.vacancy} - {s.stage}</p>
+                    <p className="text-sm text-ink font-medium">{s.candidate}</p>
+                    <p className="text-[11px] text-ink-tertiary">{s.vacancy} - {s.stage}</p>
                   </div>
                   <span className="text-xs text-amber-400 font-semibold">{s.days}d</span>
                 </div>
@@ -518,21 +518,21 @@ export default function EnterpriseDashboard() {
         >
           <div className="flex items-center gap-2 mb-4">
             <Calendar size={16} className="text-blue-400" />
-            <h3 className="text-sm font-semibold text-white">Proximas entrevistas</h3>
+            <h3 className="text-sm font-semibold text-ink">Proximas entrevistas</h3>
           </div>
           {alerts.interviews.length === 0 ? (
-            <p className="text-xs text-gray-500 text-center py-4">Sin entrevistas programadas</p>
+            <p className="text-xs text-ink-tertiary text-center py-4">Sin entrevistas programadas</p>
           ) : (
             <div className="space-y-3">
               {alerts.interviews.map((int, i) => (
                 <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
                   <div>
-                    <p className="text-sm text-white font-medium">{int.candidate}</p>
-                    <p className="text-[11px] text-gray-500">{int.vacancy}</p>
+                    <p className="text-sm text-ink font-medium">{int.candidate}</p>
+                    <p className="text-[11px] text-ink-tertiary">{int.vacancy}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-blue-400 font-semibold">{int.date}</p>
-                    <p className="text-[10px] text-gray-500">{int.time}</p>
+                    <p className="text-[10px] text-ink-tertiary">{int.time}</p>
                   </div>
                 </div>
               ))}

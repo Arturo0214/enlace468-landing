@@ -22,6 +22,15 @@ export default {
         'dark-light': '#0A1A3F',
         surface: '#12244F',
         gold: '#D97706',
+        // ── Tokens semánticos ligados a CSS vars del tema (index.css :root / .dark) ──
+        ink: 'var(--text-primary)',
+        'ink-secondary': 'var(--text-secondary)',
+        'ink-tertiary': 'var(--text-tertiary)',
+        canvas: 'var(--bg-body)',
+        'surface-1': 'var(--bg-surface)',
+        'surface-2': 'var(--bg-elevated)',
+        line: 'var(--border-default)',
+        'line-strong': 'var(--border-strong)',
         'gold-light': '#F59E0B',
         // Escalas explícitas de marca (uso futuro: navy-700, turquoise-300, etc.)
         navy: {

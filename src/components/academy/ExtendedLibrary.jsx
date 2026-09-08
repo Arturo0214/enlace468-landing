@@ -333,7 +333,7 @@ export default function ExtendedLibrary() {
     <div>
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-        <Link to="/dashboard/academy" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white mb-4 transition-colors">
+        <Link to="/dashboard/academy" className="inline-flex items-center gap-1 text-sm text-ink-secondary hover:text-ink mb-4 transition-colors">
           <ChevronLeft size={16} /> Academy
         </Link>
         <div className="flex items-center gap-3 mb-2">
@@ -341,13 +341,13 @@ export default function ExtendedLibrary() {
             <BookOpen size={20} className="text-blue-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-display font-bold text-white">Biblioteca Extendida</h1>
+            <h1 className="text-2xl font-display font-bold text-ink">Biblioteca Extendida</h1>
             <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
               Academy Plus
             </span>
           </div>
         </div>
-        <p className="text-gray-400 text-sm mt-2">
+        <p className="text-ink-secondary text-sm mt-2">
           Casos practicos, clases grabadas y prompts avanzados para reclutadores que buscan diferenciarse.
         </p>
       </motion.div>
@@ -362,7 +362,7 @@ export default function ExtendedLibrary() {
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 category === cat.key
                   ? 'bg-primary text-white'
-                  : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                  : 'bg-surface-1 text-ink-secondary hover:bg-white/10 hover:text-ink'
               }`}
             >
               {cat.label}
@@ -370,13 +370,13 @@ export default function ExtendedLibrary() {
           ))}
         </div>
         <div className="relative flex-1 max-w-xs">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-tertiary" />
           <input
             type="text"
             placeholder="Buscar contenido..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-600 focus:border-primary/50 focus:outline-none"
+            className="w-full pl-9 pr-3 py-2 rounded-lg bg-surface-1 border border-line text-ink text-sm placeholder-gray-600 focus:border-primary/50 focus:outline-none"
           />
         </div>
       </div>
@@ -386,8 +386,8 @@ export default function ExtendedLibrary() {
         <section className="mb-10">
           <div className="flex items-center gap-2 mb-5">
             <Lightbulb size={18} className="text-amber-400" />
-            <h2 className="text-lg font-display font-semibold text-white">Casos practicos</h2>
-            <span className="text-xs text-gray-500">{filteredCases.length} casos</span>
+            <h2 className="text-lg font-display font-semibold text-ink">Casos practicos</h2>
+            <span className="text-xs text-ink-tertiary">{filteredCases.length} casos</span>
           </div>
           <div className="space-y-4">
             {filteredCases.map((caseItem, i) => {
@@ -409,13 +409,13 @@ export default function ExtendedLibrary() {
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${DIFFICULTY_STYLES[caseItem.difficulty]}`}>
                           {caseItem.difficulty}
                         </span>
-                        <span className="text-[10px] text-gray-600 flex items-center gap-1">
+                        <span className="text-[10px] text-ink-tertiary flex items-center gap-1">
                           <Clock size={10} /> {caseItem.readTime}
                         </span>
                       </div>
-                      <h3 className="text-sm font-semibold text-white">{caseItem.title}</h3>
+                      <h3 className="text-sm font-semibold text-ink">{caseItem.title}</h3>
                     </div>
-                    {isExpanded ? <ChevronUp size={16} className="text-gray-500 mt-1 flex-shrink-0" /> : <ChevronDown size={16} className="text-gray-500 mt-1 flex-shrink-0" />}
+                    {isExpanded ? <ChevronUp size={16} className="text-ink-tertiary mt-1 flex-shrink-0" /> : <ChevronDown size={16} className="text-ink-tertiary mt-1 flex-shrink-0" />}
                   </button>
                   <AnimatePresence>
                     {isExpanded && (
@@ -429,25 +429,25 @@ export default function ExtendedLibrary() {
                         <div className="px-5 pb-5 space-y-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                           <div className="pt-4">
                             <h4 className="text-xs font-semibold text-primary-light uppercase tracking-wider mb-2">Situacion</h4>
-                            <p className="text-sm text-gray-300 leading-relaxed">{caseItem.situation}</p>
+                            <p className="text-sm text-ink-secondary leading-relaxed">{caseItem.situation}</p>
                           </div>
                           <div>
                             <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">Desafio</h4>
-                            <p className="text-sm text-gray-300 leading-relaxed">{caseItem.challenge}</p>
+                            <p className="text-sm text-ink-secondary leading-relaxed">{caseItem.challenge}</p>
                           </div>
                           <div>
                             <h4 className="text-xs font-semibold text-green-400 uppercase tracking-wider mb-2">Solucion</h4>
-                            <p className="text-sm text-gray-300 leading-relaxed">{caseItem.solution}</p>
+                            <p className="text-sm text-ink-secondary leading-relaxed">{caseItem.solution}</p>
                           </div>
                           <div>
                             <h4 className="text-xs font-semibold text-blue-400 uppercase tracking-wider mb-2">Resultados</h4>
-                            <p className="text-sm text-gray-300 leading-relaxed">{caseItem.results}</p>
+                            <p className="text-sm text-ink-secondary leading-relaxed">{caseItem.results}</p>
                           </div>
                           <div>
                             <h4 className="text-xs font-semibold text-violet-400 uppercase tracking-wider mb-2">Aprendizajes clave</h4>
                             <ul className="space-y-2">
                               {caseItem.lessons.map((lesson, li) => (
-                                <li key={li} className="flex items-start gap-2 text-sm text-gray-300">
+                                <li key={li} className="flex items-start gap-2 text-sm text-ink-secondary">
                                   <span className="text-violet-400 mt-0.5 flex-shrink-0">-</span>
                                   {lesson}
                                 </li>
@@ -470,8 +470,8 @@ export default function ExtendedLibrary() {
         <section className="mb-10">
           <div className="flex items-center gap-2 mb-5">
             <Video size={18} className="text-red-400" />
-            <h2 className="text-lg font-display font-semibold text-white">Clases grabadas</h2>
-            <span className="text-xs text-gray-500">{filteredClasses.length} clases</span>
+            <h2 className="text-lg font-display font-semibold text-ink">Clases grabadas</h2>
+            <span className="text-xs text-ink-tertiary">{filteredClasses.length} clases</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredClasses.map((cls, i) => {
@@ -492,7 +492,7 @@ export default function ExtendedLibrary() {
                     <span className="absolute top-3 right-3 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
                       Proximamente
                     </span>
-                    <span className="absolute bottom-3 right-3 text-[10px] text-gray-400 bg-black/50 px-2 py-0.5 rounded">
+                    <span className="absolute bottom-3 right-3 text-[10px] text-ink-secondary bg-black/50 px-2 py-0.5 rounded">
                       {cls.duration}
                     </span>
                   </div>
@@ -502,7 +502,7 @@ export default function ExtendedLibrary() {
                         {cls.difficulty}
                       </span>
                     </div>
-                    <h3 className="text-sm font-semibold text-white mb-3">{cls.title}</h3>
+                    <h3 className="text-sm font-semibold text-ink mb-3">{cls.title}</h3>
                     <button
                       onClick={() => setExpandedClass(isExpanded ? null : cls.id)}
                       className="text-xs text-primary-light font-medium flex items-center gap-1 hover:gap-2 transition-all"
@@ -521,7 +521,7 @@ export default function ExtendedLibrary() {
                         >
                           <ol className="mt-3 space-y-1.5 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                             {cls.syllabus.map((topic, ti) => (
-                              <li key={ti} className="flex items-start gap-2 text-xs text-gray-400">
+                              <li key={ti} className="flex items-start gap-2 text-xs text-ink-secondary">
                                 <span className="text-primary-light font-semibold flex-shrink-0">{ti + 1}.</span>
                                 {topic}
                               </li>
@@ -543,7 +543,7 @@ export default function ExtendedLibrary() {
         <section className="mb-10">
           <div className="flex items-center gap-2 mb-5">
             <Sparkles size={18} className="text-violet-400" />
-            <h2 className="text-lg font-display font-semibold text-white">Nuevos prompts mensuales</h2>
+            <h2 className="text-lg font-display font-semibold text-ink">Nuevos prompts mensuales</h2>
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400">Mayo 2026</span>
           </div>
           <div className="space-y-4">
@@ -558,21 +558,21 @@ export default function ExtendedLibrary() {
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div>
                     <span className="text-[10px] font-semibold uppercase tracking-wider text-primary-light">{prompt.category}</span>
-                    <h3 className="text-sm font-semibold text-white mt-1">{prompt.title}</h3>
+                    <h3 className="text-sm font-semibold text-ink mt-1">{prompt.title}</h3>
                   </div>
                   <button
                     onClick={() => copyPrompt(prompt.id, prompt.prompt)}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex-shrink-0 ${
                       copiedPrompt === prompt.id
                         ? 'bg-green-500/20 text-green-400'
-                        : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                        : 'bg-surface-1 text-ink-secondary hover:bg-white/10 hover:text-ink'
                     }`}
                   >
                     {copiedPrompt === prompt.id ? <Check size={12} /> : <Copy size={12} />}
                     {copiedPrompt === prompt.id ? 'Copiado' : 'Copiar'}
                   </button>
                 </div>
-                <pre className="text-xs text-gray-400 leading-relaxed whitespace-pre-wrap bg-white/[0.02] rounded-lg p-4 border border-white/5 max-h-48 overflow-y-auto font-sans">
+                <pre className="text-xs text-ink-secondary leading-relaxed whitespace-pre-wrap bg-surface-1 rounded-lg p-4 border border-line max-h-48 overflow-y-auto font-sans">
                   {prompt.prompt}
                 </pre>
               </motion.div>
@@ -585,7 +585,7 @@ export default function ExtendedLibrary() {
       {showCases && filteredCases.length === 0 && showClasses && filteredClasses.length === 0 && showPrompts && filteredPrompts.length === 0 && (
         <div className="text-center py-16">
           <Search size={40} className="text-gray-700 mx-auto mb-3" />
-          <p className="text-gray-500">No se encontraron resultados para "{searchTerm}"</p>
+          <p className="text-ink-tertiary">No se encontraron resultados para "{searchTerm}"</p>
         </div>
       )}
     </div>

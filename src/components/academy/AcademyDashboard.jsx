@@ -134,10 +134,10 @@ export default function AcademyDashboard() {
               Aprendizaje continuo
             </span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-display font-bold text-white mb-2">
+          <h1 className="text-3xl md:text-4xl font-display font-bold text-ink mb-2">
             TalentFlix / <span className="gradient-text">Enlace 468 Academy</span>
           </h1>
-          <p className="text-gray-400 max-w-xl text-base">
+          <p className="text-ink-secondary max-w-xl text-base">
             Recursos, guias y plantillas disenados para que reclutadores dominen las herramientas
             de IA y lleven su operacion al siguiente nivel.
           </p>
@@ -159,8 +159,8 @@ export default function AcademyDashboard() {
                 <Icon size={20} />
               </div>
               <div>
-                <div className="text-2xl font-bold text-white">{value || <Star size={18} className="text-amber-400" />}</div>
-                <div className="text-sm text-gray-400">{label}</div>
+                <div className="text-2xl font-bold text-ink">{value || <Star size={18} className="text-amber-400" />}</div>
+                <div className="text-sm text-ink-secondary">{label}</div>
               </div>
             </div>
           </motion.div>
@@ -180,7 +180,7 @@ export default function AcademyDashboard() {
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               filter === key
                 ? 'bg-primary text-white'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                : 'bg-surface-1 text-ink-secondary hover:bg-white/10 hover:text-ink'
             }`}
           >
             {label}
@@ -191,7 +191,7 @@ export default function AcademyDashboard() {
       {/* Plus Features Section */}
       <div className="mb-8">
         <div className="flex items-baseline gap-3 mb-4">
-          <h2 className="text-lg font-display font-semibold text-white">Academy Plus</h2>
+          <h2 className="text-lg font-display font-semibold text-ink">Academy Plus</h2>
           <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400">Plus</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -212,8 +212,8 @@ export default function AcademyDashboard() {
                   Plus
                 </span>
               </div>
-              <h3 className="text-sm font-semibold text-white mb-1 group-hover:text-blue-400 transition-colors">Biblioteca Extendida</h3>
-              <p className="text-xs text-gray-400 mb-3 leading-relaxed">Casos practicos, clases grabadas y prompts mensuales avanzados para reclutadores.</p>
+              <h3 className="text-sm font-semibold text-ink mb-1 group-hover:text-blue-400 transition-colors">Biblioteca Extendida</h3>
+              <p className="text-xs text-ink-secondary mb-3 leading-relaxed">Casos practicos, clases grabadas y prompts mensuales avanzados para reclutadores.</p>
               <div className="flex items-center gap-1 text-xs text-blue-400 font-medium group-hover:gap-2 transition-all">
                 Explorar <ArrowRight size={12} />
               </div>
@@ -225,7 +225,7 @@ export default function AcademyDashboard() {
       {/* Pro Features Section */}
       <div className="mb-8">
         <div className="flex items-baseline gap-3 mb-4">
-          <h2 className="text-lg font-display font-semibold text-white">Academy Pro</h2>
+          <h2 className="text-lg font-display font-semibold text-ink">Academy Pro</h2>
           <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400">Pro</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -270,8 +270,8 @@ export default function AcademyDashboard() {
                       Pro
                     </span>
                   </div>
-                  <h3 className="text-sm font-semibold text-white mb-1 group-hover:text-primary-light transition-colors">{item.title}</h3>
-                  <p className="text-xs text-gray-400 mb-3 leading-relaxed">{item.description}</p>
+                  <h3 className="text-sm font-semibold text-ink mb-1 group-hover:text-primary-light transition-colors">{item.title}</h3>
+                  <p className="text-xs text-ink-secondary mb-3 leading-relaxed">{item.description}</p>
                   <div className="flex items-center gap-1 text-xs text-primary-light font-medium group-hover:gap-2 transition-all">
                     Explorar <ArrowRight size={12} />
                   </div>
@@ -311,8 +311,8 @@ function ResourceSection({ title, subtitle, resources, canAccess, onOpen }) {
   return (
     <div className="mb-8">
       <div className="flex items-baseline gap-3 mb-4">
-        <h2 className="text-lg font-display font-semibold text-white">{title}</h2>
-        <span className="text-xs text-gray-500">{subtitle}</span>
+        <h2 className="text-lg font-display font-semibold text-ink">{title}</h2>
+        <span className="text-xs text-ink-tertiary">{subtitle}</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {resources.map((resource, i) => (
@@ -351,15 +351,15 @@ function ResourceCard({ resource, index, hasAccess, onOpen }) {
         </span>
       </div>
 
-      <h3 className="text-sm font-semibold text-white mb-1 group-hover:text-primary-light transition-colors">
+      <h3 className="text-sm font-semibold text-ink mb-1 group-hover:text-primary-light transition-colors">
         {resource.title}
       </h3>
-      <p className="text-xs text-gray-400 mb-4 flex-1 leading-relaxed">
+      <p className="text-xs text-ink-secondary mb-4 flex-1 leading-relaxed">
         {resource.description}
       </p>
 
       <div className="flex items-center justify-between mt-auto pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-        <span className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">
+        <span className="text-[10px] uppercase tracking-wider text-ink-tertiary font-medium">
           {resource.category}
         </span>
         {hasAccess ? (
@@ -368,7 +368,7 @@ function ResourceCard({ resource, index, hasAccess, onOpen }) {
             <ArrowRight size={12} />
           </span>
         ) : (
-          <span className="text-xs text-gray-500 flex items-center gap-1">
+          <span className="text-xs text-ink-tertiary flex items-center gap-1">
             <Lock size={12} />
             Requiere plan {planStyle.label}
           </span>

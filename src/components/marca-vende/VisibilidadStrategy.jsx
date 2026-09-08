@@ -210,7 +210,7 @@ export default function VisibilidadStrategy() {
     </button>
   )
 
-  const inputCls = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-primary-light/30 focus:outline-none transition-colors'
+  const inputCls = 'w-full bg-surface-1 border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary-light/30 focus:outline-none transition-colors'
 
   const tabs = [
     { key: 'calendar', label: 'Calendario', icon: Calendar },
@@ -223,48 +223,48 @@ export default function VisibilidadStrategy() {
   return (
     <div>
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <Link to="/dashboard/marca-vende" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors mb-4">
+        <Link to="/dashboard/marca-vende" className="inline-flex items-center gap-1 text-sm text-ink-secondary hover:text-ink transition-colors mb-4">
           <ChevronLeft size={16} /> Tu Marca Vende
         </Link>
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gold/20 to-primary/10 flex items-center justify-center">
             <Eye size={20} className="text-gold" />
           </div>
-          <h1 className="text-2xl font-display font-bold text-white">Estrategia de Visibilidad</h1>
+          <h1 className="text-2xl font-display font-bold text-ink">Estrategia de Visibilidad</h1>
           <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-500/10 text-purple-400">Pro</span>
         </div>
-        <p className="text-gray-400 mt-1 max-w-2xl">
+        <p className="text-ink-secondary mt-1 max-w-2xl">
           Genera una estrategia completa de visibilidad profesional en LinkedIn. Incluye calendario de contenido, plantillas de posts, hashtags y plan de networking.
         </p>
       </motion.div>
 
       {!generated ? (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-xl p-6 max-w-2xl">
-          <h2 className="text-lg font-display font-semibold text-white mb-4">Tu perfil profesional</h2>
+          <h2 className="text-lg font-display font-semibold text-ink mb-4">Tu perfil profesional</h2>
           <div className="space-y-4">
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Puesto objetivo o actual</label>
+              <label className="text-xs text-ink-secondary mb-1 block">Puesto objetivo o actual</label>
               <input type="text" value={form.role} onChange={e => update('role', e.target.value)}
                 placeholder="Ej: Product Manager Senior, Director de Marketing" className={inputCls} />
             </div>
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Industria</label>
+              <label className="text-xs text-ink-secondary mb-1 block">Industria</label>
               <input type="text" value={form.industry} onChange={e => update('industry', e.target.value)}
                 placeholder="Ej: Tecnologia, Fintech, Manufactura" className={inputCls} />
             </div>
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Habilidades clave (separadas por coma)</label>
+              <label className="text-xs text-ink-secondary mb-1 block">Habilidades clave (separadas por coma)</label>
               <input type="text" value={form.skills} onChange={e => update('skills', e.target.value)}
                 placeholder="Ej: Estrategia de producto, Agile, Data Analytics" className={inputCls} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">Seguidores actuales en LinkedIn</label>
+                <label className="text-xs text-ink-secondary mb-1 block">Seguidores actuales en LinkedIn</label>
                 <input type="number" value={form.followers} onChange={e => update('followers', e.target.value)}
                   placeholder="Ej: 500" className={inputCls} />
               </div>
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">Frecuencia de publicacion actual</label>
+                <label className="text-xs text-ink-secondary mb-1 block">Frecuencia de publicacion actual</label>
                 <input type="text" value={form.frequency} onChange={e => update('frequency', e.target.value)}
                   placeholder="Ej: 1 vez por semana" className={inputCls} />
               </div>
@@ -285,7 +285,7 @@ export default function VisibilidadStrategy() {
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   activeTab === t.key
                     ? 'bg-primary text-white'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                    : 'bg-surface-1 text-ink-secondary hover:bg-white/10 hover:text-ink'
                 }`}>
                 <t.icon size={16} />
                 {t.label}
@@ -300,7 +300,7 @@ export default function VisibilidadStrategy() {
                 {POST_TOPICS_BY_WEEK.map((week, wi) => (
                   <div key={wi} className="glass rounded-xl p-5">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-semibold text-white">Semana {wi + 1}</h3>
+                      <h3 className="text-sm font-semibold text-ink">Semana {wi + 1}</h3>
                       <CopyButton text={week.map((t, i) => `Dia ${i + 1}: ${t}`).join('\n')} id={`week-${wi}`} />
                     </div>
                     <div className="space-y-2">
@@ -309,7 +309,7 @@ export default function VisibilidadStrategy() {
                           <span className="text-xs font-bold text-primary-light bg-primary/10 px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5">
                             {['Lun', 'Mar', 'Mie', 'Jue', 'Vie'][ti]}
                           </span>
-                          <span className="text-gray-300">{topic}</span>
+                          <span className="text-ink-secondary">{topic}</span>
                         </div>
                       ))}
                     </div>
@@ -324,10 +324,10 @@ export default function VisibilidadStrategy() {
                 {generated.posts.map((post, i) => (
                   <div key={i} className="glass rounded-xl p-5">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-semibold text-white">{post.title}</h3>
+                      <h3 className="text-sm font-semibold text-ink">{post.title}</h3>
                       <CopyButton text={post.content} id={`post-${i}`} />
                     </div>
-                    <div className="bg-black/30 rounded-lg p-4 border border-white/10">
+                    <div className="bg-black/30 rounded-lg p-4 border border-line">
                       <pre className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap font-sans">{post.content}</pre>
                     </div>
                   </div>
@@ -340,7 +340,7 @@ export default function VisibilidadStrategy() {
               <motion.div key="hashtags" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <div className="glass rounded-xl p-5">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-semibold text-white">Hashtags recomendados</h3>
+                    <h3 className="text-sm font-semibold text-ink">Hashtags recomendados</h3>
                     <CopyButton text={generated.hashtags.join(' ')} id="hashtags" />
                   </div>
                   <div className="flex flex-wrap gap-2 mb-4">
@@ -350,7 +350,7 @@ export default function VisibilidadStrategy() {
                       </span>
                     ))}
                   </div>
-                  <p className="text-xs text-gray-400 leading-relaxed">
+                  <p className="text-xs text-ink-secondary leading-relaxed">
                     Usa 3-5 hashtags por publicacion. Combina hashtags de alto volumen (100k+ seguidores) con hashtags de nicho
                     para maximizar alcance y relevancia. Rota los hashtags entre publicaciones.
                   </p>
@@ -363,14 +363,14 @@ export default function VisibilidadStrategy() {
               <motion.div key="networking" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <div className="glass rounded-xl p-5">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-semibold text-white">Plan de Networking Semanal</h3>
+                    <h3 className="text-sm font-semibold text-ink">Plan de Networking Semanal</h3>
                     <CopyButton text={generated.networking.map((a, i) => `${i + 1}. ${a}`).join('\n\n')} id="networking" />
                   </div>
                   <div className="space-y-3">
                     {generated.networking.map((action, i) => (
-                      <div key={i} className="flex items-start gap-3 text-sm bg-white/5 rounded-lg p-3">
+                      <div key={i} className="flex items-start gap-3 text-sm bg-surface-1 rounded-lg p-3">
                         <span className="text-xs font-bold text-accent-light bg-accent/10 px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5">{i + 1}</span>
-                        <p className="text-gray-300 leading-relaxed">{action}</p>
+                        <p className="text-ink-secondary leading-relaxed">{action}</p>
                       </div>
                     ))}
                   </div>
@@ -383,7 +383,7 @@ export default function VisibilidadStrategy() {
               <motion.div key="checklist" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <div className="glass rounded-xl p-5">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-semibold text-white">Checklist de Optimizacion de Perfil</h3>
+                    <h3 className="text-sm font-semibold text-ink">Checklist de Optimizacion de Perfil</h3>
                     <CopyButton text={PROFILE_CHECKLIST.map(c => `[ ] ${c.item}`).join('\n')} id="checklist" />
                   </div>
                   <div className="space-y-2">
@@ -397,7 +397,7 @@ export default function VisibilidadStrategy() {
           </AnimatePresence>
 
           <button onClick={() => setGenerated(null)}
-            className="mt-6 text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1">
+            className="mt-6 text-sm text-ink-secondary hover:text-ink transition-colors flex items-center gap-1">
             <ChevronLeft size={14} /> Generar nueva estrategia
           </button>
         </div>
@@ -411,15 +411,15 @@ function ProfileCheckItem({ item }) {
 
   return (
     <button onClick={() => setChecked(!checked)}
-      className={`w-full flex items-start gap-3 text-left p-3 rounded-lg transition-all ${checked ? 'bg-emerald-500/5' : 'bg-white/5 hover:bg-white/8'}`}>
+      className={`w-full flex items-start gap-3 text-left p-3 rounded-lg transition-all ${checked ? 'bg-emerald-500/5' : 'bg-surface-1 hover:bg-white/8'}`}>
       <div className={`w-5 h-5 rounded border flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors ${
-        checked ? 'bg-emerald-500 border-emerald-500' : 'border-white/20'
+        checked ? 'bg-emerald-500 border-emerald-500' : 'border-line-strong'
       }`}>
-        {checked && <Check size={12} className="text-white" />}
+        {checked && <Check size={12} className="text-ink" />}
       </div>
       <div>
-        <span className={`text-sm transition-colors ${checked ? 'text-gray-500 line-through' : 'text-gray-300'}`}>{item.item}</span>
-        <span className="text-[10px] text-gray-600 ml-2 uppercase tracking-wider">{item.section}</span>
+        <span className={`text-sm transition-colors ${checked ? 'text-ink-tertiary line-through' : 'text-ink-secondary'}`}>{item.item}</span>
+        <span className="text-[10px] text-ink-tertiary ml-2 uppercase tracking-wider">{item.section}</span>
       </div>
     </button>
   )

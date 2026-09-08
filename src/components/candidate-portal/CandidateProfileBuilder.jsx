@@ -177,27 +177,27 @@ export default function CandidateProfileBuilder() {
 
   const pct = completionPct()
 
-  const inputClass = 'w-full rounded-lg bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-primary-light/40 focus:ring-1 focus:ring-primary-light/20 transition-colors'
-  const labelClass = 'block text-sm font-medium text-gray-300 mb-1.5'
+  const inputClass = 'w-full rounded-lg bg-surface-1 border border-line px-4 py-2.5 text-sm text-ink placeholder-gray-500 focus:outline-none focus:border-primary-light/40 focus:ring-1 focus:ring-primary-light/20 transition-colors'
+  const labelClass = 'block text-sm font-medium text-ink-secondary mb-1.5'
 
   return (
     <div>
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-        <Link to="/dashboard/marca-vende" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-white transition-colors mb-4">
+        <Link to="/dashboard/marca-vende" className="inline-flex items-center gap-1 text-sm text-ink-tertiary hover:text-ink transition-colors mb-4">
           <ArrowLeft size={14} /> Tu Marca Vende
         </Link>
-        <h1 className="text-2xl font-display font-bold text-white">Construye tu Perfil Profesional</h1>
-        <p className="text-gray-400 text-sm mt-1">Completa cada seccion para maximizar tu visibilidad ante reclutadores.</p>
+        <h1 className="text-2xl font-display font-bold text-ink">Construye tu Perfil Profesional</h1>
+        <p className="text-ink-secondary text-sm mt-1">Completa cada seccion para maximizar tu visibilidad ante reclutadores.</p>
       </motion.div>
 
       {/* Progress bar */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs text-gray-500">Perfil completado</span>
+          <span className="text-xs text-ink-tertiary">Perfil completado</span>
           <span className="text-xs font-bold text-primary-light">{pct}%</span>
         </div>
-        <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+        <div className="h-2 rounded-full bg-surface-1 overflow-hidden">
           <motion.div
             className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
             initial={{ width: 0 }}
@@ -222,7 +222,7 @@ export default function CandidateProfileBuilder() {
                   ? 'bg-primary/20 text-primary-light border border-primary-light/20'
                   : done
                   ? 'bg-accent/10 text-accent border border-accent/10'
-                  : 'bg-white/5 text-gray-500 border border-transparent hover:bg-white/10'
+                  : 'bg-surface-1 text-ink-tertiary border border-transparent hover:bg-white/10'
               }`}
             >
               {done ? <CheckCircle size={14} /> : <Icon size={14} />}
@@ -244,7 +244,7 @@ export default function CandidateProfileBuilder() {
         >
           {step === 1 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-display font-semibold text-white mb-4">Datos basicos</h2>
+              <h2 className="text-lg font-display font-semibold text-ink mb-4">Datos basicos</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className={labelClass}>Nombre completo</label>
@@ -268,7 +268,7 @@ export default function CandidateProfileBuilder() {
 
           {step === 2 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-display font-semibold text-white mb-4">Experiencia profesional</h2>
+              <h2 className="text-lg font-display font-semibold text-ink mb-4">Experiencia profesional</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className={labelClass}>Titulo actual</label>
@@ -311,7 +311,7 @@ export default function CandidateProfileBuilder() {
 
           {step === 3 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-display font-semibold text-white mb-4">Objetivo profesional</h2>
+              <h2 className="text-lg font-display font-semibold text-ink mb-4">Objetivo profesional</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className={labelClass}>Rol buscado</label>
@@ -347,8 +347,8 @@ export default function CandidateProfileBuilder() {
 
           {step === 4 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-display font-semibold text-white mb-4">Habilidades y competencias</h2>
-              <p className="text-sm text-gray-400 mb-3">Selecciona tus habilidades o agrega las tuyas.</p>
+              <h2 className="text-lg font-display font-semibold text-ink mb-4">Habilidades y competencias</h2>
+              <p className="text-sm text-ink-secondary mb-3">Selecciona tus habilidades o agrega las tuyas.</p>
               <div className="flex flex-wrap gap-2 mb-4">
                 {PREDEFINED_SKILLS.map(skill => (
                   <button
@@ -357,7 +357,7 @@ export default function CandidateProfileBuilder() {
                     className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                       form.skills.includes(skill)
                         ? 'bg-primary/20 text-primary-light border border-primary-light/30'
-                        : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
+                        : 'bg-surface-1 text-ink-secondary border border-line hover:bg-white/10'
                     }`}
                   >
                     {skill}
@@ -378,12 +378,12 @@ export default function CandidateProfileBuilder() {
               </div>
               {form.skills.length > 0 && (
                 <div className="mt-4">
-                  <p className="text-xs text-gray-500 mb-2">Seleccionadas ({form.skills.length}):</p>
+                  <p className="text-xs text-ink-tertiary mb-2">Seleccionadas ({form.skills.length}):</p>
                   <div className="flex flex-wrap gap-2">
                     {form.skills.map(s => (
                       <span key={s} className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-medium">
                         {s}
-                        <button onClick={() => toggleSkill(s)} className="hover:text-white"><X size={12} /></button>
+                        <button onClick={() => toggleSkill(s)} className="hover:text-ink"><X size={12} /></button>
                       </span>
                     ))}
                   </div>
@@ -394,8 +394,8 @@ export default function CandidateProfileBuilder() {
 
           {step === 5 && (
             <div className="space-y-4">
-              <h2 className="text-lg font-display font-semibold text-white mb-4">Resumen / Pitch profesional</h2>
-              <p className="text-sm text-gray-400 mb-3">Escribe un breve resumen o genera uno automaticamente a partir de tu informacion.</p>
+              <h2 className="text-lg font-display font-semibold text-ink mb-4">Resumen / Pitch profesional</h2>
+              <p className="text-sm text-ink-secondary mb-3">Escribe un breve resumen o genera uno automaticamente a partir de tu informacion.</p>
               <textarea
                 className={`${inputClass} min-h-[160px] resize-y`}
                 value={form.pitch}
@@ -419,7 +419,7 @@ export default function CandidateProfileBuilder() {
       <div className="flex flex-wrap items-center justify-between mt-6 gap-3">
         <div className="flex gap-2">
           {step > 1 && (
-            <button onClick={() => setStep(step - 1)} className="inline-flex items-center gap-1 px-4 py-2.5 rounded-lg bg-white/5 text-gray-300 text-sm font-medium hover:bg-white/10 transition-colors">
+            <button onClick={() => setStep(step - 1)} className="inline-flex items-center gap-1 px-4 py-2.5 rounded-lg bg-surface-1 text-ink-secondary text-sm font-medium hover:bg-white/10 transition-colors">
               <ArrowLeft size={14} /> Anterior
             </button>
           )}
@@ -434,7 +434,7 @@ export default function CandidateProfileBuilder() {
           <button
             onClick={handleSaveDraft}
             disabled={saving}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 text-gray-300 text-sm font-medium hover:bg-white/10 transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-1 text-ink-secondary text-sm font-medium hover:bg-white/10 transition-colors disabled:opacity-50"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
             {saved ? 'Guardado!' : 'Guardar borrador'}

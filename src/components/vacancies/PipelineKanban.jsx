@@ -1,68 +1,20 @@
 import { useEffect, useState, useCallback } from 'react'
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
-import { Users, Clock, AlertTriangle, TrendingUp, Star, Zap, ExternalLink, Globe, UserPlus, FileText, X, Mail, Phone, MapPin, Briefcase, Trash2, Loader2 } from 'lucide-react'
+import { Users, Clock, AlertTriangle, TrendingUp, Star, Zap, ExternalLink, X, Mail, Phone, MapPin, Briefcase, Trash2, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
 import { useStageLabels } from '../../lib/useStageLabels'
-
-// Estilos/SLA por etapa; las ETIQUETAS visibles salen de useStageLabels()
-// (configurables por org en Configuración → Etapas del proceso).
-const STAGE_DEFS = [
-  { id: 'sourced', color: 'border-gray-400', bg: 'bg-gray-400', sla: 3 },
-  { id: 'contacted', color: 'border-blue-400', bg: 'bg-blue-400', sla: 2 },
-  { id: 'screening', color: 'border-cyan-400', bg: 'bg-cyan-400', sla: 3 },
-  { id: 'interviewing', color: 'border-purple-400', bg: 'bg-purple-400', sla: 5 },
-  { id: 'shortlist', color: 'border-amber-400', bg: 'bg-amber-400', sla: 3 },
-  { id: 'presented', color: 'border-accent', bg: 'bg-accent', sla: 5 },
-  { id: 'offer', color: 'border-green-400', bg: 'bg-green-400', sla: 3 },
-  { id: 'hired', color: 'border-emerald-500', bg: 'bg-emerald-500', sla: null },
-  { id: 'rejected', color: 'border-red-400', bg: 'bg-red-400', sla: null },
-]
-
-const SOURCE_ICONS = {
-  linkedin: ExternalLink,
-  referral: UserPlus,
-  jobboard: Globe,
-  internal: FileText,
-}
-
-const SOURCE_COLORS = {
-  linkedin: 'bg-blue-500/15 text-blue-400',
-  referral: 'bg-purple-500/15 text-purple-400',
-  jobboard: 'bg-cyan-500/15 text-cyan-400',
-  internal: 'bg-amber-500/15 text-amber-400',
-}
-
-function daysInStage(stageChangedAt) {
-  if (!stageChangedAt) return 0
-  return Math.floor((Date.now() - new Date(stageChangedAt).getTime()) / (1000 * 60 * 60 * 24))
-}
-
-function agingColor(days, sla) {
-  if (!sla) return 'text-gray-500'
-  if (days <= sla * 0.5) return 'text-emerald-400'
-  if (days <= sla) return 'text-amber-400'
-  return 'text-red-400'
-}
-
-function agingBg(days, sla) {
-  if (!sla) return 'bg-gray-500/10'
-  if (days <= sla * 0.5) return 'bg-emerald-500/10'
-  if (days <= sla) return 'bg-amber-500/10'
-  return 'bg-red-500/10'
-}
-
-function initials(name) {
-  if (!name) return '??'
-  return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-}
-
-function scoreColor(score) {
-  if (score >= 80) return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-  if (score >= 60) return 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-  return 'bg-red-500/20 text-red-400 border-red-500/30'
-}
+import {
+  KANBAN_STAGE_DEFS as STAGE_DEFS,
+  SOURCE_ICONS,
+  SOURCE_COLORS,
+  daysInStage,
+  agingColor,
+  agingBg,
+  initials,
+  scoreColorBordered as scoreColor,
+} from './pipeline/stages'
 
 export default function PipelineKanban({ vacancyId, vacancyTitle }) {
   const { profile } = useAuth()

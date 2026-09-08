@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Sparkles, Search, Wand2, ArrowRight, CheckCircle, Mic, Eye, Trophy } from 'lucide-react'
+import { Sparkles, Search, Wand2, ArrowRight, CheckCircle, Mic, Eye, Trophy, FileText } from 'lucide-react'
 import { usePlan } from '../../lib/planContext'
 import UpgradePrompt from '../ui/UpgradePrompt'
 
@@ -43,6 +43,25 @@ const products = [
     cta: 'Crear perfil optimizado',
     to: '/dashboard/marca-vende/perfil-pro',
   },
+  {
+    id: 'cv',
+    name: 'Optimizador de CV IA',
+    price: '$1,499 MXN',
+    description: 'Sube tu CV en PDF y lo reescribimos adaptado a tus vacantes objetivo: vinetas XYZ, keywords ATS y score estimado.',
+    icon: FileText,
+    gradient: 'from-primary/20 to-gold/10',
+    iconColor: 'text-primary-light',
+    borderHover: 'hover:border-primary-light/30',
+    features: [
+      'Lectura de CV en PDF',
+      'Reescritura en formula XYZ',
+      'Keywords ATS que faltaban',
+      'Score ATS antes/despues',
+      'Export a PDF y Word',
+    ],
+    cta: 'Optimizar mi CV',
+    to: '/dashboard/marca-vende/cv',
+  },
 ]
 
 export default function MarcaVendeDashboard() {
@@ -64,9 +83,9 @@ export default function MarcaVendeDashboard() {
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center">
             <Sparkles size={20} className="text-primary-light" />
           </div>
-          <h1 className="text-2xl font-display font-bold text-white">Tu Marca Vende</h1>
+          <h1 className="text-2xl font-display font-bold text-ink">Tu Marca Vende</h1>
         </div>
-        <p className="text-gray-400 mt-1 max-w-2xl">
+        <p className="text-ink-secondary mt-1 max-w-2xl">
           Herramientas inteligentes para mejorar tu CV, perfil de LinkedIn y pitch profesional. Destaca ante reclutadores y consigue mejores oportunidades.
         </p>
       </motion.div>
@@ -74,7 +93,7 @@ export default function MarcaVendeDashboard() {
       {/* Pro Tools Section */}
       <div className="mb-8">
         <div className="flex items-baseline gap-3 mb-4">
-          <h2 className="text-lg font-display font-semibold text-white">Herramientas Pro</h2>
+          <h2 className="text-lg font-display font-semibold text-ink">Herramientas Pro</h2>
           <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400">Pro</span>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -120,8 +139,8 @@ export default function MarcaVendeDashboard() {
                     </div>
                     <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-500/10 text-purple-400">Pro</span>
                   </div>
-                  <h2 className="text-lg font-display font-bold text-white mb-2">{tool.name}</h2>
-                  <p className="text-sm text-gray-400 mb-5 leading-relaxed">{tool.description}</p>
+                  <h2 className="text-lg font-display font-bold text-ink mb-2">{tool.name}</h2>
+                  <p className="text-sm text-ink-secondary mb-5 leading-relaxed">{tool.description}</p>
                   <div className="flex items-center gap-2 text-sm font-semibold text-primary-light group-hover:gap-3 transition-all">
                     {tool.cta}
                     <ArrowRight size={16} />
@@ -152,13 +171,13 @@ export default function MarcaVendeDashboard() {
                 $5,900 MXN
               </span>
             </div>
-            <h2 className="text-lg font-display font-bold text-white mb-2">Acompanamiento 30 dias</h2>
-            <p className="text-sm text-gray-400 mb-5 leading-relaxed">
+            <h2 className="text-lg font-display font-bold text-ink mb-2">Acompanamiento 30 dias</h2>
+            <p className="text-sm text-ink-secondary mb-5 leading-relaxed">
               Programa intensivo de 4 semanas: diagnostico, visibilidad, entrevistas y lanzamiento activo con coaching personalizado.
             </p>
             <ul className="space-y-2 mb-6">
               {['4 semanas de coaching estructurado', 'Checklist semanal de actividades', 'Notas de sesion y seguimiento', 'Acceso a todas las herramientas'].map((f, fi) => (
-                <li key={fi} className="flex items-center gap-2 text-sm text-gray-300">
+                <li key={fi} className="flex items-center gap-2 text-sm text-ink-secondary">
                   <CheckCircle size={14} className="text-gold flex-shrink-0" />
                   {f}
                 </li>
@@ -192,19 +211,19 @@ export default function MarcaVendeDashboard() {
                   <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${product.gradient} flex items-center justify-center ${product.iconColor} group-hover:scale-110 transition-transform`}>
                     <Icon size={24} />
                   </div>
-                  <span className="text-sm font-bold text-white bg-white/10 px-3 py-1 rounded-full">
+                  <span className="text-sm font-bold text-ink bg-white/10 px-3 py-1 rounded-full">
                     {product.price}
                   </span>
                 </div>
 
                 {/* Name & Description */}
-                <h2 className="text-lg font-display font-bold text-white mb-2">{product.name}</h2>
-                <p className="text-sm text-gray-400 mb-5 leading-relaxed">{product.description}</p>
+                <h2 className="text-lg font-display font-bold text-ink mb-2">{product.name}</h2>
+                <p className="text-sm text-ink-secondary mb-5 leading-relaxed">{product.description}</p>
 
                 {/* Features */}
                 <ul className="space-y-2 mb-6">
                   {product.features.map((f, fi) => (
-                    <li key={fi} className="flex items-center gap-2 text-sm text-gray-300">
+                    <li key={fi} className="flex items-center gap-2 text-sm text-ink-secondary">
                       <CheckCircle size={14} className="text-accent flex-shrink-0" />
                       {f}
                     </li>

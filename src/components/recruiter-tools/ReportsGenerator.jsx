@@ -68,29 +68,29 @@ function PipelineReport() {
   return (
     <div className="space-y-4">
       <div className="glass rounded-xl p-4">
-        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 block">Nombre de la vacante</label>
+        <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider mb-2 block">Nombre de la vacante</label>
         <input
           type="text"
           value={vacancy}
           onChange={e => setVacancy(e.target.value)}
           placeholder="Ej: Desarrollador Full Stack Senior"
-          className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-primary-light/30 focus:outline-none transition-colors"
+          className="w-full bg-surface-1 border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary-light/30 focus:outline-none transition-colors"
         />
       </div>
 
       <div className="glass rounded-xl p-4">
-        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 block">Candidatos por etapa</label>
+        <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider mb-3 block">Candidatos por etapa</label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {PIPELINE_STAGES.map(s => (
             <div key={s.key}>
-              <label className="text-xs text-gray-400 mb-1 block">{s.label}</label>
+              <label className="text-xs text-ink-secondary mb-1 block">{s.label}</label>
               <input
                 type="number"
                 min="0"
                 value={values[s.key] || ''}
                 onChange={e => setValues(prev => ({ ...prev, [s.key]: e.target.value }))}
                 placeholder="0"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-primary-light/30 focus:outline-none transition-colors"
+                className="w-full bg-surface-1 border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary-light/30 focus:outline-none transition-colors"
               />
             </div>
           ))}
@@ -113,7 +113,7 @@ function PipelineReport() {
             className="glass-strong rounded-xl p-5"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-white">Pipeline: {generated.vacancy}</h3>
+              <h3 className="text-sm font-semibold text-ink">Pipeline: {generated.vacancy}</h3>
               <div className="flex gap-2">
                 <button onClick={handleCopy} className="flex items-center gap-1.5 text-xs font-medium text-primary-light hover:text-white transition-colors bg-primary/10 px-3 py-1.5 rounded-lg">
                   {copied ? <Check size={14} /> : <Copy size={14} />}
@@ -132,18 +132,18 @@ function PipelineReport() {
                 const width = Math.max(10, (s.count / maxCount) * 100)
                 return (
                   <div key={s.key} className="flex items-center gap-3">
-                    <span className="text-xs text-gray-400 w-24 text-right flex-shrink-0">{s.label}</span>
-                    <div className="flex-1 h-8 bg-white/5 rounded-lg overflow-hidden relative">
+                    <span className="text-xs text-ink-secondary w-24 text-right flex-shrink-0">{s.label}</span>
+                    <div className="flex-1 h-8 bg-surface-1 rounded-lg overflow-hidden relative">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${width}%` }}
                         transition={{ delay: i * 0.1, duration: 0.5 }}
                         className={`h-full ${s.color} rounded-lg flex items-center px-2`}
                       >
-                        <span className="text-xs font-bold text-white">{s.count}</span>
+                        <span className="text-xs font-bold text-ink">{s.count}</span>
                       </motion.div>
                     </div>
-                    <span className="text-xs text-gray-500 w-12 flex-shrink-0">
+                    <span className="text-xs text-ink-tertiary w-12 flex-shrink-0">
                       {i === 0 ? '' : `${s.rate}%`}
                     </span>
                   </div>
@@ -151,8 +151,8 @@ function PipelineReport() {
               })}
             </div>
 
-            <div className="flex gap-4 text-xs text-gray-400 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              <span>Conversion total: <strong className="text-white">{generated.stages[0].count > 0 ? Math.round((generated.stages[generated.stages.length - 1].count / generated.stages[0].count) * 100) : 0}%</strong></span>
+            <div className="flex gap-4 text-xs text-ink-secondary pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <span>Conversion total: <strong className="text-ink">{generated.stages[0].count > 0 ? Math.round((generated.stages[generated.stages.length - 1].count / generated.stages[0].count) * 100) : 0}%</strong></span>
               <span>Fecha: {new Date().toLocaleDateString('es-MX')}</span>
             </div>
           </motion.div>
@@ -226,27 +226,27 @@ function ProductivityReport() {
       <div className="glass rounded-xl p-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">Nombre del reclutador</label>
+            <label className="text-xs text-ink-secondary mb-1 block">Nombre del reclutador</label>
             <input type="text" value={recruiter} onChange={e => setRecruiter(e.target.value)} placeholder="Ej: Ana Garcia"
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-primary-light/30 focus:outline-none transition-colors" />
+              className="w-full bg-surface-1 border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary-light/30 focus:outline-none transition-colors" />
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">Semana</label>
+            <label className="text-xs text-ink-secondary mb-1 block">Semana</label>
             <input type="text" value={week} onChange={e => setWeek(e.target.value)} placeholder="Ej: 19-23 Mayo 2026"
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-primary-light/30 focus:outline-none transition-colors" />
+              className="w-full bg-surface-1 border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary-light/30 focus:outline-none transition-colors" />
           </div>
         </div>
       </div>
 
       <div className="glass rounded-xl p-4">
-        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 block">Actividades de la semana</label>
+        <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider mb-3 block">Actividades de la semana</label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {PRODUCTIVITY_FIELDS.map(f => (
             <div key={f.key}>
-              <label className="text-xs text-gray-400 mb-1 block">{f.label}</label>
+              <label className="text-xs text-ink-secondary mb-1 block">{f.label}</label>
               <input type="number" min="0" value={values[f.key] || ''} onChange={e => setValues(prev => ({ ...prev, [f.key]: e.target.value }))}
                 placeholder="0"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-primary-light/30 focus:outline-none transition-colors" />
+                className="w-full bg-surface-1 border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary-light/30 focus:outline-none transition-colors" />
             </div>
           ))}
         </div>
@@ -261,7 +261,7 @@ function ProductivityReport() {
         {generated && (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="glass-strong rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-white">Productividad: {generated.recruiter}</h3>
+              <h3 className="text-sm font-semibold text-ink">Productividad: {generated.recruiter}</h3>
               <div className="flex gap-2">
                 <button onClick={handleCopy} className="flex items-center gap-1.5 text-xs font-medium text-primary-light hover:text-white transition-colors bg-primary/10 px-3 py-1.5 rounded-lg">
                   {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copiado' : 'Copiar'}
@@ -274,22 +274,22 @@ function ProductivityReport() {
             <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-white/[0.04]">
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actividad</th>
-                    <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider">Cantidad</th>
+                  <tr className="bg-surface-1">
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-ink-secondary uppercase tracking-wider">Actividad</th>
+                    <th className="text-right px-4 py-2.5 text-xs font-semibold text-ink-secondary uppercase tracking-wider">Cantidad</th>
                   </tr>
                 </thead>
                 <tbody>
                   {generated.rows.map((r, i) => (
                     <tr key={i} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                      <td className="px-4 py-2.5 text-gray-300">{r.label}</td>
-                      <td className="px-4 py-2.5 text-white font-semibold text-right">{r.value}</td>
+                      <td className="px-4 py-2.5 text-ink-secondary">{r.label}</td>
+                      <td className="px-4 py-2.5 text-ink font-semibold text-right">{r.value}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <div className="text-xs text-gray-400 mt-3">Semana: {generated.week} | Fecha: {new Date().toLocaleDateString('es-MX')}</div>
+            <div className="text-xs text-ink-secondary mt-3">Semana: {generated.week} | Fecha: {new Date().toLocaleDateString('es-MX')}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -361,60 +361,60 @@ Generado el ${new Date().toLocaleDateString('es-MX')} | Enlace 468 - Recruiter P
     URL.revokeObjectURL(url)
   }
 
-  const inputCls = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-primary-light/30 focus:outline-none transition-colors'
+  const inputCls = 'w-full bg-surface-1 border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary-light/30 focus:outline-none transition-colors'
 
   return (
     <div className="space-y-4">
       <div className="glass rounded-xl p-4 space-y-3">
-        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Informacion de la vacante</label>
+        <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider block">Informacion de la vacante</label>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">Puesto</label>
+            <label className="text-xs text-ink-secondary mb-1 block">Puesto</label>
             <input type="text" value={form.vacancy} onChange={e => update('vacancy', e.target.value)} placeholder="Ej: Director Comercial" className={inputCls} />
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">Area / Departamento</label>
+            <label className="text-xs text-ink-secondary mb-1 block">Area / Departamento</label>
             <input type="text" value={form.area} onChange={e => update('area', e.target.value)} placeholder="Ej: Ventas" className={inputCls} />
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">Hiring Manager</label>
+            <label className="text-xs text-ink-secondary mb-1 block">Hiring Manager</label>
             <input type="text" value={form.hiringManager} onChange={e => update('hiringManager', e.target.value)} placeholder="Ej: Carlos Rodriguez" className={inputCls} />
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">Reclutador</label>
+            <label className="text-xs text-ink-secondary mb-1 block">Reclutador</label>
             <input type="text" value={form.recruiter} onChange={e => update('recruiter', e.target.value)} placeholder="Tu nombre" className={inputCls} />
           </div>
         </div>
       </div>
 
       <div className="glass rounded-xl p-4 space-y-3">
-        <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Timeline y resultados</label>
+        <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider block">Timeline y resultados</label>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">Fecha apertura</label>
+            <label className="text-xs text-ink-secondary mb-1 block">Fecha apertura</label>
             <input type="date" value={form.openDate} onChange={e => update('openDate', e.target.value)} className={inputCls} />
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">Fecha cierre</label>
+            <label className="text-xs text-ink-secondary mb-1 block">Fecha cierre</label>
             <input type="date" value={form.closeDate} onChange={e => update('closeDate', e.target.value)} className={inputCls} />
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">Candidatos revisados</label>
+            <label className="text-xs text-ink-secondary mb-1 block">Candidatos revisados</label>
             <input type="number" min="0" value={form.candidatesReviewed} onChange={e => update('candidatesReviewed', e.target.value)} placeholder="Ej: 45" className={inputCls} />
           </div>
         </div>
         <div>
-          <label className="text-xs text-gray-400 mb-1 block">Candidato finalista seleccionado</label>
+          <label className="text-xs text-ink-secondary mb-1 block">Candidato finalista seleccionado</label>
           <input type="text" value={form.finalist} onChange={e => update('finalist', e.target.value)} placeholder="Nombre del candidato seleccionado y puesto actual" className={inputCls} />
         </div>
         <div>
-          <label className="text-xs text-gray-400 mb-1 block">Detalle del timeline (hitos clave)</label>
+          <label className="text-xs text-ink-secondary mb-1 block">Detalle del timeline (hitos clave)</label>
           <textarea rows={3} value={form.timeline} onChange={e => update('timeline', e.target.value)}
             placeholder="Ej: Semana 1: Sourcing y publicacion. Semana 2-3: Entrevistas. Semana 4: Evaluaciones y oferta."
             className={`${inputCls} resize-none`} />
         </div>
         <div>
-          <label className="text-xs text-gray-400 mb-1 block">Recomendaciones y observaciones</label>
+          <label className="text-xs text-ink-secondary mb-1 block">Recomendaciones y observaciones</label>
           <textarea rows={3} value={form.recommendations} onChange={e => update('recommendations', e.target.value)}
             placeholder="Observaciones sobre el proceso, mercado laboral, y recomendaciones para futuras vacantes similares."
             className={`${inputCls} resize-none`} />
@@ -430,7 +430,7 @@ Generado el ${new Date().toLocaleDateString('es-MX')} | Enlace 468 - Recruiter P
         {generated && (
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="glass-strong rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-white">Reporte Ejecutivo: {generated.vacancy}</h3>
+              <h3 className="text-sm font-semibold text-ink">Reporte Ejecutivo: {generated.vacancy}</h3>
               <div className="flex gap-2">
                 <button onClick={handleCopy} className="flex items-center gap-1.5 text-xs font-medium text-primary-light hover:text-white transition-colors bg-primary/10 px-3 py-1.5 rounded-lg">
                   {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copiado' : 'Copiar'}
@@ -440,7 +440,7 @@ Generado el ${new Date().toLocaleDateString('es-MX')} | Enlace 468 - Recruiter P
                 </button>
               </div>
             </div>
-            <div className="bg-black/30 rounded-lg p-4 border border-white/10">
+            <div className="bg-black/30 rounded-lg p-4 border border-line">
               <pre className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap font-mono">{getReportText()}</pre>
             </div>
           </motion.div>
@@ -469,17 +469,17 @@ export default function ReportsGenerator() {
   return (
     <div>
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <Link to="/dashboard/recruiter-tools" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors mb-4">
+        <Link to="/dashboard/recruiter-tools" className="inline-flex items-center gap-1 text-sm text-ink-secondary hover:text-ink transition-colors mb-4">
           <ChevronLeft size={16} /> Recruiter Pro Tools
         </Link>
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center">
             <BarChart3 size={20} className="text-primary-light" />
           </div>
-          <h1 className="text-2xl font-display font-bold text-white">Generador de Reportes</h1>
+          <h1 className="text-2xl font-display font-bold text-ink">Generador de Reportes</h1>
           <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-500/10 text-amber-400">Elite</span>
         </div>
-        <p className="text-gray-400 mt-1 max-w-2xl">
+        <p className="text-ink-secondary mt-1 max-w-2xl">
           Genera reportes profesionales de pipeline, productividad y cierre de vacantes. Completa los datos y obtendras un reporte formateado listo para compartir.
         </p>
       </motion.div>
@@ -493,7 +493,7 @@ export default function ReportsGenerator() {
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
               activeReport === rt.key
                 ? 'bg-primary text-white'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                : 'bg-surface-1 text-ink-secondary hover:bg-white/10 hover:text-ink'
             }`}
           >
             <rt.icon size={16} />
@@ -507,7 +507,7 @@ export default function ReportsGenerator() {
         key={activeReport}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="text-sm text-gray-400 mb-6"
+        className="text-sm text-ink-secondary mb-6"
       >
         {REPORT_TYPES.find(r => r.key === activeReport)?.description}
       </motion.p>

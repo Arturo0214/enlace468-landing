@@ -158,8 +158,8 @@ function ScoreGauge({ score }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-display font-bold text-white">{score}</span>
-        <span className="text-xs text-gray-400">/ 100</span>
+        <span className="text-3xl font-display font-bold text-ink">{score}</span>
+        <span className="text-xs text-ink-secondary">/ 100</span>
       </div>
     </div>
   )
@@ -248,13 +248,13 @@ export default function DiagnosticoPage() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Back nav */}
-      <Link to="/dashboard/marca-vende" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors mb-6">
+      <Link to="/dashboard/marca-vende" className="inline-flex items-center gap-2 text-sm text-ink-secondary hover:text-ink transition-colors mb-6">
         <ArrowLeft size={16} /> Tu Marca Vende
       </Link>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-display font-bold text-white mb-1">Diagnostico OpenToWork</h1>
-        <p className="text-gray-400 mb-8">Analiza tu CV y perfil de LinkedIn para obtener una puntuacion y recomendaciones personalizadas.</p>
+        <h1 className="text-2xl font-display font-bold text-ink mb-1">Diagnostico OpenToWork</h1>
+        <p className="text-ink-secondary mb-8">Analiza tu CV y perfil de LinkedIn para obtener una puntuacion y recomendaciones personalizadas.</p>
       </motion.div>
 
       {/* Input form */}
@@ -262,7 +262,7 @@ export default function DiagnosticoPage() {
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="space-y-5">
           {/* LinkedIn URL */}
           <div className="glass rounded-xl p-5">
-            <label className="flex items-center gap-2 text-sm font-medium text-white mb-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-ink mb-3">
               <Link2 size={16} className="text-primary-light" /> URL de LinkedIn
             </label>
             <input
@@ -270,31 +270,31 @@ export default function DiagnosticoPage() {
               placeholder="https://linkedin.com/in/tu-nombre"
               value={linkedinUrl}
               onChange={e => setLinkedinUrl(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-primary-light/50 transition-colors"
+              className="w-full bg-surface-1 border border-line rounded-lg px-4 py-3 text-ink text-sm placeholder-gray-500 focus:outline-none focus:border-primary-light/50 transition-colors"
             />
           </div>
 
           {/* CV Upload */}
           <div className="glass rounded-xl p-5">
-            <label className="flex items-center gap-2 text-sm font-medium text-white mb-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-ink mb-3">
               <FileText size={16} className="text-accent" /> Subir CV (PDF)
             </label>
             <div
               onClick={() => fileRef.current?.click()}
-              className="border-2 border-dashed border-white/10 rounded-lg p-8 text-center cursor-pointer hover:border-primary-light/30 transition-colors"
+              className="border-2 border-dashed border-line rounded-lg p-8 text-center cursor-pointer hover:border-primary-light/30 transition-colors"
             >
               <input ref={fileRef} type="file" accept=".pdf" onChange={handleFileChange} className="hidden" />
               {file ? (
                 <div className="flex items-center justify-center gap-3">
                   <FileText size={20} className="text-accent" />
-                  <span className="text-sm text-white font-medium">{file.name}</span>
-                  <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(0)} KB)</span>
+                  <span className="text-sm text-ink font-medium">{file.name}</span>
+                  <span className="text-xs text-ink-tertiary">({(file.size / 1024).toFixed(0)} KB)</span>
                 </div>
               ) : (
                 <>
-                  <Upload size={28} className="mx-auto text-gray-500 mb-2" />
-                  <p className="text-sm text-gray-400">Arrastra tu CV aqui o haz clic para seleccionar</p>
-                  <p className="text-xs text-gray-500 mt-1">Solo archivos PDF</p>
+                  <Upload size={28} className="mx-auto text-ink-tertiary mb-2" />
+                  <p className="text-sm text-ink-secondary">Arrastra tu CV aqui o haz clic para seleccionar</p>
+                  <p className="text-xs text-ink-tertiary mt-1">Solo archivos PDF</p>
                 </>
               )}
             </div>
@@ -334,11 +334,11 @@ export default function DiagnosticoPage() {
             {/* LinkedIn validation */}
             {results.linkedin && (
               <div className="glass rounded-xl p-5">
-                <h3 className="text-sm font-semibold text-white mb-3">LinkedIn</h3>
+                <h3 className="text-sm font-semibold text-ink mb-3">LinkedIn</h3>
                 <div className="flex items-center gap-2 text-sm">
                   <CheckCircle size={16} className="text-accent" />
-                  <span className="text-gray-300">URL valida</span>
-                  <span className="text-gray-500 ml-2">linkedin.com/in/<span className="text-white font-medium">{results.linkedin.slug}</span></span>
+                  <span className="text-ink-secondary">URL valida</span>
+                  <span className="text-ink-tertiary ml-2">linkedin.com/in/<span className="text-ink font-medium">{results.linkedin.slug}</span></span>
                 </div>
               </div>
             )}
@@ -348,14 +348,14 @@ export default function DiagnosticoPage() {
               <>
                 {/* Overall Score */}
                 <div className="glass rounded-xl p-6 text-center">
-                  <h3 className="text-sm font-semibold text-gray-400 mb-4">Puntuacion general</h3>
+                  <h3 className="text-sm font-semibold text-ink-secondary mb-4">Puntuacion general</h3>
                   <ScoreGauge score={results.cv.overallScore} />
-                  <p className="text-sm text-gray-400 mt-4">
+                  <p className="text-sm text-ink-secondary mt-4">
                     {results.cv.overallScore >= 75 ? 'Tu CV esta bien estructurado.' :
                      results.cv.overallScore >= 50 ? 'Tu CV tiene potencial pero puede mejorar.' :
                      'Tu CV necesita mejoras importantes para destacar.'}
                   </p>
-                  <div className="flex items-center justify-center gap-6 mt-4 text-xs text-gray-500">
+                  <div className="flex items-center justify-center gap-6 mt-4 text-xs text-ink-tertiary">
                     <span>{results.cv.wordCount} palabras</span>
                     <span>{results.cv.foundKeywords.length} palabras clave</span>
                   </div>
@@ -363,17 +363,17 @@ export default function DiagnosticoPage() {
 
                 {/* Section breakdown */}
                 <div className="glass rounded-xl p-6">
-                  <h3 className="text-sm font-semibold text-white mb-4">Desglose por seccion</h3>
+                  <h3 className="text-sm font-semibold text-ink mb-4">Desglose por seccion</h3>
                   <div className="space-y-4">
                     {Object.entries(results.cv.sections).map(([key, section]) => (
                       <div key={key}>
                         <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-sm text-gray-300">{section.label}</span>
+                          <span className="text-sm text-ink-secondary">{section.label}</span>
                           <span className={`text-xs font-bold ${section.score >= 60 ? 'text-accent' : section.score >= 30 ? 'text-gold' : 'text-red-400'}`}>
                             {section.score}%
                           </span>
                         </div>
-                        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                        <div className="h-2 bg-surface-1 rounded-full overflow-hidden">
                           <motion.div
                             className="h-full rounded-full"
                             style={{ background: section.score >= 60 ? '#0D9488' : section.score >= 30 ? '#D97706' : '#EF4444' }}
@@ -390,12 +390,12 @@ export default function DiagnosticoPage() {
                 {/* Recommendations */}
                 {results.cv.recommendations.length > 0 && (
                   <div className="glass rounded-xl p-6">
-                    <h3 className="text-sm font-semibold text-white mb-4">Recomendaciones</h3>
+                    <h3 className="text-sm font-semibold text-ink mb-4">Recomendaciones</h3>
                     <div className="space-y-3">
                       {results.cv.recommendations.map((rec, i) => (
-                        <div key={i} className="flex items-start gap-3 bg-white/[0.03] rounded-lg px-4 py-3">
+                        <div key={i} className="flex items-start gap-3 bg-surface-1 rounded-lg px-4 py-3">
                           <PriorityBadge priority={rec.priority} />
-                          <span className="text-sm text-gray-300 leading-relaxed">{rec.text}</span>
+                          <span className="text-sm text-ink-secondary leading-relaxed">{rec.text}</span>
                         </div>
                       ))}
                     </div>
@@ -409,8 +409,8 @@ export default function DiagnosticoPage() {
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-white">Mejora tu perfil con Perfil Profesional IA</p>
-                      <p className="text-xs text-gray-400 mt-1">Genera un headline, resumen y pitch optimizados a partir de tus datos.</p>
+                      <p className="text-sm font-semibold text-ink">Mejora tu perfil con Perfil Profesional IA</p>
+                      <p className="text-xs text-ink-secondary mt-1">Genera un headline, resumen y pitch optimizados a partir de tus datos.</p>
                     </div>
                     <ArrowRight size={18} className="text-accent group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -421,7 +421,7 @@ export default function DiagnosticoPage() {
             {/* Start over */}
             <button
               onClick={() => { setResults(null); setFile(null); setLinkedinUrl(''); setError('') }}
-              className="w-full py-3 rounded-xl border border-white/10 text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+              className="w-full py-3 rounded-xl border border-line text-sm text-ink-secondary hover:text-ink hover:bg-white/5 transition-all"
             >
               Hacer otro diagnostico
             </button>

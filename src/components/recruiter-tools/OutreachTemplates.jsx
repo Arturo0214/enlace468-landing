@@ -239,16 +239,16 @@ export default function OutreachTemplates() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <Link to="/dashboard/recruiter-tools" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors mb-4">
+        <Link to="/dashboard/recruiter-tools" className="inline-flex items-center gap-1 text-sm text-ink-secondary hover:text-ink transition-colors mb-4">
           <ChevronLeft size={16} /> Recruiter Pro Tools
         </Link>
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-accent/20 to-gold/10 flex items-center justify-center">
             <MessageSquare size={20} className="text-accent-light" />
           </div>
-          <h1 className="text-2xl font-display font-bold text-white">Plantillas de Outreach</h1>
+          <h1 className="text-2xl font-display font-bold text-ink">Plantillas de Outreach</h1>
         </div>
-        <p className="text-gray-400 mt-1 max-w-2xl">
+        <p className="text-ink-secondary mt-1 max-w-2xl">
           Templates listos para usar en LinkedIn, email y WhatsApp. Las variables en <span className="text-primary-light">color</span> se reemplazan con los datos de tu candidato.
         </p>
       </motion.div>
@@ -269,7 +269,7 @@ export default function OutreachTemplates() {
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 cat.key === activeCategory
                   ? `${cat.bgColor} ${cat.color} border border-current/20`
-                  : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  : 'text-ink-secondary hover:text-ink hover:bg-white/5 border border-transparent'
               }`}
             >
               <Icon size={16} />
@@ -291,11 +291,11 @@ export default function OutreachTemplates() {
             className="glass rounded-xl p-5"
           >
             <div className="flex items-start justify-between mb-3">
-              <h3 className="text-sm font-semibold text-white">{tmpl.name}</h3>
+              <h3 className="text-sm font-semibold text-ink">{tmpl.name}</h3>
               <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(idx, tmpl.content)}
-                  className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-white transition-colors bg-white/5 px-3 py-1.5 rounded-lg"
+                  className="flex items-center gap-1.5 text-xs font-medium text-ink-secondary hover:text-ink transition-colors bg-surface-1 px-3 py-1.5 rounded-lg"
                 >
                   <Edit3 size={12} />
                   Personalizar
@@ -313,8 +313,8 @@ export default function OutreachTemplates() {
                 </button>
               </div>
             </div>
-            <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-              <pre className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap font-sans">
+            <div className="bg-surface-1 rounded-lg p-4 border border-line">
+              <pre className="text-sm text-ink-secondary leading-relaxed whitespace-pre-wrap font-sans">
                 {tmpl.content.split(/(\{[^}]+\})/).map((part, i) =>
                   part.startsWith('{') ? (
                     <span key={i} className="text-primary-light font-medium">{part}</span>
@@ -346,8 +346,8 @@ export default function OutreachTemplates() {
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-display font-bold text-white">Personalizar plantilla</h3>
-                <button onClick={() => setEditingIdx(null)} className="text-gray-400 hover:text-white">
+                <h3 className="text-lg font-display font-bold text-ink">Personalizar plantilla</h3>
+                <button onClick={() => setEditingIdx(null)} className="text-ink-secondary hover:text-ink">
                   <X size={20} />
                 </button>
               </div>
@@ -355,12 +355,12 @@ export default function OutreachTemplates() {
                 value={editText}
                 onChange={e => setEditText(e.target.value)}
                 rows={14}
-                className="w-full flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder:text-gray-600 focus:border-primary-light/30 focus:outline-none focus:ring-1 focus:ring-primary-light/20 transition-colors resize-none font-mono leading-relaxed"
+                className="w-full flex-1 bg-surface-1 border border-line rounded-lg px-4 py-3 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary-light/30 focus:outline-none focus:ring-1 focus:ring-primary-light/20 transition-colors resize-none font-mono leading-relaxed"
               />
               <div className="flex gap-3 mt-4 justify-end">
                 <button
                   onClick={() => setEditingIdx(null)}
-                  className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
+                  className="px-4 py-2 text-sm text-ink-secondary hover:text-ink transition-colors"
                 >
                   Cancelar
                 </button>

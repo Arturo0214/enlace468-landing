@@ -1,23 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, ArrowRight, Check, Copy, CheckCircle, Wand2, User, Briefcase, Target, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Copy, CheckCircle, Wand2, User, Briefcase, Target, Sparkles, Loader2, AlertCircle, Languages, FileText } from 'lucide-react'
 import { usePlan } from '../../lib/planContext'
+import { useAuth } from '../../lib/auth'
 import UpgradePrompt from '../ui/UpgradePrompt'
-
-// ── Industry keyword maps ──
-const INDUSTRY_KEYWORDS = {
-  tecnologia: ['transformacion digital', 'innovacion tecnologica', 'desarrollo de software', 'inteligencia artificial', 'cloud computing', 'ciberseguridad', 'agile', 'devops', 'data analytics'],
-  finanzas: ['analisis financiero', 'gestion de riesgos', 'compliance', 'planeacion estrategica', 'auditoria', 'banca', 'inversiones', 'fintech', 'regulacion'],
-  marketing: ['estrategia digital', 'growth marketing', 'brand management', 'content strategy', 'performance marketing', 'SEO/SEM', 'social media', 'CRM', 'analytics'],
-  salud: ['gestion hospitalaria', 'salud publica', 'investigacion clinica', 'regulacion sanitaria', 'farmacovigilancia', 'atencion al paciente', 'dispositivos medicos', 'telemedicina'],
-  educacion: ['diseno instruccional', 'edtech', 'desarrollo curricular', 'formacion docente', 'e-learning', 'evaluacion educativa', 'gestion academica', 'innovacion pedagogica'],
-  manufactura: ['lean manufacturing', 'supply chain', 'control de calidad', 'mejora continua', 'six sigma', 'gestion de operaciones', 'automatizacion', 'logistica', 'ERP'],
-  ventas: ['desarrollo de negocios', 'gestion comercial', 'negociacion', 'CRM', 'pipeline management', 'key account management', 'estrategia comercial', 'revenue growth'],
-  recursos_humanos: ['talent acquisition', 'desarrollo organizacional', 'compensaciones', 'employer branding', 'people analytics', 'gestion del cambio', 'capacitacion', 'cultura organizacional'],
-  legal: ['derecho corporativo', 'compliance', 'propiedad intelectual', 'litigio', 'contratos', 'gobierno corporativo', 'regulacion', 'due diligence'],
-  otro: ['liderazgo', 'gestion de proyectos', 'pensamiento estrategico', 'comunicacion efectiva', 'trabajo en equipo', 'resolucion de problemas', 'toma de decisiones', 'orientacion a resultados'],
-}
+import CoherenceFlags from './CoherenceFlags'
+import { optimizeProfile } from '../../lib/motorClient'
+import { logOptimization, getMonthlyUsage, monthlyLimitForPlan } from '../../lib/optimizationUsage'
 
 const INDUSTRIES = [
   { value: 'tecnologia', label: 'Tecnologia' },
@@ -39,49 +29,40 @@ const STEPS = [
   { icon: Sparkles, label: 'Generacion' },
 ]
 
-function generateProfile(data) {
-  const { nombre, titulo, industria, experiencia, ubicacion, fortalezas, rolActual, logros, historial, rolObjetivo, industriaObjetivo, salario, conocidoPor } = data
+// Mapea el formulario del wizard al insumo que espera el motor (server Express).
+function buildPayload(data) {
+  const industryLabel = INDUSTRIES.find(i => i.value === data.industria)?.label || data.industria
+  const targetIndustryLabel = INDUSTRIES.find(i => i.value === data.industriaObjetivo)?.label || ''
+  return {
+    nombre: data.nombre,
+    titulo: data.titulo,
+    industria: industryLabel,
+    industriaObjetivo: targetIndustryLabel || industryLabel,
+    ubicacion: data.ubicacion,
+    experiencia: Number(data.experiencia) || undefined, // años declarados (checkpoint de coherencia)
+    fortalezas: data.fortalezas.filter(Boolean),
+    rolActual: data.rolActual,
+    logros: data.logros,
+    historial: data.historial,
+    rolObjetivo: data.rolObjetivo,
+    salario: data.salario,
+    conocidoPor: data.conocidoPor,
+    remoto: true,
+  }
+}
 
-  const industryLabel = INDUSTRIES.find(i => i.value === industria)?.label || industria
-  const targetIndustryLabel = INDUSTRIES.find(i => i.value === industriaObjetivo)?.label || industriaObjetivo || industryLabel
-
-  // Headline
-  const valueProps = fortalezas.filter(Boolean)
-  const headline = `${titulo} | ${valueProps.slice(0, 2).join(' & ')} | ${experiencia}+ anos en ${industryLabel}`
-
-  // About (Acerca de mi)
-  const para1 = `Soy ${nombre}, ${titulo.toLowerCase()} con mas de ${experiencia} anos de experiencia en ${industryLabel.toLowerCase()}. A lo largo de mi carrera, me he especializado en ${valueProps.join(', ').toLowerCase()}, generando impacto tangible en cada organizacion donde he colaborado.`
-
-  const logrosText = logros.trim()
-    ? `Entre mis principales logros destacan: ${logros.trim()}.`
-    : `Me caracterizo por mi capacidad de entregar resultados medibles y superar objetivos.`
-
-  const para2 = `${logrosText} Mi enfoque combina vision estrategica con ejecucion practica, lo que me permite transformar desafios en oportunidades de crecimiento.`
-
-  const futureText = rolObjetivo
-    ? `Actualmente busco una posicion como ${rolObjetivo} en ${targetIndustryLabel.toLowerCase()}, donde pueda aportar mi experiencia en ${valueProps[0]?.toLowerCase() || 'mi area de especialidad'} y seguir creciendo profesionalmente.`
-    : `Estoy abierto a nuevas oportunidades donde pueda seguir aportando valor y creciendo profesionalmente.`
-
-  const knownForText = conocidoPor
-    ? ` Quiero ser reconocido por ${conocidoPor.toLowerCase()}.`
-    : ''
-
-  const para3 = `${futureText}${knownForText} Si buscas un profesional comprometido con la excelencia, conectemos.`
-
-  const acercaDeMi = `${para1}\n\n${para2}\n\n${para3}`
-
-  // Keywords
-  const industryKws = INDUSTRY_KEYWORDS[industria] || INDUSTRY_KEYWORDS.otro
-  const userKws = [...valueProps.map(f => f.toLowerCase()), titulo.toLowerCase()]
-  const allKeywords = [...new Set([...userKws, ...industryKws])].slice(0, 15)
-
-  // Pitch
-  const pitch = `Hola, soy ${nombre}. Soy ${titulo.toLowerCase()} con ${experiencia} anos de experiencia en ${industryLabel.toLowerCase()}. Me especializo en ${valueProps.slice(0, 2).join(' y ').toLowerCase()}, y a lo largo de mi carrera he ${logros.trim() ? logros.split('\n')[0].toLowerCase().replace(/^[-•]\s*/, '') : 'generado resultados significativos para las organizaciones donde he trabajado'}. ${rolObjetivo ? `Actualmente estoy buscando una oportunidad como ${rolObjetivo.toLowerCase()} donde pueda aportar mi experiencia y seguir creciendo.` : 'Estoy explorando nuevas oportunidades donde pueda aportar valor.'} Me encantaria platicarte mas sobre como puedo contribuir a tu equipo.`
-
-  // CV Summary
-  const cvSummary = `${titulo} con ${experiencia}+ anos de experiencia en ${industryLabel.toLowerCase()}. Especialista en ${valueProps.join(', ').toLowerCase()}. ${logros.trim() ? `Logros clave: ${logros.split('\n')[0].replace(/^[-•]\s*/, '')}.` : 'Orientado a resultados con historial comprobado de impacto.'} ${rolObjetivo ? `En busqueda de oportunidades como ${rolObjetivo} en ${targetIndustryLabel.toLowerCase()}.` : ''}`
-
-  return { headline, acercaDeMi, keywords: allKeywords, pitch, cvSummary }
+// Partículas de confetti precalculadas fuera del render (Math.random no es puro).
+const CONFETTI_COLORS = ['#2563EB', '#0D9488', '#F59E0B', '#14B8A6', '#D97706']
+function makeConfetti() {
+  return Array.from({ length: 30 }, (_, i) => ({
+    id: i,
+    left: Math.random() * 100,
+    rotate: Math.random() * 720,
+    x: (Math.random() - 0.5) * 200,
+    duration: 2 + Math.random(),
+    delay: Math.random() * 0.5,
+    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+  }))
 }
 
 // ── Copy button ──
@@ -93,17 +74,21 @@ function CopyButton({ text }) {
     setTimeout(() => setCopied(false), 2000)
   }
   return (
-    <button onClick={handleCopy} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors px-2 py-1 rounded bg-white/5 hover:bg-white/10">
+    <button onClick={handleCopy} className="flex items-center gap-1.5 text-xs text-ink-secondary hover:text-ink transition-colors px-2 py-1 rounded bg-surface-1 hover:bg-white/10">
       {copied ? <><CheckCircle size={12} className="text-accent" /> Copiado</> : <><Copy size={12} /> Copiar</>}
     </button>
   )
 }
 
 export default function PerfilProPage() {
-  const { canDo } = usePlan()
+  const { canDo, currentPlan } = usePlan()
+  const { profile } = useAuth()
   const [step, setStep] = useState(0)
   const [output, setOutput] = useState(null)
-  const [showConfetti, setShowConfetti] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [aboutLang, setAboutLang] = useState('es')
+  const [confetti, setConfetti] = useState([])
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -133,11 +118,38 @@ export default function PerfilProPage() {
     })
   }
 
-  function handleGenerate() {
-    const result = generateProfile(formData)
-    setOutput(result)
-    setShowConfetti(true)
-    setTimeout(() => setShowConfetti(false), 3000)
+  async function handleGenerate() {
+    setError(null)
+    setLoading(true)
+    try {
+      // Límite mensual por plan (los admins lo saltan vía canDo en planContext).
+      const limit = monthlyLimitForPlan(currentPlan)
+      const used = await getMonthlyUsage(profile?.id)
+      if (used >= limit) {
+        setError(`Alcanzaste el límite de tu plan: ${limit} optimizaciones este mes. Mejora tu plan para generar más.`)
+        setLoading(false)
+        return
+      }
+
+      const result = await optimizeProfile(buildPayload(formData))
+      setOutput(result)
+      setAboutLang('es')
+      setConfetti(makeConfetti())
+      setTimeout(() => setConfetti([]), 3000)
+
+      logOptimization({
+        profileId: profile?.id,
+        tipo: 'perfil',
+        costUSD: result?._meta?.costUSD,
+        flagsCount: result?.flags?.length || 0,
+        rolObjetivo: formData.rolObjetivo || null,
+        meta: result?._meta,
+      })
+    } catch (err) {
+      setError(err.message || 'No se pudo generar el perfil. Revisa que el motor esté activo.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   function canAdvance() {
@@ -147,8 +159,8 @@ export default function PerfilProPage() {
     return true
   }
 
-  const inputClass = 'w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-primary-light/50 transition-colors'
-  const labelClass = 'block text-sm font-medium text-gray-300 mb-1.5'
+  const inputClass = 'w-full bg-surface-1 border border-line rounded-lg px-4 py-3 text-ink text-sm placeholder-gray-500 focus:outline-none focus:border-primary-light/50 transition-colors'
+  const labelClass = 'block text-sm font-medium text-ink-secondary mb-1.5'
 
   if (!canDo('use_marca_vende')) {
     return <UpgradePrompt action="use_marca_vende" />
@@ -156,13 +168,13 @@ export default function PerfilProPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <Link to="/dashboard/marca-vende" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors mb-6">
+      <Link to="/dashboard/marca-vende" className="inline-flex items-center gap-2 text-sm text-ink-secondary hover:text-ink transition-colors mb-6">
         <ArrowLeft size={16} /> Tu Marca Vende
       </Link>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <h1 className="text-2xl font-display font-bold text-white mb-1">Perfil Profesional IA</h1>
-        <p className="text-gray-400 mb-8">Genera tu headline, resumen, pitch y palabras clave optimizadas en minutos.</p>
+        <h1 className="text-2xl font-display font-bold text-ink mb-1">Perfil Profesional IA</h1>
+        <p className="text-ink-secondary mb-8">Genera tu headline, About bilingue, experiencia y palabras clave optimizadas para ATS y reclutadores — sin inflar tu historial.</p>
       </motion.div>
 
       {/* Progress Steps */}
@@ -176,7 +188,7 @@ export default function PerfilProPage() {
               <div key={i} className="flex items-center gap-2 flex-1">
                 <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all w-full ${
                   isActive ? 'bg-primary-light/10 text-primary-light border border-primary-light/20' :
-                  isDone ? 'bg-accent/10 text-accent' : 'bg-white/5 text-gray-500'
+                  isDone ? 'bg-accent/10 text-accent' : 'bg-surface-1 text-ink-tertiary'
                 }`}>
                   {isDone ? <Check size={14} /> : <Icon size={14} />}
                   <span className="hidden sm:inline">{s.label}</span>
@@ -283,16 +295,25 @@ export default function PerfilProPage() {
                 <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mx-auto mb-4">
                   <Wand2 size={28} className="text-primary-light" />
                 </div>
-                <h3 className="text-lg font-display font-bold text-white mb-2">Todo listo para generar</h3>
-                <p className="text-sm text-gray-400 mb-6 max-w-md mx-auto">
-                  Con la informacion que proporcionaste, generaremos tu headline, resumen profesional, palabras clave, pitch y resumen para CV.
+                <h3 className="text-lg font-display font-bold text-ink mb-2">Todo listo para generar</h3>
+                <p className="text-sm text-ink-secondary mb-6 max-w-md mx-auto">
+                  Generaremos tu headline (con variantes), About en espanol e ingles, experiencia en formula XYZ,
+                  skills, palabras clave ATS y un checkpoint de honestidad.
                 </p>
+                {error && (
+                  <div className="flex items-start gap-2 text-left text-sm text-red-300 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 mb-5 max-w-md mx-auto">
+                    <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                    <span>{error}</span>
+                  </div>
+                )}
                 <button
                   onClick={handleGenerate}
-                  className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-primary to-accent text-white font-semibold text-sm hover:opacity-90 transition-opacity inline-flex items-center gap-2"
+                  disabled={loading}
+                  className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-primary to-accent text-white font-semibold text-sm hover:opacity-90 transition-opacity inline-flex items-center gap-2 disabled:opacity-60"
                 >
-                  <Sparkles size={18} /> Generar Perfil Optimizado
+                  {loading ? <><Loader2 size={18} className="animate-spin" /> Generando…</> : <><Sparkles size={18} /> Generar Perfil Optimizado</>}
                 </button>
+                {loading && <p className="text-xs text-ink-tertiary mt-3">Esto toma unos segundos (Haiku 4.5 + pulido Sonnet).</p>}
               </div>
             )}
           </AnimatePresence>
@@ -303,22 +324,22 @@ export default function PerfilProPage() {
               <button
                 onClick={() => setStep(s => s - 1)}
                 disabled={step === 0}
-                className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-gray-400"
+                className="flex items-center gap-2 text-sm text-ink-secondary hover:text-ink transition-colors disabled:opacity-30 disabled:hover:text-ink-secondary"
               >
                 <ArrowLeft size={16} /> Anterior
               </button>
               <button
                 onClick={() => setStep(s => s + 1)}
                 disabled={!canAdvance()}
-                className="flex items-center gap-2 text-sm font-semibold text-primary-light hover:text-white transition-colors disabled:opacity-30 disabled:hover:text-primary-light"
+                className="flex items-center gap-2 text-sm font-semibold text-primary-light hover:text-ink transition-colors disabled:opacity-30 disabled:hover:text-primary-light"
               >
                 Siguiente <ArrowRight size={16} />
               </button>
             </div>
           )}
-          {step === 3 && (
+          {step === 3 && !loading && (
             <div className="mt-6 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              <button onClick={() => setStep(2)} className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
+              <button onClick={() => setStep(2)} className="flex items-center gap-2 text-sm text-ink-secondary hover:text-ink transition-colors">
                 <ArrowLeft size={16} /> Anterior
               </button>
             </div>
@@ -331,25 +352,16 @@ export default function PerfilProPage() {
         {output && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
             {/* Confetti-like particles */}
-            {showConfetti && (
+            {confetti.length > 0 && (
               <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
-                {Array.from({ length: 30 }).map((_, i) => (
+                {confetti.map((p) => (
                   <motion.div
-                    key={i}
+                    key={p.id}
                     className="absolute w-2 h-2 rounded-full"
-                    style={{
-                      left: `${Math.random() * 100}%`,
-                      top: -10,
-                      background: ['#2563EB', '#0D9488', '#F59E0B', '#14B8A6', '#D97706'][i % 5],
-                    }}
+                    style={{ left: `${p.left}%`, top: -10, background: p.color }}
                     initial={{ y: -10, opacity: 1, rotate: 0 }}
-                    animate={{
-                      y: window.innerHeight + 20,
-                      opacity: 0,
-                      rotate: Math.random() * 720,
-                      x: (Math.random() - 0.5) * 200,
-                    }}
-                    transition={{ duration: 2 + Math.random(), delay: Math.random() * 0.5, ease: 'easeIn' }}
+                    animate={{ y: window.innerHeight + 20, opacity: 0, rotate: p.rotate, x: p.x }}
+                    transition={{ duration: p.duration, delay: p.delay, ease: 'easeIn' }}
                   />
                 ))}
               </div>
@@ -357,66 +369,180 @@ export default function PerfilProPage() {
 
             <div className="glass rounded-xl p-5 text-center">
               <CheckCircle size={32} className="text-accent mx-auto mb-2" />
-              <h3 className="font-display font-bold text-white">Perfil generado exitosamente</h3>
-              <p className="text-sm text-gray-400 mt-1">Copia cada seccion y pegala en tu LinkedIn o CV.</p>
+              <h3 className="font-display font-bold text-ink">Perfil generado exitosamente</h3>
+              <p className="text-sm text-ink-secondary mt-1">Copia cada seccion y pegala en tu LinkedIn. Revisa primero las alertas de honestidad.</p>
             </div>
+
+            {/* Diagnóstico */}
+            {output.diagnostico && (
+              <div className="glass rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target size={16} className="text-primary-light" />
+                  <h3 className="text-sm font-semibold text-ink">Diagnostico</h3>
+                  {output.diagnostico.nivelEstimado && (
+                    <span className="text-[10px] uppercase tracking-wide text-primary-light bg-primary-light/10 px-2 py-0.5 rounded-full">
+                      Nivel: {output.diagnostico.nivelEstimado}
+                    </span>
+                  )}
+                </div>
+                {output.diagnostico.resumen && <p className="text-sm text-ink-secondary leading-relaxed mb-3">{output.diagnostico.resumen}</p>}
+                {output.diagnostico.huecosKeywords?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-ink-secondary mb-2">Keywords que te faltan vs. el mercado:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {output.diagnostico.huecosKeywords.map((kw, i) => (
+                        <span key={i} className="text-xs bg-amber-500/10 border border-amber-500/20 text-amber-300 px-2.5 py-1 rounded-full">{kw}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Checkpoint de honestidad */}
+            <CoherenceFlags flags={output.flags} />
 
             {/* Headline */}
-            <div className="glass rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-white">Headline optimizado</h3>
-                <CopyButton text={output.headline} />
+            {output.headline && (
+              <div className="glass rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-ink">Headline optimizado</h3>
+                  <CopyButton text={output.headline.recomendado} />
+                </div>
+                <p className="text-base text-primary-light font-medium leading-relaxed mb-3">{output.headline.recomendado}</p>
+                {output.headline.variantes?.length > 0 && (
+                  <div className="space-y-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <p className="text-xs text-ink-secondary">Variantes:</p>
+                    {output.headline.variantes.map((v, i) => (
+                      <div key={i} className="flex items-start justify-between gap-3">
+                        <p className="text-sm text-ink-secondary">{v}</p>
+                        <CopyButton text={v} />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              <p className="text-base text-primary-light font-medium leading-relaxed">{output.headline}</p>
-            </div>
+            )}
 
-            {/* Acerca de mi */}
-            <div className="glass rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-white">Acerca de mi</h3>
-                <CopyButton text={output.acercaDeMi} />
+            {/* About bilingüe */}
+            {output.about && (
+              <div className="glass rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-semibold text-ink">Acerca de (About)</h3>
+                    <div className="flex items-center gap-1 bg-surface-1 rounded-lg p-0.5">
+                      {['es', 'en'].map(lang => (
+                        <button key={lang} onClick={() => setAboutLang(lang)}
+                          className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-md transition-colors ${aboutLang === lang ? 'bg-primary-light/20 text-primary-light' : 'text-ink-secondary hover:text-white'}`}>
+                          <Languages size={11} /> {lang.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <CopyButton text={output.about[aboutLang] || ''} />
+                </div>
+                <div className="text-sm text-ink-secondary leading-relaxed whitespace-pre-line">{output.about[aboutLang]}</div>
               </div>
-              <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-line">{output.acercaDeMi}</div>
-            </div>
+            )}
 
-            {/* Keywords */}
-            <div className="glass rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-white">Palabras clave</h3>
-                <CopyButton text={output.keywords.join(', ')} />
+            {/* Experiencia XYZ */}
+            {output.experiencia?.length > 0 && (
+              <div className="glass rounded-xl p-5">
+                <h3 className="text-sm font-semibold text-ink mb-3">Experiencia (formula XYZ · {aboutLang.toUpperCase()})</h3>
+                <div className="space-y-4">
+                  {output.experiencia.map((exp, i) => {
+                    const vinetas = (aboutLang === 'en' ? exp.vinetas_en : exp.vinetas_es) || exp.vinetas_es || exp.vinetas || []
+                    return (
+                      <div key={i} className="pl-3" style={{ borderLeft: '2px solid rgba(99,102,241,0.3)' }}>
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <p className="text-sm font-medium text-ink">{exp.puesto}{exp.empresa ? ` · ${exp.empresa}` : ''}</p>
+                          <CopyButton text={vinetas.join('\n')} />
+                        </div>
+                        <ul className="space-y-1.5">
+                          {vinetas.map((v, j) => (
+                            <li key={j} className="text-sm text-ink-secondary leading-relaxed flex gap-2">
+                              <span className="text-primary-light mt-1">•</span><span>{v}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {output.keywords.map((kw, i) => (
-                  <span key={i} className="text-xs bg-white/5 border border-white/10 text-gray-300 px-3 py-1.5 rounded-full">{kw}</span>
+            )}
+
+            {/* Skills */}
+            {output.skills && (
+              <div className="glass rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-ink">Skills</h3>
+                  <CopyButton text={(output.skills.todas || []).join(', ')} />
+                </div>
+                {output.skills.fijar?.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs text-ink-secondary mb-2">Fija estas 3 en LinkedIn (mayor peso):</p>
+                    <div className="flex flex-wrap gap-2">
+                      {output.skills.fijar.map((s, i) => (
+                        <span key={i} className="text-xs bg-accent/10 border border-accent/30 text-accent px-3 py-1.5 rounded-full font-medium">★ {s}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {(output.skills.todas || []).map((s, i) => (
+                    <span key={i} className="text-xs bg-surface-1 border border-line text-ink-secondary px-3 py-1.5 rounded-full">{s}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Keywords ATS */}
+            {output.keywords && (
+              <div className="glass rounded-xl p-5">
+                <h3 className="text-sm font-semibold text-ink mb-3">Palabras clave ATS</h3>
+                {output.keywords.porCategoria && Object.entries(output.keywords.porCategoria).map(([cat, kws]) => (
+                  <div key={cat} className="mb-3">
+                    <p className="text-xs text-ink-secondary mb-1.5 capitalize">{cat}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(kws || []).map((kw, i) => (
+                        <span key={i} className="text-xs bg-surface-1 border border-line text-ink-secondary px-2.5 py-1 rounded-full">{kw}</span>
+                      ))}
+                    </div>
+                  </div>
                 ))}
+                {output.keywords.nicho?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-ink-secondary mb-1.5">Nicho</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {output.keywords.nicho.map((kw, i) => (
+                        <span key={i} className="text-xs bg-primary-light/10 border border-primary-light/20 text-primary-light px-2.5 py-1 rounded-full">{kw}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
-            {/* Pitch */}
-            <div className="glass rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-white">Pitch profesional (30 segundos)</h3>
-                <CopyButton text={output.pitch} />
-              </div>
-              <p className="text-sm text-gray-300 leading-relaxed italic">"{output.pitch}"</p>
-            </div>
+            {/* Meta / costo */}
+            {output._meta && (
+              <p className="text-center text-xs text-ink-tertiary">
+                Generado con {output._meta.engine} · costo ≈ ${output._meta.costUSD}
+              </p>
+            )}
 
-            {/* CV Summary */}
-            <div className="glass rounded-xl p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-white">Resumen para CV</h3>
-                <CopyButton text={output.cvSummary} />
-              </div>
-              <p className="text-sm text-gray-300 leading-relaxed">{output.cvSummary}</p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link to="/dashboard/marca-vende/cv"
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-primary/80 to-accent/80 text-white text-sm font-semibold hover:opacity-90 transition-opacity inline-flex items-center justify-center gap-2">
+                <FileText size={16} /> Optimizar mi CV
+              </Link>
+              <button
+                onClick={() => { setOutput(null); setStep(0); setError(null) }}
+                className="flex-1 py-3 rounded-xl border border-line text-sm text-ink-secondary hover:text-ink hover:bg-white/5 transition-all"
+              >
+                Generar otro perfil
+              </button>
             </div>
-
-            {/* Start over */}
-            <button
-              onClick={() => { setOutput(null); setStep(0) }}
-              className="w-full py-3 rounded-xl border border-white/10 text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all"
-            >
-              Generar otro perfil
-            </button>
           </motion.div>
         )}
       </AnimatePresence>

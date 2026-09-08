@@ -21,7 +21,7 @@ function MatchBar({ score }) {
   const barColor = pct >= 80 ? 'bg-green-400' : pct >= 60 ? 'bg-gold' : 'bg-accent-light'
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-2 rounded-full bg-white/5 overflow-hidden">
+      <div className="flex-1 h-2 rounded-full bg-surface-1 overflow-hidden">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
@@ -29,7 +29,7 @@ function MatchBar({ score }) {
           className={`h-full rounded-full ${barColor}`}
         />
       </div>
-      <span className="text-xs font-bold text-gray-300 w-10 text-right">{pct}%</span>
+      <span className="text-xs font-bold text-ink-secondary w-10 text-right">{pct}%</span>
     </div>
   )
 }
@@ -53,8 +53,8 @@ function CandidateCard({ candidate, tier, index }) {
               {candidate.name?.[0]?.toUpperCase()}
             </div>
             <div>
-              <h3 className="font-display font-bold text-white text-sm">{candidate.name}</h3>
-              <p className="text-xs text-gray-400">{candidate.title}</p>
+              <h3 className="font-display font-bold text-ink text-sm">{candidate.name}</h3>
+              <p className="text-xs text-ink-secondary">{candidate.title}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -68,7 +68,7 @@ function CandidateCard({ candidate, tier, index }) {
               <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                 candidate.interest_status === 'interested' ? 'bg-green-500/10 text-green-400'
                 : candidate.interest_status === 'pending' ? 'bg-gold/10 text-gold'
-                : 'bg-gray-500/10 text-gray-400'
+                : 'bg-gray-500/10 text-ink-secondary'
               }`}>
                 {candidate.interest_status === 'interested' ? 'Interesado'
                  : candidate.interest_status === 'pending' ? 'Pendiente'
@@ -78,7 +78,7 @@ function CandidateCard({ candidate, tier, index }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
+        <div className="flex items-center gap-3 text-xs text-ink-tertiary mb-3">
           {candidate.company && (
             <span className="flex items-center gap-1">
               <Building2 size={12} />
@@ -100,24 +100,24 @@ function CandidateCard({ candidate, tier, index }) {
         )}
 
         {/* Ficha resumida - all tiers */}
-        <p className="text-sm text-gray-300 leading-relaxed mb-3">{candidate.summary}</p>
+        <p className="text-sm text-ink-secondary leading-relaxed mb-3">{candidate.summary}</p>
 
         {/* Basic recommendation - light */}
         {candidate.recommendation && (
-          <div className="bg-white/[0.03] rounded-lg p-3 mb-3 border border-white/5">
-            <p className="text-xs font-medium text-gray-400 mb-1">Recomendacion</p>
-            <p className="text-sm text-gray-300">{candidate.recommendation}</p>
+          <div className="bg-surface-1 rounded-lg p-3 mb-3 border border-line">
+            <p className="text-xs font-medium text-ink-secondary mb-1">Recomendacion</p>
+            <p className="text-sm text-ink-secondary">{candidate.recommendation}</p>
           </div>
         )}
 
         {/* Pro: qualitative comments */}
         {isPro && candidate.qualitative_comments && (
-          <div className="bg-white/[0.03] rounded-lg p-3 mb-3 border border-white/5">
-            <p className="text-xs font-medium text-gray-400 mb-1 flex items-center gap-1">
+          <div className="bg-surface-1 rounded-lg p-3 mb-3 border border-line">
+            <p className="text-xs font-medium text-ink-secondary mb-1 flex items-center gap-1">
               <MessageSquare size={12} />
               Comentarios cualitativos
             </p>
-            <p className="text-sm text-gray-300">{candidate.qualitative_comments}</p>
+            <p className="text-sm text-ink-secondary">{candidate.qualitative_comments}</p>
           </div>
         )}
 
@@ -125,7 +125,7 @@ function CandidateCard({ candidate, tier, index }) {
         {isPro && candidate.suggested_message && (
           <div className="bg-primary/5 rounded-lg p-3 mb-3 border border-primary/10">
             <p className="text-xs font-medium text-primary-light mb-1">Mensaje sugerido</p>
-            <p className="text-sm text-gray-300 italic">"{candidate.suggested_message}"</p>
+            <p className="text-sm text-ink-secondary italic">"{candidate.suggested_message}"</p>
           </div>
         )}
 
@@ -136,14 +136,14 @@ function CandidateCard({ candidate, tier, index }) {
               <CalendarClock size={12} />
               Agenda sugerida de entrevista
             </p>
-            <p className="text-sm text-gray-300">{candidate.suggested_agenda}</p>
+            <p className="text-sm text-ink-secondary">{candidate.suggested_agenda}</p>
           </div>
         )}
 
         {/* Expandable full ficha */}
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-1 text-xs font-medium text-primary-light hover:text-white transition-colors mt-1"
+          className="flex items-center gap-1 text-xs font-medium text-primary-light hover:text-ink transition-colors mt-1"
         >
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           {expanded ? 'Ocultar ficha completa' : 'Ver ficha completa'}
@@ -158,33 +158,33 @@ function CandidateCard({ candidate, tier, index }) {
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="mt-3 pt-3 border-t border-white/5 space-y-2">
+              <div className="mt-3 pt-3 border-t border-line space-y-2">
                 {candidate.experience && (
                   <div>
-                    <p className="text-xs font-medium text-gray-400">Experiencia</p>
-                    <p className="text-sm text-gray-300">{candidate.experience}</p>
+                    <p className="text-xs font-medium text-ink-secondary">Experiencia</p>
+                    <p className="text-sm text-ink-secondary">{candidate.experience}</p>
                   </div>
                 )}
                 {candidate.education && (
                   <div>
-                    <p className="text-xs font-medium text-gray-400">Educacion</p>
-                    <p className="text-sm text-gray-300">{candidate.education}</p>
+                    <p className="text-xs font-medium text-ink-secondary">Educacion</p>
+                    <p className="text-sm text-ink-secondary">{candidate.education}</p>
                   </div>
                 )}
                 {candidate.skills?.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-gray-400 mb-1">Skills</p>
+                    <p className="text-xs font-medium text-ink-secondary mb-1">Skills</p>
                     <div className="flex flex-wrap gap-1">
                       {candidate.skills.map(s => (
-                        <span key={s} className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-gray-300">{s}</span>
+                        <span key={s} className="text-xs px-2 py-0.5 rounded-full bg-surface-1 text-ink-secondary">{s}</span>
                       ))}
                     </div>
                   </div>
                 )}
                 {candidate.location && (
                   <div>
-                    <p className="text-xs font-medium text-gray-400">Ubicacion</p>
-                    <p className="text-sm text-gray-300">{candidate.location}</p>
+                    <p className="text-xs font-medium text-ink-secondary">Ubicacion</p>
+                    <p className="text-sm text-ink-secondary">{candidate.location}</p>
                   </div>
                 )}
               </div>
@@ -193,8 +193,8 @@ function CandidateCard({ candidate, tier, index }) {
         </AnimatePresence>
       </div>
 
-      <div className="px-5 py-3 border-t border-white/5 flex items-center justify-end">
-        <button className="flex items-center gap-1.5 text-xs font-medium text-primary-light hover:text-white transition-colors">
+      <div className="px-5 py-3 border-t border-line flex items-center justify-end">
+        <button className="flex items-center gap-1.5 text-xs font-medium text-primary-light hover:text-ink transition-colors">
           <Plus size={14} />
           Agregar a banco
         </button>
@@ -244,12 +244,12 @@ export default function TalentDeskDelivery() {
   if (!delivery) {
     return (
       <div className="text-center py-16">
-        <Package size={48} className="text-gray-600 mx-auto mb-4" />
-        <h2 className="text-lg font-display font-bold text-white mb-2">Sin entrega disponible</h2>
-        <p className="text-gray-400 text-sm mb-6">Aun no hay resultados de Talent Desk para esta vacante.</p>
+        <Package size={48} className="text-ink-tertiary mx-auto mb-4" />
+        <h2 className="text-lg font-display font-bold text-ink mb-2">Sin entrega disponible</h2>
+        <p className="text-ink-secondary text-sm mb-6">Aun no hay resultados de Talent Desk para esta vacante.</p>
         <Link
           to="/dashboard/talent-desk"
-          className="inline-flex items-center gap-2 text-sm font-medium text-primary-light hover:text-white transition-colors"
+          className="inline-flex items-center gap-2 text-sm font-medium text-primary-light hover:text-ink transition-colors"
         >
           <ArrowLeft size={16} />
           Volver a Talent Desk
@@ -272,7 +272,7 @@ export default function TalentDeskDelivery() {
       >
         <Link
           to="/dashboard/talent-desk"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors mb-4"
+          className="inline-flex items-center gap-1.5 text-sm text-ink-secondary hover:text-ink transition-colors mb-4"
         >
           <ArrowLeft size={16} />
           Talent Desk
@@ -281,14 +281,14 @@ export default function TalentDeskDelivery() {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-2xl font-display font-bold text-white">
+              <h1 className="text-2xl font-display font-bold text-ink">
                 {vacancy?.title || 'Vacante'}
               </h1>
               <span className={`text-xs font-bold px-3 py-1 rounded-full ${tc.bg} ${tc.color}`}>
                 {tc.label}
               </span>
             </div>
-            <p className="text-gray-400 text-sm">
+            <p className="text-ink-secondary text-sm">
               {candidates.length} candidato{candidates.length !== 1 ? 's' : ''} entregados
             </p>
           </div>
@@ -314,21 +314,21 @@ export default function TalentDeskDelivery() {
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center">
                 <FileText size={20} className="text-primary-light" />
               </div>
-              <h2 className="text-lg font-display font-bold text-white">Reporte Ejecutivo</h2>
+              <h2 className="text-lg font-display font-bold text-ink">Reporte Ejecutivo</h2>
             </div>
             {delivery.report_url && (
               <a
                 href={delivery.report_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm font-medium text-white transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-surface-1 hover:bg-white/10 border border-line rounded-lg text-sm font-medium text-ink transition-colors"
               >
                 <Download size={16} />
                 Descargar reporte
               </a>
             )}
           </div>
-          <p className="text-sm text-gray-300 leading-relaxed">{delivery.executive_summary}</p>
+          <p className="text-sm text-ink-secondary leading-relaxed">{delivery.executive_summary}</p>
         </motion.div>
       )}
     </div>

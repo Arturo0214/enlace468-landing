@@ -214,16 +214,16 @@ export default function PromptsGenerator() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <Link to="/dashboard/recruiter-tools" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors mb-4">
+        <Link to="/dashboard/recruiter-tools" className="inline-flex items-center gap-1 text-sm text-ink-secondary hover:text-ink transition-colors mb-4">
           <ChevronLeft size={16} /> Recruiter Pro Tools
         </Link>
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center">
             <Wand2 size={20} className="text-primary-light" />
           </div>
-          <h1 className="text-2xl font-display font-bold text-white">Generador de Prompts IA</h1>
+          <h1 className="text-2xl font-display font-bold text-ink">Generador de Prompts IA</h1>
         </div>
-        <p className="text-gray-400 mt-1 max-w-2xl">
+        <p className="text-ink-secondary mt-1 max-w-2xl">
           Selecciona una categoria y plantilla, completa los campos y genera un prompt listo para usar con ChatGPT, Claude o cualquier IA.
         </p>
       </motion.div>
@@ -238,11 +238,11 @@ export default function PromptsGenerator() {
         >
           {/* Category selector */}
           <div className="glass rounded-xl p-4">
-            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 block">Categoria</label>
+            <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider mb-2 block">Categoria</label>
             <div className="relative">
               <button
                 onClick={() => setCategoryOpen(!categoryOpen)}
-                className="w-full flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white hover:border-white/20 transition-colors"
+                className="w-full flex items-center justify-between bg-surface-1 border border-line rounded-lg px-3 py-2.5 text-sm text-ink hover:border-line-strong transition-colors"
               >
                 <span>{category.label} - {category.description}</span>
                 <ChevronDown size={16} className={`transition-transform ${categoryOpen ? 'rotate-180' : ''}`} />
@@ -253,7 +253,7 @@ export default function PromptsGenerator() {
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
-                    className="absolute z-10 w-full mt-1 glass-strong rounded-lg border border-white/10 overflow-hidden"
+                    className="absolute z-10 w-full mt-1 glass-strong rounded-lg border border-line overflow-hidden"
                   >
                     {categories.map(c => (
                       <button
@@ -262,11 +262,11 @@ export default function PromptsGenerator() {
                         className={`w-full text-left px-3 py-2.5 text-sm transition-colors ${
                           c.key === selectedCategory
                             ? 'bg-primary/10 text-primary-light'
-                            : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                            : 'text-ink-secondary hover:bg-white/5 hover:text-ink'
                         }`}
                       >
                         <span className="font-medium">{c.label}</span>
-                        <span className="text-gray-500 ml-2">- {c.description}</span>
+                        <span className="text-ink-tertiary ml-2">- {c.description}</span>
                       </button>
                     ))}
                   </motion.div>
@@ -277,7 +277,7 @@ export default function PromptsGenerator() {
 
           {/* Template list */}
           <div className="glass rounded-xl p-4">
-            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 block">Plantillas</label>
+            <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider mb-3 block">Plantillas</label>
             <div className="space-y-2">
               {category.templates.map((t, idx) => (
                 <button
@@ -286,7 +286,7 @@ export default function PromptsGenerator() {
                   className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all ${
                     idx === selectedTemplate
                       ? 'bg-primary/10 text-primary-light border border-primary-light/20'
-                      : 'text-gray-300 hover:bg-white/5 hover:text-white border border-transparent'
+                      : 'text-ink-secondary hover:bg-white/5 hover:text-ink border border-transparent'
                   }`}
                 >
                   {t.name}
@@ -305,8 +305,8 @@ export default function PromptsGenerator() {
         >
           {/* Template preview */}
           <div className="glass rounded-xl p-4">
-            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 block">Plantilla</label>
-            <p className="text-sm text-gray-300 leading-relaxed bg-white/5 rounded-lg p-3 border border-white/10">
+            <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider mb-2 block">Plantilla</label>
+            <p className="text-sm text-ink-secondary leading-relaxed bg-surface-1 rounded-lg p-3 border border-line">
               {template.template.split(/(\{[^}]+\})/).map((part, i) =>
                 part.startsWith('{') ? (
                   <span key={i} className="text-primary-light font-medium">{part}</span>
@@ -319,18 +319,18 @@ export default function PromptsGenerator() {
 
           {/* Input fields */}
           <div className="glass rounded-xl p-4">
-            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 block">Completa los campos</label>
+            <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider mb-3 block">Completa los campos</label>
             <div className="space-y-3">
               {template.fields.map(f => (
                 <div key={f.key}>
-                  <label className="text-xs text-gray-400 mb-1 block">{f.label}</label>
+                  <label className="text-xs text-ink-secondary mb-1 block">{f.label}</label>
                   {f.placeholder && f.placeholder.length > 60 ? (
                     <textarea
                       rows={3}
                       value={fieldValues[f.key] || ''}
                       onChange={e => handleFieldChange(f.key, e.target.value)}
                       placeholder={f.placeholder}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-primary-light/30 focus:outline-none focus:ring-1 focus:ring-primary-light/20 transition-colors resize-none"
+                      className="w-full bg-surface-1 border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary-light/30 focus:outline-none focus:ring-1 focus:ring-primary-light/20 transition-colors resize-none"
                     />
                   ) : (
                     <input
@@ -338,7 +338,7 @@ export default function PromptsGenerator() {
                       value={fieldValues[f.key] || ''}
                       onChange={e => handleFieldChange(f.key, e.target.value)}
                       placeholder={f.placeholder}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-primary-light/30 focus:outline-none focus:ring-1 focus:ring-primary-light/20 transition-colors"
+                      className="w-full bg-surface-1 border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary-light/30 focus:outline-none focus:ring-1 focus:ring-primary-light/20 transition-colors"
                     />
                   )}
                 </div>
@@ -363,7 +363,7 @@ export default function PromptsGenerator() {
                 className="glass-strong rounded-xl p-4"
               >
                 <div className="flex items-center justify-between mb-3">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Prompt generado</label>
+                  <label className="text-xs font-semibold text-ink-secondary uppercase tracking-wider">Prompt generado</label>
                   <button
                     onClick={handleCopy}
                     className="flex items-center gap-1.5 text-xs font-medium text-primary-light hover:text-white transition-colors bg-primary/10 px-3 py-1.5 rounded-lg"
@@ -372,7 +372,7 @@ export default function PromptsGenerator() {
                     {copied ? 'Copiado' : 'Copiar'}
                   </button>
                 </div>
-                <div className="bg-black/30 rounded-lg p-4 border border-white/10">
+                <div className="bg-black/30 rounded-lg p-4 border border-line">
                   <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap font-mono">
                     {generatedPrompt}
                   </p>

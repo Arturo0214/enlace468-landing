@@ -72,9 +72,9 @@ export default function TalentDeskDashboard() {
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500/20 to-primary/10 flex items-center justify-center">
             <Package size={20} className="text-purple-400" />
           </div>
-          <h1 className="text-2xl font-display font-bold text-white">Talent Desk by Enlace 468</h1>
+          <h1 className="text-2xl font-display font-bold text-ink">Talent Desk by Enlace 468</h1>
         </div>
-        <p className="text-gray-400 mt-1 max-w-2xl">
+        <p className="text-ink-secondary mt-1 max-w-2xl">
           Candidatos mapeados, filtrados y rankeados para tu vacante
         </p>
       </motion.div>
@@ -110,15 +110,15 @@ export default function TalentDeskDashboard() {
               </span>
             </div>
 
-            <h2 className="text-lg font-display font-bold text-white mb-1">{tier.name}</h2>
+            <h2 className="text-lg font-display font-bold text-ink mb-1">{tier.name}</h2>
             <div className="mb-5">
-              <span className="text-3xl font-display font-bold text-white">{formatPrice(tier.price)}</span>
-              <span className="text-sm text-gray-500 ml-1">MXN / vacante</span>
+              <span className="text-3xl font-display font-bold text-ink">{formatPrice(tier.price)}</span>
+              <span className="text-sm text-ink-tertiary ml-1">MXN / vacante</span>
             </div>
 
             <ul className="space-y-2.5 mb-6">
               {tier.features.map((feat) => (
-                <li key={feat} className="flex items-start gap-2 text-sm text-gray-300">
+                <li key={feat} className="flex items-start gap-2 text-sm text-ink-secondary">
                   <CheckCircle size={16} className={`${tier.iconColor} flex-shrink-0 mt-0.5`} />
                   {feat}
                 </li>
@@ -130,7 +130,7 @@ export default function TalentDeskDashboard() {
               className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 tier.popular
                   ? 'bg-gradient-to-r from-primary to-primary-light text-white hover:opacity-90'
-                  : 'bg-white/5 text-white hover:bg-white/10 border border-white/10'
+                  : 'bg-surface-1 text-ink hover:bg-white/10 border border-line'
               }`}
             >
               Solicitar Talent Desk

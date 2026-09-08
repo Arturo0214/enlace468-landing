@@ -114,8 +114,8 @@ export default function TalentDeskRequest({ tier, onClose }) {
               <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle size={32} className="text-green-400" />
               </div>
-              <h2 className="text-xl font-display font-bold text-white mb-2">Solicitud recibida</h2>
-              <p className="text-gray-400 mb-6">
+              <h2 className="text-xl font-display font-bold text-ink mb-2">Solicitud recibida</h2>
+              <p className="text-ink-secondary mb-6">
                 Te contactaremos en 24 horas para comenzar con tu Talent Desk {tier.name}.
               </p>
               <button
@@ -127,17 +127,17 @@ export default function TalentDeskRequest({ tier, onClose }) {
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-between p-5 border-b border-white/5">
+              <div className="flex items-center justify-between p-5 border-b border-line">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-purple-500/20 flex items-center justify-center">
                     <Package size={18} className="text-purple-400" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-display font-bold text-white">Solicitar Talent Desk</h2>
-                    <p className="text-xs text-gray-500">Plan {tier.name} - ${tier.price.toLocaleString()} MXN</p>
+                    <h2 className="text-lg font-display font-bold text-ink">Solicitar Talent Desk</h2>
+                    <p className="text-xs text-ink-tertiary">Plan {tier.name} - ${tier.price.toLocaleString()} MXN</p>
                   </div>
                 </div>
-                <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-gray-500 hover:text-white transition-colors">
+                <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/5 text-ink-tertiary hover:text-ink transition-colors">
                   <X size={18} />
                 </button>
               </div>
@@ -145,13 +145,13 @@ export default function TalentDeskRequest({ tier, onClose }) {
               <form onSubmit={handleSubmit} className="p-5 space-y-4">
                 {/* Vacancy selector */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Vacante</label>
+                  <label className="block text-sm font-medium text-ink-secondary mb-1.5">Vacante</label>
                   <select
                     name="vacancy_id"
                     value={form.vacancy_id}
                     onChange={handleChange}
                     required
-                    className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-primary-light/50 transition-colors"
+                    className="w-full px-3 py-2.5 rounded-lg bg-surface-1 border border-line text-ink text-sm focus:outline-none focus:border-primary-light/50 transition-colors"
                   >
                     <option value="" className="bg-[#0F1729]">Selecciona una vacante</option>
                     {vacancies.map(v => (
@@ -163,7 +163,7 @@ export default function TalentDeskRequest({ tier, onClose }) {
 
                 {/* Urgency */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Urgencia</label>
+                  <label className="block text-sm font-medium text-ink-secondary mb-1.5">Urgencia</label>
                   <div className="grid grid-cols-3 gap-2">
                     {urgencyOptions.map(opt => (
                       <button
@@ -173,7 +173,7 @@ export default function TalentDeskRequest({ tier, onClose }) {
                         className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
                           form.urgency === opt.value
                             ? 'border-primary-light/50 bg-primary/10 text-primary-light'
-                            : 'border-white/10 bg-white/5 text-gray-400 hover:bg-white/10'
+                            : 'border-line bg-surface-1 text-ink-secondary hover:bg-white/10'
                         }`}
                       >
                         {opt.label}
@@ -184,7 +184,7 @@ export default function TalentDeskRequest({ tier, onClose }) {
 
                 {/* Contact preference */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Contacto preferido</label>
+                  <label className="block text-sm font-medium text-ink-secondary mb-1.5">Contacto preferido</label>
                   <div className="grid grid-cols-3 gap-2">
                     {contactOptions.map(opt => (
                       <button
@@ -194,7 +194,7 @@ export default function TalentDeskRequest({ tier, onClose }) {
                         className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
                           form.contact_preference === opt.value
                             ? 'border-primary-light/50 bg-primary/10 text-primary-light'
-                            : 'border-white/10 bg-white/5 text-gray-400 hover:bg-white/10'
+                            : 'border-line bg-surface-1 text-ink-secondary hover:bg-white/10'
                         }`}
                       >
                         {opt.label}
@@ -205,14 +205,14 @@ export default function TalentDeskRequest({ tier, onClose }) {
 
                 {/* Notes */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1.5">Notas adicionales</label>
+                  <label className="block text-sm font-medium text-ink-secondary mb-1.5">Notas adicionales</label>
                   <textarea
                     name="notes"
                     value={form.notes}
                     onChange={handleChange}
                     rows={3}
                     placeholder="Detalles del perfil, industria, seniority, ubicacion..."
-                    className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-primary-light/50 transition-colors resize-none"
+                    className="w-full px-3 py-2.5 rounded-lg bg-surface-1 border border-line text-ink text-sm placeholder-gray-600 focus:outline-none focus:border-primary-light/50 transition-colors resize-none"
                   />
                 </div>
 

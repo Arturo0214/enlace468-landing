@@ -111,23 +111,23 @@ export default function LiveSessionsPage() {
   return (
     <div>
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <Link to="/dashboard/academy" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors mb-4">
+        <Link to="/dashboard/academy" className="inline-flex items-center gap-1 text-sm text-ink-secondary hover:text-ink transition-colors mb-4">
           <ChevronLeft size={16} /> Academy
         </Link>
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-red-500/20 to-orange-500/10 flex items-center justify-center">
             <Video size={20} className="text-red-400" />
           </div>
-          <h1 className="text-2xl font-display font-bold text-white">Sesiones en Vivo</h1>
+          <h1 className="text-2xl font-display font-bold text-ink">Sesiones en Vivo</h1>
           <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-500/10 text-purple-400">Pro</span>
         </div>
-        <p className="text-gray-400 mt-1 max-w-2xl">
+        <p className="text-ink-secondary mt-1 max-w-2xl">
           Sesiones en vivo con expertos en reclutamiento e IA. Aprende estrategias practicas, haz preguntas en tiempo real y accede a las grabaciones.
         </p>
       </motion.div>
 
       {/* Upcoming Sessions */}
-      <h2 className="text-lg font-display font-semibold text-white mb-4 flex items-center gap-2">
+      <h2 className="text-lg font-display font-semibold text-ink mb-4 flex items-center gap-2">
         <Calendar size={18} className="text-primary-light" />
         Proximas sesiones
       </h2>
@@ -149,15 +149,15 @@ export default function LiveSessionsPage() {
                 className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all ${
                   reminders[session.id]
                     ? 'bg-emerald-500/10 text-emerald-400'
-                    : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                    : 'bg-surface-1 text-ink-secondary hover:bg-white/10 hover:text-ink'
                 }`}
               >
                 {reminders[session.id] ? <><BellRing size={14} /> Recordatorio activo</> : <><Bell size={14} /> Agendar recordatorio</>}
               </button>
             </div>
 
-            <h3 className="text-base font-display font-bold text-white mb-2">{session.title}</h3>
-            <p className="text-sm text-gray-400 mb-4 leading-relaxed flex-1">{session.description}</p>
+            <h3 className="text-base font-display font-bold text-ink mb-2">{session.title}</h3>
+            <p className="text-sm text-ink-secondary mb-4 leading-relaxed flex-1">{session.description}</p>
 
             <div className="flex flex-wrap gap-2 mb-4">
               {session.topics.map((topic, ti) => (
@@ -167,7 +167,7 @@ export default function LiveSessionsPage() {
               ))}
             </div>
 
-            <div className="flex items-center gap-4 text-xs text-gray-400 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="flex items-center gap-4 text-xs text-ink-secondary pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               <span className="flex items-center gap-1"><User size={12} /> {session.speaker}</span>
               <span className="flex items-center gap-1"><Calendar size={12} /> {formatDate(session.date)}</span>
               <span className="flex items-center gap-1"><Clock size={12} /> {session.time} hrs ({session.duration})</span>
@@ -177,7 +177,7 @@ export default function LiveSessionsPage() {
       </div>
 
       {/* Past Sessions */}
-      <h2 className="text-lg font-display font-semibold text-white mb-4 flex items-center gap-2">
+      <h2 className="text-lg font-display font-semibold text-ink mb-4 flex items-center gap-2">
         <CheckCircle size={18} className="text-emerald-400" />
         Sesiones pasadas
       </h2>
@@ -191,12 +191,12 @@ export default function LiveSessionsPage() {
             className="glass rounded-xl p-4 flex items-center justify-between flex-wrap gap-3"
           >
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-gray-500">
+              <div className="w-10 h-10 rounded-lg bg-surface-1 flex items-center justify-center text-ink-tertiary">
                 <Play size={18} />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-white">{session.title}</h3>
-                <div className="flex items-center gap-3 text-xs text-gray-400 mt-0.5">
+                <h3 className="text-sm font-semibold text-ink">{session.title}</h3>
+                <div className="flex items-center gap-3 text-xs text-ink-secondary mt-0.5">
                   <span>{session.speaker}</span>
                   <span>{formatDate(session.date)}</span>
                   <span>{session.duration}</span>

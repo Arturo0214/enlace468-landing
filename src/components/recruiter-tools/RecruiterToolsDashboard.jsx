@@ -82,11 +82,11 @@ function HeroBanner() {
         <div className="flex-1 max-w-2xl">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-light to-accent flex items-center justify-center shadow-lg shadow-primary-light/20">
-              <GraduationCap size={16} className="text-white" />
+              <GraduationCap size={16} className="text-ink" />
             </div>
             <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Curso de IA Avanzado para Especialistas de TA</span>
           </div>
-          <h1 className="font-display font-extrabold text-white mb-3" style={{ fontSize: 'clamp(2.2rem, 4.5vw, 3.2rem)', lineHeight: 1.05 }}>
+          <h1 className="font-display font-extrabold text-ink mb-3" style={{ fontSize: 'clamp(2.2rem, 4.5vw, 3.2rem)', lineHeight: 1.05 }}>
             Recruiting{' '}
             <span className="relative inline-block">
               <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #60A5FA, #2DD4BF, #FBBF24)', backgroundSize: '200% 200%', animation: 'gradient-shift 4s ease infinite' }}>Lab</span>
@@ -102,7 +102,7 @@ function HeroBanner() {
               { icon: BookOpen, text: '6 módulos', color: 'text-primary-light' },
               { icon: Users, text: 'Intermedio-avanzado', color: 'text-gold' },
             ].map((t, i) => (
-              <span key={i} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white font-medium" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
+              <span key={i} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-ink font-medium" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <t.icon size={12} className={t.color} /> {t.text}
               </span>
             ))}
@@ -140,7 +140,7 @@ export default function RecruiterToolsDashboard() {
 
       {/* Course Modules */}
       <div className="mb-10">
-        <h2 className="font-display font-bold text-lg text-white mb-4">Módulos del programa</h2>
+        <h2 className="font-display font-bold text-lg text-ink mb-4">Módulos del programa</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {modules.map((mod, i) => (
             <motion.div key={mod.number} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
@@ -149,9 +149,9 @@ export default function RecruiterToolsDashboard() {
                 <span className="text-xs font-bold gradient-text">{mod.number}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-white mb-0.5">{mod.title}</h3>
-                <p className="text-xs text-gray-400 leading-relaxed mb-1.5">{mod.desc}</p>
-                <span className="text-[10px] text-gray-500 flex items-center gap-1"><Clock size={9} /> {mod.duration}</span>
+                <h3 className="text-sm font-semibold text-ink mb-0.5">{mod.title}</h3>
+                <p className="text-xs text-ink-secondary leading-relaxed mb-1.5">{mod.desc}</p>
+                <span className="text-[10px] text-ink-tertiary flex items-center gap-1"><Clock size={9} /> {mod.duration}</span>
               </div>
             </motion.div>
           ))}
@@ -161,7 +161,7 @@ export default function RecruiterToolsDashboard() {
       {/* Tools included */}
       <div>
         <div className="flex items-center gap-2 mb-4">
-          <h2 className="font-display font-bold text-lg text-white">Herramientas adicionales: <span className="gradient-text">TalentFlix</span><sup className="text-[9px] text-accent font-bold ml-0.5">®</sup></h2>
+          <h2 className="font-display font-bold text-lg text-ink">Herramientas adicionales: <span className="gradient-text">TalentFlix</span><sup className="text-[9px] text-accent font-bold ml-0.5">®</sup></h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {tools.map((tool, i) => {
@@ -172,8 +172,8 @@ export default function RecruiterToolsDashboard() {
                   <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${tool.gradient} flex items-center justify-center ${tool.iconColor} group-hover:scale-110 transition-transform mb-3`}>
                     <Icon size={20} />
                   </div>
-                  <h3 className="text-sm font-display font-bold text-white mb-1">{tool.name}</h3>
-                  <p className="text-xs text-gray-400 mb-3">{tool.description}</p>
+                  <h3 className="text-sm font-display font-bold text-ink mb-1">{tool.name}</h3>
+                  <p className="text-xs text-ink-secondary mb-3">{tool.description}</p>
                   <span className="flex items-center gap-1.5 text-xs font-semibold text-primary-light group-hover:gap-2 transition-all">
                     Explorar <ArrowRight size={12} />
                   </span>
@@ -187,7 +187,7 @@ export default function RecruiterToolsDashboard() {
       {/* What you'll learn */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
         className="mt-10 glass rounded-xl p-6">
-        <h2 className="font-display font-bold text-lg text-white mb-4">Al completar Recruiting Lab podrás</h2>
+        <h2 className="font-display font-bold text-lg text-ink mb-4">Al completar Recruiting Lab podrás</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
             'Generar perfiles inteligentes desde cualquier JD usando IA',
@@ -201,7 +201,7 @@ export default function RecruiterToolsDashboard() {
           ].map((item, i) => (
             <div key={i} className="flex items-start gap-2.5">
               <CheckCircle size={14} className="text-accent flex-shrink-0 mt-0.5" />
-              <span className="text-sm text-gray-300">{item}</span>
+              <span className="text-sm text-ink-secondary">{item}</span>
             </div>
           ))}
         </div>

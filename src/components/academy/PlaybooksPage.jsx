@@ -545,7 +545,7 @@ export default function PlaybooksPage() {
           {/* Header */}
           <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <button onClick={() => { setSelectedPlaybook(null); setCopied(false) }}
-              className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm">
+              className="flex items-center gap-2 text-ink-secondary hover:text-ink transition-colors text-sm">
               <ArrowLeft size={16} /> Volver a Playbooks
             </button>
             <div className="flex items-center gap-2">
@@ -563,13 +563,13 @@ export default function PlaybooksPage() {
                 <selectedPlaybook.icon size={24} />
               </div>
               <div>
-                <h1 className="text-xl font-display font-bold text-white">{selectedPlaybook.title}</h1>
-                <p className="text-sm text-gray-400">{selectedPlaybook.subtitle}</p>
+                <h1 className="text-xl font-display font-bold text-ink">{selectedPlaybook.title}</h1>
+                <p className="text-sm text-ink-secondary">{selectedPlaybook.subtitle}</p>
               </div>
             </div>
 
             {/* Render content as formatted text */}
-            <div className="bg-black/30 rounded-xl p-6 border border-white/10">
+            <div className="bg-black/30 rounded-xl p-6 border border-line">
               <pre className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap font-sans">
                 {selectedPlaybook.content}
               </pre>
@@ -583,17 +583,17 @@ export default function PlaybooksPage() {
   return (
     <div>
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <Link to="/dashboard/academy" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors mb-4">
+        <Link to="/dashboard/academy" className="inline-flex items-center gap-1 text-sm text-ink-secondary hover:text-ink transition-colors mb-4">
           <ChevronLeft size={16} /> Academy
         </Link>
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-500/10 flex items-center justify-center">
             <BookOpen size={20} className="text-violet-400" />
           </div>
-          <h1 className="text-2xl font-display font-bold text-white">Playbooks Ejecutivos</h1>
+          <h1 className="text-2xl font-display font-bold text-ink">Playbooks Ejecutivos</h1>
           <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-500/10 text-purple-400">Pro</span>
         </div>
-        <p className="text-gray-400 mt-1 max-w-2xl">
+        <p className="text-ink-secondary mt-1 max-w-2xl">
           Guias ejecutivas paso a paso para los escenarios de reclutamiento mas comunes. Contenido actionable y especifico para el mercado mexicano.
         </p>
       </motion.div>
@@ -620,9 +620,9 @@ export default function PlaybooksPage() {
                 </span>
               </div>
 
-              <h2 className="text-lg font-display font-bold text-white mb-1 group-hover:text-primary-light transition-colors">{pb.title}</h2>
-              <p className="text-xs text-gray-500 mb-3">{pb.subtitle}</p>
-              <p className="text-sm text-gray-400 mb-5 leading-relaxed flex-1">{pb.preview}</p>
+              <h2 className="text-lg font-display font-bold text-ink mb-1 group-hover:text-primary-light transition-colors">{pb.title}</h2>
+              <p className="text-xs text-ink-tertiary mb-3">{pb.subtitle}</p>
+              <p className="text-sm text-ink-secondary mb-5 leading-relaxed flex-1">{pb.preview}</p>
 
               <div className="flex items-center gap-2 text-sm font-semibold text-primary-light group-hover:gap-3 transition-all pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 Leer playbook completo

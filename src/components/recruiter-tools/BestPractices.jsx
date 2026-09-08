@@ -207,7 +207,7 @@ export default function BestPractices() {
     <div>
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <Link to="/dashboard/recruiter-tools" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white mb-4 transition-colors">
+        <Link to="/dashboard/recruiter-tools" className="inline-flex items-center gap-1 text-sm text-ink-secondary hover:text-ink mb-4 transition-colors">
           <ChevronLeft size={16} /> Recruiter Pro Tools
         </Link>
         <div className="flex items-center gap-3 mb-2">
@@ -215,13 +215,13 @@ export default function BestPractices() {
             <Award size={20} className="text-amber-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-display font-bold text-white">Mejores Practicas de Reclutamiento</h1>
+            <h1 className="text-2xl font-display font-bold text-ink">Mejores Practicas de Reclutamiento</h1>
             <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
               Elite
             </span>
           </div>
         </div>
-        <p className="text-gray-400 text-sm mt-2">
+        <p className="text-ink-secondary text-sm mt-2">
           Frameworks, checklists y estrategias comprobadas para cada etapa del ciclo de reclutamiento.
         </p>
       </motion.div>
@@ -248,12 +248,12 @@ export default function BestPractices() {
                   <Icon size={20} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-semibold text-white mb-1">{practice.title}</h3>
-                  <p className="text-xs text-gray-400 leading-relaxed">{practice.summary}</p>
+                  <h3 className="text-sm font-semibold text-ink mb-1">{practice.title}</h3>
+                  <p className="text-xs text-ink-secondary leading-relaxed">{practice.summary}</p>
                 </div>
                 {isExpanded
-                  ? <ChevronUp size={16} className="text-gray-500 mt-1 flex-shrink-0" />
-                  : <ChevronDown size={16} className="text-gray-500 mt-1 flex-shrink-0" />
+                  ? <ChevronUp size={16} className="text-ink-tertiary mt-1 flex-shrink-0" />
+                  : <ChevronDown size={16} className="text-ink-tertiary mt-1 flex-shrink-0" />
                 }
               </button>
 
@@ -270,7 +270,7 @@ export default function BestPractices() {
                     <div className="px-5 pb-5 space-y-5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                       {/* Intro */}
                       <div className="pt-4">
-                        <p className="text-sm text-gray-300 leading-relaxed">{practice.content.intro}</p>
+                        <p className="text-sm text-ink-secondary leading-relaxed">{practice.content.intro}</p>
                       </div>
 
                       {/* Checklist */}
@@ -278,9 +278,9 @@ export default function BestPractices() {
                         <h4 className="text-xs font-semibold text-primary-light uppercase tracking-wider mb-3">Checklist</h4>
                         <div className="space-y-2">
                           {practice.content.checklist.map((item, ci) => (
-                            <div key={ci} className="flex items-start gap-2.5 p-2.5 rounded-lg bg-white/[0.02]">
+                            <div key={ci} className="flex items-start gap-2.5 p-2.5 rounded-lg bg-surface-1">
                               <CheckCircle size={14} className="text-primary-light mt-0.5 flex-shrink-0" />
-                              <span className="text-xs text-gray-300 leading-relaxed">{item}</span>
+                              <span className="text-xs text-ink-secondary leading-relaxed">{item}</span>
                             </div>
                           ))}
                         </div>
@@ -293,7 +293,7 @@ export default function BestPractices() {
                           {practice.content.tips.map((tip, ti) => (
                             <div key={ti} className="flex items-start gap-2.5 p-2.5 rounded-lg bg-amber-500/[0.03] border border-amber-500/10">
                               <Lightbulb size={14} className="text-amber-400 mt-0.5 flex-shrink-0" />
-                              <span className="text-xs text-gray-300 leading-relaxed">{tip}</span>
+                              <span className="text-xs text-ink-secondary leading-relaxed">{tip}</span>
                             </div>
                           ))}
                         </div>
@@ -316,23 +316,23 @@ export default function BestPractices() {
       >
         <div className="flex items-center gap-2 mb-5">
           <Users size={18} className="text-violet-400" />
-          <h2 className="text-lg font-display font-semibold text-white">Sesiones grupales mensuales</h2>
+          <h2 className="text-lg font-display font-semibold text-ink">Sesiones grupales mensuales</h2>
         </div>
         <div className="flex flex-col md:flex-row items-start gap-6 p-5 rounded-lg bg-gradient-to-r from-violet-500/5 to-primary/5 border border-violet-500/10">
           <div className="flex-1">
             <p className="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-2">Proxima sesion</p>
-            <h3 className="text-base font-semibold text-white mb-3">{UPCOMING_SESSION.title}</h3>
-            <div className="flex flex-wrap gap-4 text-xs text-gray-400">
+            <h3 className="text-base font-semibold text-ink mb-3">{UPCOMING_SESSION.title}</h3>
+            <div className="flex flex-wrap gap-4 text-xs text-ink-secondary">
               <span className="flex items-center gap-1">
-                <Calendar size={12} className="text-gray-500" />
+                <Calendar size={12} className="text-ink-tertiary" />
                 {UPCOMING_SESSION.date}
               </span>
               <span className="flex items-center gap-1">
-                <Clock size={12} className="text-gray-500" />
+                <Clock size={12} className="text-ink-tertiary" />
                 {UPCOMING_SESSION.time}
               </span>
               <span className="flex items-center gap-1">
-                <Users size={12} className="text-gray-500" />
+                <Users size={12} className="text-ink-tertiary" />
                 {UPCOMING_SESSION.spots}/{UPCOMING_SESSION.maxSpots} lugares disponibles
               </span>
             </div>

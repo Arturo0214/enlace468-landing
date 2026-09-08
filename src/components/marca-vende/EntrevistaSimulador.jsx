@@ -222,46 +222,46 @@ export default function EntrevistaSimulador() {
   return (
     <div>
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-        <Link to="/dashboard/marca-vende" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors mb-4">
+        <Link to="/dashboard/marca-vende" className="inline-flex items-center gap-1 text-sm text-ink-secondary hover:text-ink transition-colors mb-4">
           <ChevronLeft size={16} /> Tu Marca Vende
         </Link>
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-accent/20 to-gold/10 flex items-center justify-center">
             <Mic size={20} className="text-accent-light" />
           </div>
-          <h1 className="text-2xl font-display font-bold text-white">Simulador de Entrevista</h1>
+          <h1 className="text-2xl font-display font-bold text-ink">Simulador de Entrevista</h1>
           <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-500/10 text-purple-400">Pro</span>
         </div>
-        <p className="text-gray-400 mt-1 max-w-2xl">
+        <p className="text-ink-secondary mt-1 max-w-2xl">
           Practica para tu proxima entrevista con preguntas reales. Selecciona el tipo de entrevista, responde las preguntas y recibe retroalimentacion sobre tus respuestas.
         </p>
       </motion.div>
 
       {questions.length === 0 ? (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-xl p-6 max-w-2xl">
-          <h2 className="text-lg font-display font-semibold text-white mb-4">Configura tu simulacion</h2>
+          <h2 className="text-lg font-display font-semibold text-ink mb-4">Configura tu simulacion</h2>
           <div className="space-y-4">
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Puesto objetivo</label>
+              <label className="text-xs text-ink-secondary mb-1 block">Puesto objetivo</label>
               <input type="text" value={role} onChange={e => setRole(e.target.value)}
                 placeholder="Ej: Gerente de Producto, Developer Senior, Director Comercial"
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-primary-light/30 focus:outline-none transition-colors" />
+                className="w-full bg-surface-1 border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary-light/30 focus:outline-none transition-colors" />
             </div>
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Industria</label>
+              <label className="text-xs text-ink-secondary mb-1 block">Industria</label>
               <div className="relative">
                 <button onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="w-full flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white hover:border-white/20 transition-colors">
-                  <span className={industry ? 'text-white' : 'text-gray-600'}>{industry || 'Selecciona una industria'}</span>
+                  className="w-full flex items-center justify-between bg-surface-1 border border-line rounded-lg px-3 py-2.5 text-sm text-ink hover:border-line-strong transition-colors">
+                  <span className={industry ? 'text-ink' : 'text-ink-tertiary'}>{industry || 'Selecciona una industria'}</span>
                   <ChevronDown size={16} className={`transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
                 <AnimatePresence>
                   {dropdownOpen && (
                     <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-                      className="absolute z-10 w-full mt-1 glass-strong rounded-lg border border-white/10 overflow-hidden max-h-48 overflow-y-auto">
+                      className="absolute z-10 w-full mt-1 glass-strong rounded-lg border border-line overflow-hidden max-h-48 overflow-y-auto">
                       {INDUSTRIES.map(ind => (
                         <button key={ind} onClick={() => { setIndustry(ind); setDropdownOpen(false) }}
-                          className={`w-full text-left px-3 py-2 text-sm transition-colors ${ind === industry ? 'bg-primary/10 text-primary-light' : 'text-gray-300 hover:bg-white/5 hover:text-white'}`}>
+                          className={`w-full text-left px-3 py-2 text-sm transition-colors ${ind === industry ? 'bg-primary/10 text-primary-light' : 'text-ink-secondary hover:bg-white/5 hover:text-white'}`}>
                           {ind}
                         </button>
                       ))}
@@ -271,17 +271,17 @@ export default function EntrevistaSimulador() {
               </div>
             </div>
             <div>
-              <label className="text-xs text-gray-400 mb-2 block">Tipo de entrevista</label>
+              <label className="text-xs text-ink-secondary mb-2 block">Tipo de entrevista</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {INTERVIEW_TYPES.map(t => (
                   <button key={t.key} onClick={() => setInterviewType(t.key)}
                     className={`text-left px-4 py-3 rounded-lg border transition-all ${
                       interviewType === t.key
                         ? 'bg-primary/10 border-primary-light/20 text-white'
-                        : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20 hover:text-white'
+                        : 'bg-surface-1 border-line text-ink-secondary hover:border-line-strong hover:text-ink'
                     }`}>
                     <div className="text-sm font-medium">{t.label}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">{t.description}</div>
+                    <div className="text-xs text-ink-tertiary mt-0.5">{t.description}</div>
                   </button>
                 ))}
               </div>
@@ -296,12 +296,12 @@ export default function EntrevistaSimulador() {
       ) : !results ? (
         <div className="space-y-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-gray-400">
-              {role && <span className="text-white font-medium">{role}</span>}
+            <p className="text-sm text-ink-secondary">
+              {role && <span className="text-ink font-medium">{role}</span>}
               {industry && <span> en {industry}</span>}
               {' '} — {INTERVIEW_TYPES.find(t => t.key === interviewType)?.label}
             </p>
-            <button onClick={handleReset} className="text-xs text-gray-500 hover:text-white transition-colors flex items-center gap-1">
+            <button onClick={handleReset} className="text-xs text-ink-tertiary hover:text-ink transition-colors flex items-center gap-1">
               <RotateCcw size={12} /> Reiniciar
             </button>
           </div>
@@ -311,18 +311,18 @@ export default function EntrevistaSimulador() {
               className="glass rounded-xl p-5">
               <div className="flex items-start justify-between mb-2">
                 <span className="text-xs font-bold text-primary-light bg-primary/10 px-2 py-0.5 rounded-full">Pregunta {i + 1}</span>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wider">{q.competency}</span>
+                <span className="text-[10px] text-ink-tertiary uppercase tracking-wider">{q.competency}</span>
               </div>
-              <p className="text-sm text-white mb-3 leading-relaxed">{q.q}</p>
+              <p className="text-sm text-ink mb-3 leading-relaxed">{q.q}</p>
               <textarea
                 rows={4}
                 value={answers[i] || ''}
                 onChange={e => setAnswers(prev => ({ ...prev, [i]: e.target.value }))}
                 placeholder="Escribe tu respuesta aqui. Intenta usar el formato STAR: Situacion, Tarea, Accion, Resultado."
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-primary-light/30 focus:outline-none transition-colors resize-none"
+                className="w-full bg-surface-1 border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-tertiary focus:border-primary-light/30 focus:outline-none transition-colors resize-none"
               />
               {answers[i] && (
-                <div className="text-[10px] text-gray-500 mt-1 text-right">
+                <div className="text-[10px] text-ink-tertiary mt-1 text-right">
                   {answers[i].trim().split(/\s+/).length} palabras
                 </div>
               )}
@@ -339,7 +339,7 @@ export default function EntrevistaSimulador() {
         <div className="space-y-4">
           {/* Overall score */}
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-strong rounded-xl p-6 text-center">
-            <div className="text-6xl font-bold text-white mb-2">{results.overallScore}<span className="text-2xl text-gray-400">/100</span></div>
+            <div className="text-6xl font-bold text-ink mb-2">{results.overallScore}<span className="text-2xl text-ink-secondary">/100</span></div>
             {(() => {
               const readiness = getReadinessLabel(results.overallScore)
               return (
@@ -349,7 +349,7 @@ export default function EntrevistaSimulador() {
                 </span>
               )
             })()}
-            <p className="text-sm text-gray-400 mt-3">{results.answered} de {results.total} preguntas respondidas</p>
+            <p className="text-sm text-ink-secondary mt-3">{results.answered} de {results.total} preguntas respondidas</p>
           </motion.div>
 
           {/* Per-question results */}
@@ -366,11 +366,11 @@ export default function EntrevistaSimulador() {
                   {ev.score}/100
                 </span>
               </div>
-              <p className="text-sm text-gray-300 mb-2">{ev.question.q}</p>
+              <p className="text-sm text-ink-secondary mb-2">{ev.question.q}</p>
               {ev.answer ? (
                 <>
-                  <div className="bg-white/5 rounded-lg p-3 text-xs text-gray-400 mb-2 max-h-24 overflow-y-auto">{ev.answer}</div>
-                  <p className="text-xs text-gray-300 leading-relaxed">{ev.feedback}</p>
+                  <div className="bg-surface-1 rounded-lg p-3 text-xs text-ink-secondary mb-2 max-h-24 overflow-y-auto">{ev.answer}</div>
+                  <p className="text-xs text-ink-secondary leading-relaxed">{ev.feedback}</p>
                   {ev.starBreakdown && (
                     <div className="flex gap-2 mt-2 flex-wrap">
                       {Object.entries(ev.starBreakdown).map(([k, v]) => (
@@ -382,14 +382,14 @@ export default function EntrevistaSimulador() {
                   )}
                 </>
               ) : (
-                <p className="text-xs text-gray-500 italic">Sin respuesta</p>
+                <p className="text-xs text-ink-tertiary italic">Sin respuesta</p>
               )}
             </motion.div>
           ))}
 
           <div className="flex gap-3">
             <button onClick={handleReset}
-              className="flex-1 bg-white/5 text-white font-semibold text-sm py-2.5 rounded-lg hover:bg-white/10 transition-colors flex items-center justify-center gap-2">
+              className="flex-1 bg-surface-1 text-ink font-semibold text-sm py-2.5 rounded-lg hover:bg-white/10 transition-colors flex items-center justify-center gap-2">
               <RotateCcw size={16} /> Nueva simulacion
             </button>
             <button onClick={() => { setResults(null) }}

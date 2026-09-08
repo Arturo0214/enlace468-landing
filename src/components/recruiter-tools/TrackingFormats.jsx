@@ -239,16 +239,16 @@ export default function TrackingFormats() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <Link to="/dashboard/recruiter-tools" className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors mb-4">
+        <Link to="/dashboard/recruiter-tools" className="inline-flex items-center gap-1 text-sm text-ink-secondary hover:text-ink transition-colors mb-4">
           <ChevronLeft size={16} /> Recruiter Pro Tools
         </Link>
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500/20 to-primary/10 flex items-center justify-center">
             <ClipboardList size={20} className="text-emerald-400" />
           </div>
-          <h1 className="text-2xl font-display font-bold text-white">Formatos de Seguimiento</h1>
+          <h1 className="text-2xl font-display font-bold text-ink">Formatos de Seguimiento</h1>
         </div>
-        <p className="text-gray-400 mt-1 max-w-2xl">
+        <p className="text-ink-secondary mt-1 max-w-2xl">
           Checklists y formatos listos para copiar y usar en tu dia a dia como reclutador. Copia el formato y pegalo en tu herramienta favorita.
         </p>
       </motion.div>
@@ -264,8 +264,8 @@ export default function TrackingFormats() {
           >
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h3 className="text-base font-semibold text-white mb-1">{format.title}</h3>
-                <p className="text-sm text-gray-400">{format.description}</p>
+                <h3 className="text-base font-semibold text-ink mb-1">{format.title}</h3>
+                <p className="text-sm text-ink-secondary">{format.description}</p>
               </div>
               <button
                 onClick={() => handleCopy(format.content, idx)}
@@ -279,8 +279,8 @@ export default function TrackingFormats() {
                 {copiedIdx === idx ? 'Copiado' : 'Copiar formato'}
               </button>
             </div>
-            <div className="bg-black/30 rounded-lg p-4 border border-white/10 max-h-72 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
-              <pre className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap font-mono">
+            <div className="bg-black/30 rounded-lg p-4 border border-line max-h-72 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
+              <pre className="text-xs text-ink-secondary leading-relaxed whitespace-pre-wrap font-mono">
                 {format.content}
               </pre>
             </div>

@@ -613,9 +613,9 @@ export default function ResourceViewer() {
   if (!resource) {
     return (
       <div className="text-center py-20">
-        <BookOpen size={48} className="mx-auto text-gray-600 mb-4" />
-        <h2 className="text-xl font-semibold text-white mb-2">Recurso no encontrado</h2>
-        <p className="text-gray-400 mb-6">El recurso que buscas no existe o fue removido.</p>
+        <BookOpen size={48} className="mx-auto text-ink-tertiary mb-4" />
+        <h2 className="text-xl font-semibold text-ink mb-2">Recurso no encontrado</h2>
+        <p className="text-ink-secondary mb-6">El recurso que buscas no existe o fue removido.</p>
         <button onClick={() => navigate('/dashboard/academy')}
           className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
           Volver a Academy
@@ -636,7 +636,7 @@ export default function ResourceViewer() {
     return (
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
         <button onClick={() => navigate('/dashboard/academy')}
-          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-6 text-sm">
+          className="flex items-center gap-2 text-ink-secondary hover:text-ink transition-colors mb-6 text-sm">
           <ArrowLeft size={16} /> Volver a Academy
         </button>
 
@@ -644,8 +644,8 @@ export default function ResourceViewer() {
           <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mx-auto mb-6">
             <Video size={36} className="text-primary-light" />
           </div>
-          <h1 className="text-2xl font-display font-bold text-white mb-3">{resource.title}</h1>
-          <p className="text-gray-400 mb-6 max-w-md mx-auto">
+          <h1 className="text-2xl font-display font-bold text-ink mb-3">{resource.title}</h1>
+          <p className="text-ink-secondary mb-6 max-w-md mx-auto">
             Esta clase en video estara disponible proximamente. Te notificaremos cuando este lista.
           </p>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/10 text-amber-400 text-sm font-medium">
@@ -662,7 +662,7 @@ export default function ResourceViewer() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
         <button onClick={() => navigate('/dashboard/academy')}
-          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm">
+          className="flex items-center gap-2 text-ink-secondary hover:text-ink transition-colors text-sm">
           <ArrowLeft size={16} /> Volver a Academy
         </button>
 
@@ -685,7 +685,7 @@ export default function ResourceViewer() {
              <BookOpen size={20} />}
           </div>
           <div>
-            <h1 className="text-xl font-display font-bold text-white">{resource.title}</h1>
+            <h1 className="text-xl font-display font-bold text-ink">{resource.title}</h1>
             <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border ${
               resource.plan === 'free'
                 ? 'bg-green-500/20 text-green-400 border-green-500/30'
@@ -746,17 +746,17 @@ function MarkdownRenderer({ content }) {
 
     // Heading
     if (line.startsWith('### ')) {
-      elements.push(<h3 key={key++} className="text-base font-semibold text-white mt-6 mb-2">{line.slice(4)}</h3>)
+      elements.push(<h3 key={key++} className="text-base font-semibold text-ink mt-6 mb-2">{line.slice(4)}</h3>)
       i++; continue
     }
     if (line.startsWith('## ')) {
-      elements.push(<h2 key={key++} className="text-lg font-display font-semibold text-white mt-8 mb-3">{line.slice(3)}</h2>)
+      elements.push(<h2 key={key++} className="text-lg font-display font-semibold text-ink mt-8 mb-3">{line.slice(3)}</h2>)
       i++; continue
     }
 
     // Horizontal rule
     if (line.trim() === '---') {
-      elements.push(<hr key={key++} className="border-white/10 my-6" />)
+      elements.push(<hr key={key++} className="border-line my-6" />)
       i++; continue
     }
 
@@ -770,7 +770,7 @@ function MarkdownRenderer({ content }) {
       elements.push(
         <ul key={key++} className="space-y-1.5 my-3 ml-1">
           {items.map((item, j) => (
-            <li key={j} className="flex items-start gap-2 text-sm text-gray-300">
+            <li key={j} className="flex items-start gap-2 text-sm text-ink-secondary">
               <span className="w-1.5 h-1.5 rounded-full bg-primary/60 mt-1.5 flex-shrink-0" />
               <span dangerouslySetInnerHTML={{ __html: inlineFormat(item) }} />
             </li>
@@ -790,7 +790,7 @@ function MarkdownRenderer({ content }) {
       elements.push(
         <ol key={key++} className="space-y-1.5 my-3 ml-1">
           {items.map((item, j) => (
-            <li key={j} className="flex items-start gap-2 text-sm text-gray-300">
+            <li key={j} className="flex items-start gap-2 text-sm text-ink-secondary">
               <span className="text-primary-light font-semibold text-xs mt-0.5 flex-shrink-0">{j + 1}.</span>
               <span dangerouslySetInnerHTML={{ __html: inlineFormat(item) }} />
             </li>
@@ -807,7 +807,7 @@ function MarkdownRenderer({ content }) {
 
     // Paragraph
     elements.push(
-      <p key={key++} className="text-sm text-gray-300 leading-relaxed my-2"
+      <p key={key++} className="text-sm text-ink-secondary leading-relaxed my-2"
          dangerouslySetInnerHTML={{ __html: inlineFormat(line) }} />
     )
     i++
@@ -818,7 +818,7 @@ function MarkdownRenderer({ content }) {
 
 function inlineFormat(text) {
   return text
-    .replace(/\*\*(.+?)\*\*/g, '<strong class="text-white font-semibold">$1</strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong class="text-ink font-semibold">$1</strong>')
     .replace(/`(.+?)`/g, '<code class="px-1.5 py-0.5 bg-white/10 rounded text-primary-light text-xs font-mono">$1</code>')
     .replace(/\[(.+?)\]/g, '<span class="text-accent">$1</span>')
 }
@@ -835,12 +835,12 @@ function CodeBlock({ code }) {
   return (
     <div className="relative my-4 rounded-xl overflow-hidden" style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.08)' }}>
       <div className="flex items-center justify-between px-4 py-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <span className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">Prompt / Plantilla</span>
-        <button onClick={handleCopy} className="flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors">
+        <span className="text-[10px] uppercase tracking-wider text-ink-tertiary font-medium">Prompt / Plantilla</span>
+        <button onClick={handleCopy} className="flex items-center gap-1 text-xs text-ink-secondary hover:text-ink transition-colors">
           {copied ? <><Check size={12} /> Copiado</> : <><Copy size={12} /> Copiar</>}
         </button>
       </div>
-      <pre className="p-4 text-sm text-gray-300 overflow-x-auto font-mono whitespace-pre-wrap leading-relaxed">
+      <pre className="p-4 text-sm text-ink-secondary overflow-x-auto font-mono whitespace-pre-wrap leading-relaxed">
         {code.trim()}
       </pre>
     </div>
@@ -862,9 +862,9 @@ function TableBlock({ lines }) {
     <div className="my-4 overflow-x-auto rounded-xl" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
       <table className="w-full text-sm">
         <thead>
-          <tr className="bg-white/[0.04]">
+          <tr className="bg-surface-1">
             {headers.map((h, i) => (
-              <th key={i} className="text-left px-4 py-2.5 text-xs font-semibold text-gray-400 uppercase tracking-wider"
+              <th key={i} className="text-left px-4 py-2.5 text-xs font-semibold text-ink-secondary uppercase tracking-wider"
                   dangerouslySetInnerHTML={{ __html: inlineFormat(h) }} />
             ))}
           </tr>
@@ -873,7 +873,7 @@ function TableBlock({ lines }) {
           {rows.map((row, i) => (
             <tr key={i} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
               {row.map((cell, j) => (
-                <td key={j} className="px-4 py-2.5 text-gray-300"
+                <td key={j} className="px-4 py-2.5 text-ink-secondary"
                     dangerouslySetInnerHTML={{ __html: inlineFormat(cell) }} />
               ))}
             </tr>

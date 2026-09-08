@@ -11,9 +11,9 @@ const tiers = [
     description: 'Crear base de talento y perfil basico en el ecosistema.',
     icon: Star,
     gradient: 'from-gray-500/20 to-gray-400/10',
-    iconColor: 'text-gray-300',
-    border: 'border-white/10',
-    ctaStyle: 'bg-white/10 hover:bg-white/20 text-white',
+    iconColor: 'text-ink-secondary',
+    border: 'border-line',
+    ctaStyle: 'bg-white/10 hover:bg-white/20 text-ink',
     features: [
       'Perfil visible para reclutadores',
       'Alertas basicas de vacantes',
@@ -71,7 +71,7 @@ export default function CandidatePortal() {
         </Link>
         <Link
           to="/login"
-          className="text-sm text-gray-400 hover:text-white transition-colors"
+          className="text-sm text-ink-secondary hover:text-ink transition-colors"
         >
           Iniciar sesion
         </Link>
@@ -88,10 +88,10 @@ export default function CandidatePortal() {
             <Star size={14} />
             Tu Marca Vende
           </div>
-          <h1 className="text-4xl md:text-5xl font-display font-bold text-white mb-4">
+          <h1 className="text-4xl md:text-5xl font-display font-bold text-ink mb-4">
             Tu perfil profesional en Enlace 468
           </h1>
-          <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+          <p className="text-lg text-ink-secondary max-w-2xl mx-auto">
             Crea tu perfil, destaca ante reclutadores y accede a oportunidades exclusivas
             en el ecosistema de talento mas avanzado de Mexico.
           </p>
@@ -124,16 +124,16 @@ export default function CandidatePortal() {
                   <Icon size={24} />
                 </div>
 
-                <h2 className="text-xl font-display font-bold text-white mb-1">{tier.name}</h2>
+                <h2 className="text-xl font-display font-bold text-ink mb-1">{tier.name}</h2>
                 <div className="flex items-baseline gap-1 mb-3">
-                  <span className="text-3xl font-bold text-white">{tier.price}</span>
-                  {tier.priceNote && <span className="text-sm text-gray-500">{tier.priceNote}</span>}
+                  <span className="text-3xl font-bold text-ink">{tier.price}</span>
+                  {tier.priceNote && <span className="text-sm text-ink-tertiary">{tier.priceNote}</span>}
                 </div>
-                <p className="text-sm text-gray-400 mb-6 leading-relaxed">{tier.description}</p>
+                <p className="text-sm text-ink-secondary mb-6 leading-relaxed">{tier.description}</p>
 
                 <ul className="space-y-2.5 mb-8 flex-1">
                   {tier.features.map((f, fi) => (
-                    <li key={fi} className="flex items-start gap-2 text-sm text-gray-300">
+                    <li key={fi} className="flex items-start gap-2 text-sm text-ink-secondary">
                       <CheckCircle size={15} className="text-accent mt-0.5 flex-shrink-0" />
                       {f}
                     </li>
@@ -159,7 +159,7 @@ export default function CandidatePortal() {
           transition={{ delay: 0.5 }}
           className="text-center"
         >
-          <p className="text-gray-500">
+          <p className="text-ink-tertiary">
             Ya eres miembro?{' '}
             <Link to="/login" className="text-primary-light hover:underline font-medium">
               Inicia sesion aqui
