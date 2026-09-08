@@ -102,7 +102,9 @@ const esc = s => String(s ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 function buildEmailHtml({ breaches, appUrl }) {
-  const rows = breaches.map(b => `
+  // Tope: con backlog grande el email lista las 30 mas vencidas + conteo del resto.
+  const shown = breaches.slice(0, 30)
+  const rows = shown.map(b => `
       <tr>
         <td style="padding:7px 8px;border-bottom:1px solid #e5e7eb;color:#111827;font-weight:600;">${esc(b._meta.name)}</td>
         <td style="padding:7px 8px;border-bottom:1px solid #e5e7eb;color:#374151;">${esc(b._meta.vacancyTitle)}</td>
@@ -131,6 +133,7 @@ function buildEmailHtml({ breaches, appUrl }) {
         </tr>
         ${rows}
       </table>
+      ${breaches.length > 30 ? `<p style="margin:10px 0 0;color:#6b7280;font-size:12px;">…y ${breaches.length - 30} más — revisa los badges SLA en el pipeline.</p>` : ''}
       ${cta}
     </div>
     <p style="margin:16px 0 0;text-align:center;color:#9ca3af;font-size:11px;">Un candidato atorado se re-alerta cada 72h como máximo · configura los límites en Configuración → SLAs.</p>
@@ -237,10 +240,29 @@ export async function handler() {
         continue
       }
 
-      // 3. Insertar notificaciones (sin _meta) en lotes.
+      // 3. Insertar notificaciones (sin _meta) — CON TOPE anti-inundación:
+      // el backlog histórico puede traer cientos de vencidos de golpe (el
+      // primer run real detectó ~314). Se notifican las 20 más vencidas por
+      // corrida + 1 resumen con el resto; el dedupe de 72h hace que las
+      // siguientes corridas drenen el backlog gradualmente.
+      const MAX_DETAIL_PER_ORG = 20
+      breaches.sort((a, b) => (b._meta?.days || 0) - (a._meta?.days || 0))
+      const toInsert = breaches.slice(0, MAX_DETAIL_PER_ORG).map(({ _meta, ...row }) => row)
+      if (breaches.length > MAX_DETAIL_PER_ORG) {
+        const rest = breaches.length - MAX_DETAIL_PER_ORG
+        toInsert.push({
+          organization_id: orgId,
+          recipient_id: null,
+          type: 'sla_breach',
+          title: `SLA: ${rest} candidato${rest === 1 ? '' : 's'} más con etapa vencida`,
+          body: 'Revisa los badges SLA rojos en el pipeline; se notificarán 20 por día hasta drenar el backlog.',
+          entity_type: null,
+          entity_id: null,
+        })
+      }
       const insertedIds = []
-      for (let i = 0; i < breaches.length; i += 100) {
-        const batch = breaches.slice(i, i + 100).map(({ _meta, ...row }) => row)
+      for (let i = 0; i < toInsert.length; i += 100) {
+        const batch = toInsert.slice(i, i + 100)
         const { data: inserted, error } = await supabase
           .from('notifications')
           .insert(batch)
