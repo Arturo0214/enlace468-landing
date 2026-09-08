@@ -22,7 +22,7 @@ export default function SourcingCandidateModal({
       {/* Candidate modal */}
       {selectedCandidate && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setSelectedCandidate(null)}>
-          <div className="bg-[#111827] rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto border border-white/[0.08]" onClick={e => e.stopPropagation()}>
+          <div className="rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto border" style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-default)' }} onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between p-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-xl bg-primary/20 flex items-center justify-center text-primary-light text-lg font-bold">

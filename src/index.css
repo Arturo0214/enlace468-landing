@@ -269,6 +269,18 @@ select option {
   color: #FFFFFF !important;
 }
 
+/* Igual que arriba pero cuando bg-* y text-white van en el MISMO elemento
+   (el selector descendiente no los cubre — bug QA 2026-09-07) */
+:root:not(.dark) .text-white[class*="bg-gradient"],
+:root:not(.dark) .text-white[class*="bg-primary"],
+:root:not(.dark) .text-white[class*="bg-accent"],
+:root:not(.dark) .text-white[class*="bg-dark"],
+:root:not(.dark) .text-white[class*="from-"],
+:root:not(.dark) .text-white[style*="background: linear"],
+:root:not(.dark) .text-white[style*="background:linear"] {
+  color: #FFFFFF !important;
+}
+
 /* Backgrounds — subtle color tints instead of plain white */
 :root:not(.dark) .bg-white\/5 { background: rgba(37,99,235,0.03); }
 :root:not(.dark) .bg-white\/\[0\.02\] { background: rgba(37,99,235,0.015); }
