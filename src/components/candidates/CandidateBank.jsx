@@ -82,7 +82,9 @@ export default function CandidateBank() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium text-white truncate max-w-full min-w-0">{candidate.full_name}</span>
+                  {/* w-full en móvil: el nombre toma su propia línea y los chips bajan
+                      (con solo truncate+min-w-0 el flex encogía el nombre a ~3 chars) */}
+                  <span className="font-medium text-white truncate max-w-full min-w-0 w-full sm:w-auto">{candidate.full_name}</span>
                   {candidate.source && <span className="text-xs text-gray-500">{candidate.source}</span>}
                   {hasVerifyProblem(candidate.verify_status) && (() => {
                     const vb = verifyBadge(candidate.verify_status)
