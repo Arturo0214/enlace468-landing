@@ -11,6 +11,7 @@
 // deja de pollear — cero ruido en consola para el usuario.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Bell, CheckCheck, Loader2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -53,6 +54,8 @@ export default function NotificationBell() {
   const [markingAll, setMarkingAll] = useState(false)
   const [tableMissing, setTableMissing] = useState(false)
   const rootRef = useRef(null)
+  const panelRef = useRef(null)
+  const [anchor, setAnchor] = useState(null) // rect del botón al abrir (portal fixed)
 
   // Filtro común: mías o de toda mi org (RLS acota recipient NULL a mi org).
   const scopeFilter = useCallback(q => (
@@ -101,14 +104,17 @@ export default function NotificationBell() {
   useEffect(() => {
     if (!open) return
     const onDown = e => {
-      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false)
+      if (rootRef.current?.contains(e.target)) return
+      if (panelRef.current?.contains(e.target)) return
+      setOpen(false)
     }
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [open])
 
-  function toggleOpen() {
+  function toggleOpen(e) {
     const next = !open
+    if (next) setAnchor(e.currentTarget.getBoundingClientRect())
     setOpen(next)
     if (next) { refreshList(); refreshCount() }
   }
@@ -174,10 +180,19 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {open && (
+      {/* Portal a body: el Topbar (backdrop-filter) crea un stacking context que
+          atrapaba el z-50 → las tarjetas de la página se pintaban ENCIMA del
+          dropdown (bug reportado 2026-09-07). Mismo patrón que Modal/ConfirmDialog. */}
+      {open && anchor && createPortal(
         <div
-          className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl shadow-2xl z-50 overflow-hidden glass-strong"
-          style={{ border: '1px solid var(--border-default)' }}
+          ref={panelRef}
+          className="fixed w-80 sm:w-96 max-w-[calc(100vw-1rem)] rounded-xl shadow-2xl z-[95] overflow-hidden"
+          style={{
+            top: anchor.bottom + 8,
+            right: Math.max(8, window.innerWidth - anchor.right),
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border-default)',
+          }}
         >
           <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border-default)' }}>
             <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Notificaciones</h3>
@@ -226,7 +241,8 @@ export default function NotificationBell() {
               ))
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
