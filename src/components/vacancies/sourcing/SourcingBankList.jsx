@@ -1,4 +1,4 @@
-import { ExternalLink, Plus, Loader2, CheckCircle, Download, Star, Archive, Trash2, Workflow } from 'lucide-react'
+import { ExternalLink, Plus, Loader2, CheckCircle, Download, Star, Archive, Trash2, Workflow, Mail } from 'lucide-react'
 import { verifyBadge, hasVerifyProblem, verifyTooltip } from '../../../lib/verifyBadge'
 
 // Banco de sourcing persistente por vacante: cards guardadas con badges de
@@ -57,6 +57,12 @@ export default function SourcingBankList({ bank, outreach, setEnrollTarget }) {
                   </div>
                   {(b.current_title || b.current_company) && (
                     <p className="text-[11px] text-gray-400 truncate mt-0.5">{[b.current_title, b.current_company].filter(Boolean).join(' · ')}</p>
+                  )}
+                  {b.email && (
+                    <a href={`mailto:${b.email}`} className="flex items-center gap-1 text-xs text-teal-300/80 hover:text-teal-300 truncate mt-0.5 w-fit"
+                      title="Correo cosechado al aceptar tu conexión en LinkedIn">
+                      <Mail size={11} className="flex-shrink-0" /> {b.email}
+                    </a>
                   )}
                   <p className="text-[11px] text-emerald-400/70 truncate mt-0.5">{b.display_url || b.url}</p>
                   {b.snippet && <p className="text-xs text-gray-400 line-clamp-2 mt-1.5 leading-relaxed">{b.snippet}</p>}

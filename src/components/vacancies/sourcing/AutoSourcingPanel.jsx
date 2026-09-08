@@ -90,6 +90,7 @@ export default function AutoSourcingPanel({ auto, bank, excludeSector, setExclud
         {autoNightly && (
           <p className="mt-1.5 text-[10px] text-gray-500 leading-relaxed">
             Corre L-V a las 4, 5 y 6am (CDMX). Los nuevos aparecen rankeados en el banco y en "Candidatos de hoy"; el digest por correo sale a las 7am.
+            <br />Con una secuencia activa de esta vacante, los auto-promovidos se inscriben solos (conexión + follow-ups automáticos).
           </p>
         )}
       </div>

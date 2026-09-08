@@ -34,9 +34,11 @@ import { runAutoSource } from './auto-source.mjs'
 import { hasMexicoSignal, isForeignProfile, nameLooksLikeRole } from '../../src/lib/sourcingScore.js'
 
 // Auto-promoción al pipeline según vacancies.auto_promote_min_score.
-// APAGADA hasta validar la calidad del sourcing nocturno con el equipo
-// (Kari/Ingrid) — se enciende cambiando SOLO este flag.
-const AUTO_PROMOTE_ENABLED = false
+// ENCENDIDA (2026-09-08): el gating real es POR VACANTE — solo promueve si
+// auto_promote_min_score no es null (la UI lo deja vacío por default) y el
+// candidato pasó el gate de calidad (nunca cuarentena geo_desconocida ni
+// extranjero). Este flag queda como kill-switch global de emergencia.
+const AUTO_PROMOTE_ENABLED = true
 
 const BUDGET_MS = 26000       // límite duro de Netlify Functions
 const PER_VACANCY_MS = 15000  // costo típico de una vacante (búsqueda+score)
@@ -161,16 +163,53 @@ async function cleanupBank(supabase) {
   return counts
 }
 
+/** ¿Error de PostgREST/Postgres por violación de unique? (anti-re-inscripción) */
+function isDuplicateError(err) {
+  return Boolean(err && (err.code === '23505' || /duplicate|unique/i.test(err.message || '')))
+}
+
 /** Auto-promoción server-side (misma semántica que src/lib/promote.js).
- *  Solo corre con AUTO_PROMOTE_ENABLED=true y sobre filas RECIÉN insertadas. */
-async function autoPromote(supabase, vacancy, insertedRows) {
-  const threshold = Number(vacancy.auto_promote_min_score)
-  if (!Number.isFinite(threshold)) return 0
-  let promoted = 0
+ *  Solo corre con AUTO_PROMOTE_ENABLED=true y sobre filas RECIÉN insertadas.
+ *
+ *  Doble candado de visibilidad: applyGate ya dejó fuera basura/extranjeros y
+ *  puso en cuarentena los sin señal MX, pero aquí se revalida sobre la fila
+ *  guardada — verify_status distinto de null/'activo' (geo_desconocida,
+ *  extranjero, link_muerto…) JAMÁS se auto-promueve.
+ *
+ *  AUTO-INSCRIPCIÓN (cierra el círculo del outreach): si la vacante tiene
+ *  EXACTAMENTE UNA secuencia activa (outreach_sequences.is_active con su
+ *  vacancy_id), cada promovido se inscribe solo (next_run_at=now → el runner
+ *  de 20 min manda la conexión + follow-ups con cuota anti-ban). Con 0 o >1
+ *  secuencias solo se loggea — ambigüedad se resuelve a mano con EnrollModal.
+ *  El unique parcial uq_sequence_enrollments_seq_bank evita re-inscribir.
+ *  Exportada para scripts/test-auto-enroll.mjs (stubs, sin red). */
+export async function autoPromote(supabase, vacancy, insertedRows) {
+  const counts = { promoted: 0, enrolled: 0 }
+  // OJO: Number(null) === 0 — null/'' significa "auto-promoción apagada",
+  // no "umbral 0" (habría promovido a todos).
+  const raw = vacancy.auto_promote_min_score
+  const threshold = raw == null || raw === '' ? NaN : Number(raw)
+  if (!Number.isFinite(threshold)) return counts
+
+  // Secuencia destino para auto-inscribir (solo si es inequívoca).
+  let autoSeq = null
+  const { data: seqs, error: seqErr } = await supabase
+    .from('outreach_sequences').select('id, name')
+    .eq('vacancy_id', vacancy.id).eq('is_active', true)
+  if (seqErr) {
+    console.error(`[cron-auto-source] no se pudieron leer secuencias de "${vacancy.title}": ${seqErr.message}`)
+  } else if ((seqs || []).length === 1) {
+    autoSeq = seqs[0]
+  } else if ((seqs || []).length > 1) {
+    console.log(`[cron-auto-source] "${vacancy.title}" tiene ${seqs.length} secuencias activas — ambiguo, sin auto-inscripción`)
+  }
+
   for (const row of insertedRows) {
     if (!(Number(row.score) >= threshold)) continue
     const { data: bank } = await supabase.from('sourcing_bank').select('*').eq('id', row.id).single()
     if (!bank || bank.candidate_id) continue
+    // Candado de visibilidad: cuarentena/extranjero/link muerto NO se promueve.
+    if (bank.verify_status && bank.verify_status !== 'activo') continue
     const { data: cand, error } = await supabase.from('candidates').insert({
       organization_id: vacancy.organization_id,
       full_name: bank.full_name || bank.title,
@@ -182,14 +221,35 @@ async function autoPromote(supabase, vacancy, insertedRows) {
       tags: ['auto-sourced', 'auto-promoted'],
     }).select().single()
     if (error || !cand) { console.error(`[cron-auto-source] auto-promote falló (${bank.url}): ${error?.message}`); continue }
-    await supabase.from('vacancy_candidates').insert({
+    const { data: vc, error: vcErr } = await supabase.from('vacancy_candidates').insert({
       vacancy_id: vacancy.id, candidate_id: cand.id, stage: 'sourced',
       match_score: bank.score, match_details: bank.score_details,
-    })
+    }).select('id').single()
+    if (vcErr) console.error(`[cron-auto-source] vacancy_candidates falló (${bank.url}): ${vcErr.message}`)
     await supabase.from('sourcing_bank').update({ candidate_id: cand.id }).eq('id', bank.id)
-    promoted++
+    counts.promoted++
+
+    if (autoSeq) {
+      const { error: enErr } = await supabase.from('sequence_enrollments').insert({
+        organization_id: vacancy.organization_id,
+        sequence_id: autoSeq.id,
+        sourcing_bank_id: bank.id,
+        vacancy_candidate_id: vc?.id || null,
+        status: 'active',
+        current_step: 0,
+        next_run_at: new Date().toISOString(),
+        enrolled_by: null, // inscrito por el robot, no por un usuario
+      })
+      if (!enErr) counts.enrolled++
+      else if (isDuplicateError(enErr)) {
+        // Ya estuvo inscrito en esa secuencia (anti-spam) — no es error.
+        console.log(`[cron-auto-source] ${bank.url} ya estuvo inscrito en "${autoSeq.name}" — skip`)
+      } else {
+        console.error(`[cron-auto-source] auto-inscripción falló (${bank.url}): ${enErr.message}`)
+      }
+    }
   }
-  return promoted
+  return counts
 }
 
 export async function handler() {
@@ -257,12 +317,12 @@ export async function handler() {
         inserted = data || []
       }
 
-      let promoted = 0
-      if (AUTO_PROMOTE_ENABLED) promoted = await autoPromote(supabase, v, inserted)
+      let promo = { promoted: 0, enrolled: 0 }
+      if (AUTO_PROMOTE_ENABLED) promo = await autoPromote(supabase, v, inserted)
 
       const filtered = Math.max(0, (counts.found || 0) - (counts.known || 0) - results.length)
-      console.log(`[cron-auto-source] "${v.title}": found=${counts.found} known=${counts.known} filtered=${filtered} returned=${results.length} garbage=${gateCounts.garbage} foreign=${gateCounts.foreign} quarantined=${gateCounts.quarantined} new=${inserted.length}${AUTO_PROMOTE_ENABLED ? ` promoted=${promoted}` : ''}`)
-      summary.push({ vacancy_id: v.id, title: v.title, found: counts.found, returned: results.length, garbage: gateCounts.garbage, foreign: gateCounts.foreign, quarantined: gateCounts.quarantined, new: inserted.length })
+      console.log(`[cron-auto-source] "${v.title}": found=${counts.found} known=${counts.known} filtered=${filtered} returned=${results.length} garbage=${gateCounts.garbage} foreign=${gateCounts.foreign} quarantined=${gateCounts.quarantined} new=${inserted.length}${AUTO_PROMOTE_ENABLED ? ` promoted=${promo.promoted} enrolled=${promo.enrolled}` : ''}`)
+      summary.push({ vacancy_id: v.id, title: v.title, found: counts.found, returned: results.length, garbage: gateCounts.garbage, foreign: gateCounts.foreign, quarantined: gateCounts.quarantined, new: inserted.length, promoted: promo.promoted, enrolled: promo.enrolled })
     } catch (e) {
       console.error(`[cron-auto-source] error en "${v.title}": ${e.message}`)
       summary.push({ vacancy_id: v.id, title: v.title, error: e.message })
