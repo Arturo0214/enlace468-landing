@@ -190,6 +190,8 @@ export default function NotificationBell() {
           style={{
             top: anchor.bottom + 8,
             right: Math.max(8, window.innerWidth - anchor.right),
+            // Clampa también el lado izquierdo: nunca sobresalir del viewport en móvil
+            maxWidth: `${window.innerWidth - Math.max(8, window.innerWidth - anchor.right) - 8}px`,
             background: 'var(--bg-elevated)',
             border: '1px solid var(--border-default)',
           }}

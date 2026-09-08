@@ -391,6 +391,15 @@ select option {
   box-shadow: 1px 0 0 rgba(37,99,235,0.06);
 }
 
+/* Success/warning text variants that escape the base remap (QA 2026-09-07).
+   [class*=...] atrapa también las variantes con opacidad (text-amber-300/90, etc.).
+   Los chips traslúcidos (bg-green-500/10 + texto verde) SÍ deben oscurecer su
+   texto en light; el texto blanco sobre fondos sólidos ya está protegido arriba. */
+:root:not(.dark) [class*="text-green-400"],
+:root:not(.dark) [class*="text-emerald-400"] { color: #047857; }
+:root:not(.dark) [class*="text-amber-300"],
+:root:not(.dark) [class*="text-amber-400"] { color: #B45309; }
+
 /* ══════════════════════════════════════════════════════════════
    PRINT STYLES
    ══════════════════════════════════════════════════════════════ */

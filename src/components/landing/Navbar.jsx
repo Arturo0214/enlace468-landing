@@ -35,9 +35,9 @@ export default function Navbar() {
           {/* Logo */}
           <a href="#inicio" className="flex items-center group">
             <img
-              src="/logo-enlace468.jpeg"
+              src="/brand/logo-header.svg"
               alt="Enlace 468"
-              className="h-10 w-auto object-contain group-hover:scale-105 transition-transform"
+              className="h-10 w-auto object-contain group-hover:scale-105 transition-transform dark:invert dark:hue-rotate-180"
             />
           </a>
 

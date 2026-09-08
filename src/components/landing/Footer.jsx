@@ -14,9 +14,9 @@ export default function Footer() {
           {/* Logo */}
           <a href="#inicio" className="flex items-center">
             <img
-              src="/logo-enlace468.jpeg"
+              src="/brand/logo-header.svg"
               alt="Enlace 468"
-              className="h-10 w-auto object-contain"
+              className="h-10 w-auto object-contain dark:invert dark:hue-rotate-180"
             />
           </a>
 

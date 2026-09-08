@@ -137,7 +137,7 @@ export default function TodayCandidates() {
                   const busy = busyId === it.id
                   return (
                     <div key={it.id} className="rounded-xl p-3.5 border transition-all bg-white/[0.02] border-white/[0.05] hover:border-white/[0.12]">
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-3 flex-wrap">
                         <div className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold text-white flex-shrink-0" style={{ background: scoreBadgeColor(score ?? 0) }}>
                           {score ?? '—'}
                         </div>
@@ -152,7 +152,7 @@ export default function TodayCandidates() {
                             <p className="text-[11px] mt-1" style={{ color: 'rgba(0,169,157,0.85)' }}>✓ {it.score_details.strengths.join(' · ')}</p>
                           )}
                         </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+                        <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5 w-full sm:w-auto justify-end">
                           <button onClick={() => promote(it)} disabled={busy}
                             className="px-2.5 py-1.5 text-[11px] bg-primary-light/15 text-primary-light rounded-lg font-medium hover:bg-primary-light/25 disabled:opacity-40 flex items-center gap-1 transition-all"
                             title="Crear candidato y agregarlo al pipeline de la vacante">
@@ -161,11 +161,11 @@ export default function TodayCandidates() {
                             <span className="sm:hidden">Promover</span>
                           </button>
                           <button onClick={() => discard(it)} disabled={busy}
-                            className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-all disabled:opacity-40"
+                            className="p-2.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-all disabled:opacity-40"
                             title="Descartar — no volverá a aparecer">
                             {busy ? <Loader2 size={14} className="animate-spin" /> : <Ban size={14} />}
                           </button>
-                          <a href={it.url} target="_blank" rel="noopener" className="p-1.5 rounded-lg text-gray-600 hover:text-primary-light hover:bg-primary-light/10 transition-all">
+                          <a href={it.url} target="_blank" rel="noopener" className="p-2.5 rounded-lg text-gray-600 hover:text-primary-light hover:bg-primary-light/10 transition-all">
                             <ExternalLink size={14} />
                           </a>
                         </div>

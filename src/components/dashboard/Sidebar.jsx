@@ -37,7 +37,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }) 
         <div className="h-14 flex items-center justify-between px-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border-default)' }}>
           {!collapsed && (
             <a href="/" className="flex items-center">
-              <img src="/logo-enlace468.jpeg" alt="Enlace 468" className="h-8 w-auto object-contain" />
+              <img src="/brand/logo-header.svg" alt="Enlace 468" className="h-8 w-auto object-contain dark:invert dark:hue-rotate-180" />
             </a>
           )}
           <button onClick={onToggleCollapse} className="p-1.5 rounded text-gray-500 hover:bg-white/5 hover:text-white transition-colors hidden lg:flex">

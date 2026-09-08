@@ -22,6 +22,13 @@ const priorityColors = {
   urgent: 'bg-red-500/20 text-red-400',
 }
 
+const priorityLabels = {
+  low: 'Baja',
+  medium: 'Media',
+  high: 'Alta',
+  urgent: 'Urgente',
+}
+
 export default function VacancyList() {
   const { profile } = useAuth()
   const navigate = useNavigate()
@@ -108,7 +115,7 @@ export default function VacancyList() {
             onClick={() => setFilter(f.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
               filter === f.key
-                ? 'bg-gradient-to-r from-primary/30 to-accent/20 text-white border border-primary/30'
+                ? 'bg-gradient-to-r from-primary to-primary-light text-white border border-primary'
                 : 'glass text-gray-400 hover:text-white'
             }`}
           >
@@ -147,21 +154,21 @@ export default function VacancyList() {
                 to={`/dashboard/vacancies/${vacancy.id}`}
                 className="block glass rounded-xl p-5 hover:border-primary/30 hover:scale-[1.01] transition-all"
               >
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <h3 className="font-semibold text-white">{vacancy.title}</h3>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${status.color}`}>{status.label}</span>
                       {vacancy.priority && vacancy.priority !== 'medium' && (
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityColors[vacancy.priority]}`}>{vacancy.priority}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityColors[vacancy.priority]}`}>{priorityLabels[vacancy.priority] || vacancy.priority}</span>
                       )}
                     </div>
                     {vacancy.company_name && (
                       <p className="text-sm text-gray-400">{vacancy.company_name} {vacancy.location ? `· ${vacancy.location}` : ''}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <div className="text-right">
+                  <div className="flex items-center gap-3 flex-shrink-0 justify-between sm:justify-start">
+                    <div className="text-left sm:text-right">
                       <div className="text-sm font-medium text-white">{candidateCount} candidatos</div>
                       {hiredCount > 0 && <div className="text-xs text-green-400">{hiredCount} contratado{hiredCount > 1 ? 's' : ''}</div>}
                     </div>
@@ -169,7 +176,7 @@ export default function VacancyList() {
                       onClick={e => handleDuplicate(e, vacancy)}
                       disabled={duplicatingId !== null}
                       title="Duplicar vacante"
-                      className="p-2 rounded-lg text-gray-500 hover:text-white hover:bg-white/10 disabled:opacity-40 transition-all"
+                      className="p-2.5 rounded-lg text-gray-500 hover:text-white hover:bg-white/10 disabled:opacity-40 transition-all"
                     >
                       {duplicatingId === vacancy.id ? <Loader2 size={16} className="animate-spin" /> : <Copy size={16} />}
                     </button>
@@ -177,7 +184,7 @@ export default function VacancyList() {
                       onClick={e => handleDelete(e, vacancy)}
                       disabled={deletingId !== null}
                       title="Eliminar vacante"
-                      className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-40 transition-all"
+                      className="p-2.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-40 transition-all"
                     >
                       {deletingId === vacancy.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                     </button>

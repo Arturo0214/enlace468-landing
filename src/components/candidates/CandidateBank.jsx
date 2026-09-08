@@ -81,8 +81,8 @@ export default function CandidateBank() {
                 <User size={18} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-white">{candidate.full_name}</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-white truncate max-w-full min-w-0">{candidate.full_name}</span>
                   {candidate.source && <span className="text-xs text-gray-500">{candidate.source}</span>}
                   {hasVerifyProblem(candidate.verify_status) && (() => {
                     const vb = verifyBadge(candidate.verify_status)
@@ -98,7 +98,7 @@ export default function CandidateBank() {
                   {[candidate.current_title, candidate.current_company].filter(Boolean).join(' · ') || candidate.email || 'Sin informacion'}
                 </div>
               </div>
-              <div className="flex-shrink-0 flex items-center gap-2">
+              <div className="flex-shrink-0 flex items-center gap-2 flex-wrap justify-end">
                 {(candidate.tags || []).slice(0, 3).map(tag => (
                   <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-white/5 text-gray-400">{tag}</span>
                 ))}

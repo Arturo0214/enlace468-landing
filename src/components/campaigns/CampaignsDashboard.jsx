@@ -51,7 +51,7 @@ export default function CampaignsDashboard() {
         </div>
         <button
           onClick={() => navigate('/dashboard/campaigns/new')}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
+          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
         >
           <Plus size={16} /> Nueva campana
         </button>
@@ -114,7 +114,7 @@ export default function CampaignsDashboard() {
           {campaigns.length === 0 && (
             <button
               onClick={() => navigate('/dashboard/campaigns/new')}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl text-sm font-medium hover:opacity-90"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl text-sm font-medium hover:opacity-90"
             >
               <Plus size={16} /> Crear campana
             </button>
@@ -131,7 +131,7 @@ export default function CampaignsDashboard() {
               onClick={() => navigate(`/dashboard/campaigns/${campaign.id}`)}
               className="glass rounded-xl p-5 cursor-pointer hover:border-blue-500/20 transition-all group"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">
                     <h3 className="font-semibold text-ink group-hover:text-blue-300 transition-colors truncate">{campaign.name}</h3>
@@ -152,7 +152,7 @@ export default function CampaignsDashboard() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-6 ml-4">
+                <div className="flex items-center gap-6 sm:ml-4">
                   <div className="text-center">
                     <p className="text-lg font-bold text-ink">{campaign.leads_count || 0}</p>
                     <p className="text-[10px] text-ink-tertiary">Leads</p>

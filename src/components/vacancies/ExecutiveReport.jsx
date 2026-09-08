@@ -691,7 +691,7 @@ export default function ExecutiveReport({ vacancy, candidates }) {
               en Posesion de los Particulares (LFPDPPP) y su reglamento. Los datos seran utilizados unicamente para fines de reclutamiento
               y seleccion de personal.
             </p>
-            <p className="text-[9px] text-gray-700 mt-2">
+            <p className="text-[9px] text-gray-500 mt-2">
               Generado el {today} | Enlace 468 Talent Solutions
             </p>
           </motion.div>

@@ -67,7 +67,7 @@ export default function CandidatePortal() {
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
         <Link to="/" className="flex items-center gap-2">
-          <img src="/logo-enlace468.jpeg" alt="Enlace 468" className="h-8 w-auto object-contain" />
+          <img src="/brand/logo-header.svg" alt="Enlace 468" className="h-8 w-auto object-contain invert hue-rotate-180" />
         </Link>
         <Link
           to="/login"

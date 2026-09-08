@@ -422,7 +422,7 @@ export default function CampaignBuilder() {
             <button
               onClick={() => handleSave(true)}
               disabled={saving}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {saving ? <Loader2 size={16} className="animate-spin" /> : <Rocket size={16} />}
               Lanzar campana

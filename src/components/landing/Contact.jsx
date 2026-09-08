@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 
 export default function Contact() {
   return (
-    <section id="contacto" className="relative py-24 sm:py-32">
+    <section id="contacto" className="relative py-24 sm:py-32 overflow-hidden">
       {/* Background glow */}
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-gradient-to-t from-primary/15 to-accent/10 blur-[120px] rounded-full" />
 
