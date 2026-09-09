@@ -32,6 +32,7 @@
 import { getServiceClient } from './lib/supabase.mjs'
 import { runAutoSource } from './auto-source.mjs'
 import { hasMexicoSignal, isForeignProfile, nameLooksLikeRole, checkRoleFit, normalizeLinkedInUrl } from '../../src/lib/sourcingScore.js'
+import { matchExcludedCompany } from '../../src/lib/excludedCompanies.js'
 
 // Auto-promoción al pipeline según vacancies.auto_promote_min_score.
 // ENCENDIDA (2026-09-08): el gating real es POR VACANTE — solo promueve si
@@ -101,6 +102,8 @@ function gateResult(r) {
   const name = r.full_name || r.title || ''
   if (nameLooksLikeRole(name)) return 'garbage'
   if (isForeignProfile(r.url, r.title, r.current_title, r.current_company, r.snippet)) return 'foreign'
+  // Veto de sector (aseguradoras/inversiones/seguros — no contratable)
+  if (matchExcludedCompany(r.current_company, r.current_title, r.title, r.snippet, r.full_name)) return 'vetoed'
   if (checkRoleFit(r.current_title || r.title || '', r.snippet || '').verdict === 'specialized') return 'specialized'
   if (hasMexicoSignal(r.url, r.title, r.current_title, r.current_company, r.snippet)) return 'mx'
   return 'unknown'
@@ -114,6 +117,7 @@ function applyGate(results, vacancy, gateCounts) {
     const verdict = gateResult(r)
     if (verdict === 'garbage') { gateCounts.garbage++; continue }
     if (verdict === 'foreign') { gateCounts.foreign++; continue }
+    if (verdict === 'vetoed') { gateCounts.vetoed = (gateCounts.vetoed || 0) + 1; continue }
     if (verdict === 'specialized') { gateCounts.specialized++; continue }
     const row = toBankRow(r, vacancy)
     if (verdict === 'unknown') { row.verify_status = 'geo_desconocida'; gateCounts.quarantined++ }
@@ -148,6 +152,9 @@ async function cleanupBank(supabase) {
       let reason = null
       if (nameLooksLikeRole(name)) reason = 'nombre de empresa/rol, no persona'
       else if (isForeignProfile(b.url, b.title, b.current_title, b.current_company, b.snippet)) reason = 'perfil extranjero'
+      else if (matchExcludedCompany(b.current_company, b.current_title, b.title, b.snippet, b.full_name)) {
+        reason = `sector vetado (${matchExcludedCompany(b.current_company, b.current_title, b.title, b.snippet, b.full_name)})`
+      }
       else {
         // Barrido de especializados sobre filas ya guardadas (criterio #1 de
         // la QA tester): título analítico/técnico sin señal comercial.

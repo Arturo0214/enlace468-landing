@@ -58,6 +58,13 @@ export const EXCLUDED_COMPANIES = [
   // candidate isn't dropped merely for listing insurance as an area of expertise.
   { label: 'Sector asegurador', patterns: ['aseguradora', 'compania de seguros', 'compania aseguradora', 'grupo asegurador', 'grupo financiero asegurador', 'seguros y fianzas', 'reaseguradora', 'reaseguros', 'afianzadora'] },
   { label: 'Sector inversiones', patterns: ['casa de bolsa', 'operadora de fondos', 'operadora de sociedades de inversion', 'sociedad de inversion', 'gestora de fondos', 'fondo de inversion', 'afore', 'administradora de fondos para el retiro'] },
+  // --- VETO TOTAL de seguros/fianzas/retiro (Arturo sep-2026: "los candidatos
+  // de seguros están vetados, no podemos contratarlos"). Va más allá del
+  // catch-all de aseguradoras: veta a CUALQUIERA cuyo rol/empresa sea seguros,
+  // fianzas, afore o previsional — agentes/asesores individuales y nombres de
+  // empresa tipo "Seguros Centauro" ("seguros y DE fianzas" no matcheaba el
+  // patrón viejo). `seguros`/`fianzas` como tokens directos (word-boundary).
+  { label: 'Veto seguros/fianzas', patterns: ['seguros', 'fianzas', 'agente de seguros', 'asesor de seguros', 'corredor de seguros', 'promotor de seguros', 'productor de seguros', 'previsional', 'planeacion previsional', 'ahorro para el retiro', 'agente afore', 'asesor previsional'] },
 ]
 
 /** Lowercase + strip accents so matching is diacritic-insensitive. */
