@@ -29,7 +29,11 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [platform, setPlatform] = useState('linkedin')
   const [excludeSector, setExcludeSector] = useState(true) // excluir aseguradoras/inversiones (Prudential)
-  const [onlyEntrepreneurs, setOnlyEntrepreneurs] = useState(false) // solo perfiles con negocio propio (Ingrid)
+  // Modo emprendedores (Ingrid): solo perfiles con negocio propio. Persiste en la
+  // vacante (vacancies.entrepreneur_mode) y el cron nocturno lo lee. La búsqueda
+  // manual comparte este estado, por eso vive en el orquestador; useAutoSourcing
+  // lo inicializa desde la vacante (junto a auto_source_enabled).
+  const [onlyEntrepreneurs, setOnlyEntrepreneurs] = useState(false)
   const [enrollTarget, setEnrollTarget] = useState(null) // { type:'bank', id, name } → modal de secuencias (Fase 5)
 
   // Búsqueda manual: widget CSE de Google + paginación + búsqueda local
@@ -38,7 +42,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
   const bank = useSourcingBank({ profile, vacancy, vacancyId, platform, excludeSector, googleResults: search.googleResults, setAddedIds })
   // Sourcing automático server-side + config del sourcing nocturno
   const auto = useAutoSourcing({
-    vacancy, vacancyId, platform, excludeSector, onlyEntrepreneurs,
+    vacancy, vacancyId, platform, excludeSector, onlyEntrepreneurs, setOnlyEntrepreneurs,
     bankUrls: bank.bankUrls, blockedGlobal: bank.blockedGlobal,
     setBankItems: bank.setBankItems, setSavingAll: bank.setSavingAll, resultToBankRow: bank.resultToBankRow,
   })

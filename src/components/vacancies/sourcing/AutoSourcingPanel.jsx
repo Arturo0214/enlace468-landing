@@ -5,11 +5,12 @@ import { EXCLUDED_LABELS_SHORT } from '../../../lib/excludedCompanies'
 // slider de score, toggles (excluir sector / solo emprendedores), sourcing
 // nocturno (cron) con auto-promoción, e importación de perfil por URL.
 // Vive dentro de la misma card "glass" que SourcingSearchBar.
-export default function AutoSourcingPanel({ auto, bank, excludeSector, setExcludeSector, onlyEntrepreneurs, setOnlyEntrepreneurs }) {
+export default function AutoSourcingPanel({ auto, bank, excludeSector, setExcludeSector, onlyEntrepreneurs }) {
   const {
     autoTerms, setAutoTerms, autoLoading, autoMinScore, setAutoMinScore,
     autoNightly, autoPromoteMin, setAutoPromoteMin, savingNightly,
     runAutoSource, toggleNightly, savePromoteMin,
+    toggleEntrepreneurMode, savingEntrepreneur,
   } = auto
   const { importUrl, setImportUrl, importing, importMsg, importByUrl } = bank
   return (
@@ -47,9 +48,10 @@ export default function AutoSourcingPanel({ auto, bank, excludeSector, setExclud
           </span>
           Excluir aseguradoras/inversiones
         </button>
-        {/* Toggle: solo emprendedores/dueños de negocio (convierten mejor — Ingrid) */}
-        <button type="button" onClick={() => setOnlyEntrepreneurs(v => !v)}
-          className="flex items-center gap-2 text-[11px] text-gray-300 hover:text-white transition-colors"
+        {/* Toggle: modo emprendedores/dueños de negocio (convierten mejor — Ingrid).
+            Persiste en la vacante (entrepreneur_mode) y lo comparte el switch de abajo. */}
+        <button type="button" onClick={toggleEntrepreneurMode} disabled={savingEntrepreneur}
+          className="flex items-center gap-2 text-[11px] text-gray-300 hover:text-white transition-colors disabled:opacity-60"
           title="Solo perfiles con señales de negocio propio (fundador, emprendedor, dueño). Convierten mejor: no les da miedo emprender.">
           <span className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${onlyEntrepreneurs ? 'bg-[#00A99D]' : 'bg-white/15'}`}>
             <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${onlyEntrepreneurs ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
@@ -93,6 +95,24 @@ export default function AutoSourcingPanel({ auto, bank, excludeSector, setExclud
             <br />Con una secuencia activa de esta vacante, los auto-promovidos se inscriben solos (conexión + follow-ups automáticos).
           </p>
         )}
+
+        {/* Modo emprendedores — se guarda en la vacante y aplica tanto a la
+            búsqueda manual/automática como al sourcing nocturno (mismo campo
+            entrepreneur_mode; comparte estado con el toggle "Solo emprendedores" de arriba). */}
+        <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <button type="button" onClick={toggleEntrepreneurMode} disabled={savingEntrepreneur}
+            className="flex items-center gap-2 text-[11px] text-gray-300 hover:text-white transition-colors disabled:opacity-60"
+            title="Busca fundadores, dueños de negocio y asesores independientes — mentalidad de generador de negocio con autonomía.">
+            <span className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${onlyEntrepreneurs ? 'bg-[#00A99D]' : 'bg-white/15'}`}>
+              <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${onlyEntrepreneurs ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
+            </span>
+            {savingEntrepreneur ? <Loader2 size={12} className="animate-spin" /> : null}
+            Modo emprendedores 🚀
+          </button>
+          <p className="mt-1.5 text-[10px] text-gray-500 leading-relaxed">
+            Busca fundadores, dueños de negocio y asesores independientes — mentalidad de generador de negocio con autonomía. Aplica a la búsqueda de esta vacante y al sourcing nocturno.
+          </p>
+        </div>
       </div>
 
       {/* Importar por URL de LinkedIn (agregar gente de tu red al CRM) */}

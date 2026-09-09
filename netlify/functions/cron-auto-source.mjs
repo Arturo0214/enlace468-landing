@@ -276,7 +276,7 @@ export async function handler() {
 
   const { data: vacancies, error } = await supabase
     .from('vacancies')
-    .select('id, organization_id, title, location, department, company_name, description, challenges, competencies, search_terms, auto_promote_min_score')
+    .select('id, organization_id, title, location, department, company_name, description, challenges, competencies, search_terms, auto_promote_min_score, entrepreneur_mode')
     .eq('auto_source_enabled', true)
     .eq('status', 'open')
     .order('last_auto_sourced_at', { ascending: true, nullsFirst: true })
@@ -322,6 +322,9 @@ export async function handler() {
           minScore: CRON_MIN_SCORE,
           maxResults: CRON_MAX_RESULTS,
           searchTerms: v.search_terms || [],
+          // Modo emprendedores (Ingrid): queries dirigidas a fundadores/dueños +
+          // boost. Se activa por env ENTREPRENEUR_MODE o por flag de la vacante.
+          onlyEntrepreneurs: process.env.ENTREPRENEUR_MODE === '1' || v.entrepreneur_mode === true,
         },
       })
 

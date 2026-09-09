@@ -7,7 +7,7 @@ import { normalizeLinkedInUrl } from '../../../../lib/sourcingScore'
 // (toggle + auto-promoción) que persiste en la vacante.
 // Nota: `excludeSector`/`onlyEntrepreneurs`/`platform` viven en el orquestador
 // porque también los usa la búsqueda manual (loadMoreLinkedIn / importByUrl).
-export default function useAutoSourcing({ vacancy, vacancyId, platform, excludeSector, onlyEntrepreneurs, bankUrls, blockedGlobal, setBankItems, setSavingAll, resultToBankRow }) {
+export default function useAutoSourcing({ vacancy, vacancyId, platform, excludeSector, onlyEntrepreneurs, setOnlyEntrepreneurs, bankUrls, blockedGlobal, setBankItems, setSavingAll, resultToBankRow }) {
   // Auto-sourcing (server-side ranked prospects)
   const [autoResults, setAutoResults] = useState([])
   const [autoLoading, setAutoLoading] = useState(false)
@@ -22,14 +22,17 @@ export default function useAutoSourcing({ vacancy, vacancyId, platform, excludeS
   const [autoNightly, setAutoNightly] = useState(false)
   const [autoPromoteMin, setAutoPromoteMin] = useState('')
   const [savingNightly, setSavingNightly] = useState(false)
+  // Modo emprendedores por vacante (persiste en vacancies.entrepreneur_mode; lo lee el cron)
+  const [savingEntrepreneur, setSavingEntrepreneur] = useState(false)
 
   // Carga los términos ganadores guardados en la vacante
   useEffect(() => { setAutoTerms((vacancy?.search_terms || []).join(', ')) }, [vacancy?.id])
 
-  // Carga la config del sourcing nocturno guardada en la vacante
+  // Carga la config del sourcing nocturno + modo emprendedores guardados en la vacante
   useEffect(() => {
     setAutoNightly(!!vacancy?.auto_source_enabled)
     setAutoPromoteMin(vacancy?.auto_promote_min_score ?? '')
+    setOnlyEntrepreneurs(!!vacancy?.entrepreneur_mode)
   }, [vacancy?.id])
 
   // ── Sourcing automático ──────────────────────────────────
@@ -143,12 +146,29 @@ export default function useAutoSourcing({ vacancy, vacancyId, platform, excludeS
     } catch (e) { console.error(e) }
   }
 
+  // ── Modo emprendedores (toggle por vacante) ───────────────
+  // Persiste en vacancies.entrepreneur_mode. Lo lee el cron nocturno
+  // (cron-auto-source.mjs) y también dirige la búsqueda manual/auto de esta
+  // sesión (estado compartido onlyEntrepreneurs, que vive en el orquestador).
+  async function toggleEntrepreneurMode() {
+    const next = !onlyEntrepreneurs
+    setOnlyEntrepreneurs(next)
+    setSavingEntrepreneur(true)
+    try {
+      const { error } = await supabase.from('vacancies')
+        .update({ entrepreneur_mode: next }).eq('id', vacancyId)
+      if (error) { console.error(error); setOnlyEntrepreneurs(!next) }
+    } catch (e) { console.error(e); setOnlyEntrepreneurs(!next) }
+    finally { setSavingEntrepreneur(false) }
+  }
+
   return {
     // estado
     autoResults, autoLoading, autoRan, autoCounts, autoError,
     autoMinScore, setAutoMinScore, autoTerms, setAutoTerms,
     autoNightly, autoPromoteMin, setAutoPromoteMin, savingNightly, autoUnsaved,
+    savingEntrepreneur,
     // acciones
-    runAutoSource, saveAllAuto, toggleNightly, savePromoteMin,
+    runAutoSource, saveAllAuto, toggleNightly, savePromoteMin, toggleEntrepreneurMode,
   }
 }
