@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Plus, Star, X, Mail, Phone, MapPin, ExternalLink, Briefcase, Calendar, Tag, Clock, MessageCircle, Send, Loader2, CheckCircle, ArrowUpRight, ArrowDownLeft, FileText, Video, Link2, AlertTriangle, Workflow, StickyNote } from 'lucide-react'
 import { scoreColor } from './stages'
+import DispositionSelector from './DispositionSelector'
+import PipelineDetailForm from './PipelineDetailForm'
 
 // Modal de detalle del candidato: info + CV + contactar + entrevistas
 // (Fireflies/Calendar), timeline de interacciones y notas de entrevista.
@@ -135,6 +137,27 @@ export default function CandidateModal({ modal, stages, onEnroll }) {
                         </span>
                       )}
                     </div>
+                  </div>
+
+                  {/* Disposición / Ruteo (FASE C — punto de control E del
+                      diagrama de Ingrid, expandido). Sección propia y aislada:
+                      el <DispositionSelector> hace su propia escritura a BD y
+                      nos devuelve el patch para reflejarlo en el modal sin
+                      recargar. No toca la lógica existente del modal. */}
+                  <div className="pt-1" style={{ borderTop: '1px solid var(--border-default)' }}>
+                    <DispositionSelector
+                      vc={selectedVC}
+                      onSaved={patch => setSelectedVC(prev => prev ? { ...prev, ...patch } : prev)}
+                    />
+                  </div>
+
+                  {/* Ficha operativa (FASE D — pipeline expandido de Ingrid).
+                      Sección propia y aislada: carga/escribe
+                      candidate_pipeline_detail (psicométrico, docs, CNSF,
+                      inducción) por su cuenta, tolerante a que la fila no exista
+                      aún. No toca la lógica del modal ni la de disposición. */}
+                  <div className="pt-1" style={{ borderTop: '1px solid var(--border-default)' }}>
+                    <PipelineDetailForm vacancyCandidate={selectedVC} />
                   </div>
 
                   {/* Secuencia de outreach (Fase 5) */}

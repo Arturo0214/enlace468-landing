@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Printer, Copy, CheckCircle, Shield, Users, TrendingUp, Star, AlertTriangle, ChevronRight, Target, CalendarClock } from 'lucide-react'
+import { Printer, Copy, CheckCircle, Shield, Users, TrendingUp, Star, AlertTriangle, ChevronRight, Target, CalendarClock, Route, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { computeFunnelStats, forecastNextHire, pipelineFromHistory } from '../../lib/funnelForecast'
 import { useStageLabels } from '../../lib/useStageLabels'
+import { DISPOSITIONS, getDisposition, summarizeDispositions, TU_MARCA_VENDE_PRICE } from '../../lib/disposition'
 
 const STAGE_COLORS = {
   sourced: 'bg-gray-500',
@@ -158,6 +159,15 @@ export default function ExecutiveReport({ vacancy, candidates }) {
 
     return { total, active, rejected, hired, funnel, histFunnel, sources, shortlist, avgDays, conversionRate }
   }, [candidates, history])
+
+  // ── Ruteo / disposición de candidatos (FASE C) ──
+  // Cuántos candidatos hay por disposición + recuperación de no-aptos. El
+  // embudo deja de "perder" a los no-FC: se ve a dónde se rutearon y el valor
+  // B2C potencial (Tu Marca Vende / otro producto).
+  const dispo = useMemo(() => {
+    if (!candidates?.length) return null
+    return summarizeDispositions(candidates)
+  }, [candidates])
 
   // ── Pronóstico de clave (FASE 3) ──
   // Estadísticas de la vacante; si su historia es corta (sin claves o pocos
@@ -417,6 +427,73 @@ export default function ExecutiveReport({ vacancy, candidates }) {
               </div>
             )}
           </motion.div>
+
+          {/* Ruteo de candidatos (FASE C): a dónde se rutearon los no-aptos y
+              el valor del pipeline más allá de FC (recuperación de rechazados) */}
+          {dispo && dispo.nonFc > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.11 }}
+              className="glass rounded-xl p-5"
+            >
+              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Route size={13} className="text-accent" /> Ruteo de candidatos
+              </h2>
+              <p className="text-[10px] text-gray-600 mb-4">
+                El pipeline deja de "perder" a los no-aptos para FC: se rutean a otro producto, rol o nurture
+                en vez de morir en rechazado. Aqui se ve a donde y cuanto valor se recupera.
+              </p>
+
+              {/* KPIs de recuperación */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                {[
+                  { label: 'Apto FC', value: dispo.counts.fc_track, color: 'text-emerald-400', bg: 'bg-emerald-500/15' },
+                  { label: 'Recuperados', value: dispo.recovered, color: 'text-cyan-300', bg: 'bg-cyan-500/15' },
+                  { label: '% recuperacion', value: `${Math.round(dispo.recoveryRate * 100)}%`, color: dispo.recoveryRate >= 0.3 ? 'text-emerald-400' : 'text-amber-400', bg: dispo.recoveryRate >= 0.3 ? 'bg-emerald-500/15' : 'bg-amber-500/15' },
+                  { label: 'Valor B2C potencial', value: `$${(dispo.counts.tu_marca_vende * TU_MARCA_VENDE_PRICE).toLocaleString('es-MX')}`, color: 'text-cyan-300', bg: 'bg-cyan-500/15', icon: Sparkles },
+                ].map((kpi, i) => (
+                  <div key={i} className="bg-white/[0.03] rounded-xl p-3.5 text-center">
+                    <div className={`w-8 h-8 rounded-lg ${kpi.bg} flex items-center justify-center mx-auto mb-2`}>
+                      {kpi.icon ? <kpi.icon size={14} className={kpi.color} /> : <Route size={14} className={kpi.color} />}
+                    </div>
+                    <div className={`text-lg font-bold font-display ${kpi.color}`}>{kpi.value}</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">{kpi.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Barras por disposición */}
+              <div className="space-y-1.5">
+                {DISPOSITIONS.map(d => {
+                  const count = dispo.counts[d.value] || 0
+                  const pct = dispo.total > 0 ? (count / dispo.total * 100) : 0
+                  const def = getDisposition(d.value)
+                  return (
+                    <div key={d.value} className="flex items-center gap-3">
+                      <span className="text-[10px] text-gray-500 w-28 text-right truncate" title={def.description}>{def.label}</span>
+                      <div className="flex-1 h-5 bg-white/[0.03] rounded-md overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.max(pct, count > 0 ? 8 : 0)}%` }}
+                          transition={{ duration: 0.6, delay: 0.1 }}
+                          className={`h-full ${def.color.dot} rounded-md flex items-center justify-end pr-2`}
+                        >
+                          {count > 0 && <span className="text-[9px] font-bold text-white">{count}</span>}
+                        </motion.div>
+                      </div>
+                      <span className="text-[10px] text-gray-600 w-8">{pct.toFixed(0)}%</span>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <p className="text-[10px] text-gray-600 mt-3 leading-relaxed">
+                Valor B2C potencial = candidatos ruteados a <span className="text-cyan-300">Tu Marca Vende</span> × ${TU_MARCA_VENDE_PRICE}.
+                Cada no-apto es un lead calido para el producto de CV + LinkedIn.
+              </p>
+            </motion.div>
+          )}
 
           {/* Pronóstico de clave (FASE 3): composición actual del pipeline ×
               conversiones históricas de stage_history × velocidad por etapa */}

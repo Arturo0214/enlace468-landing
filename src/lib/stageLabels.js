@@ -20,7 +20,9 @@ export const DEFAULT_STAGE_LABELS = {
   presented: 'Presentado',
   shortlist: 'Finalista',
   offer: 'Oferta',
+  documentation: 'Documentación',
   hired: 'Clave',
+  onboarding: 'Inducción',
   rejected: 'Descartado',
 }
 
