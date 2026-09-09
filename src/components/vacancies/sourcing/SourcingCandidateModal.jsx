@@ -1,6 +1,8 @@
-import { ExternalLink, Plus, Loader2, CheckCircle, X, Mail, Phone, MapPin, Sparkles, Copy, MessageSquare, Send, Workflow } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { ExternalLink, Plus, Loader2, CheckCircle, X, Mail, Phone, MapPin, Sparkles, Copy, MessageSquare, Send, Workflow, StickyNote } from 'lucide-react'
 import EnrollModal from '../../outreach/EnrollModal'
 import ConfirmDialog from '../../ui/ConfirmDialog'
+import { normalizeLinkedInUrl } from '../../../lib/sourcingScore'
 
 // Modal del candidato (resultados locales): datos de contacto, draft de
 // outreach con IA por canal, envío real por LinkedIn (con ConfirmDialog) y
@@ -11,12 +13,46 @@ export default function SourcingCandidateModal({
   search, bank, outreach, enrollTarget, setEnrollTarget, profile,
 }) {
   const { addToBank, addExisting } = search
-  const { bankItems } = bank
+  const { bankItems, updateNotes, savingNotesId } = bank
   const {
     draftChannel, setDraftChannel, draftLoading, draft, draftCopied,
     sending, sendResult, pendingSend, setPendingSend,
     generateDraft, copyDraft, sendLinkedIn, doSendLinkedIn,
   } = outreach
+
+  // ── Notas por candidato (sourcing_bank.notes) ────────────────────────────
+  // Ahí viven las observaciones de la QA tester y las razones de auto-descarte;
+  // el reclutador puede editarlas desde aquí. La fila del banco se resuelve por
+  // id (si el modal se abrió desde el banco) o por URL canónica.
+  const candKey = selectedCandidate ? normalizeLinkedInUrl(selectedCandidate.url || selectedCandidate.linkedin_url) : ''
+  const notesRow = selectedCandidate
+    ? (bankItems.find(x => x.id === selectedCandidate.id)
+      || (candKey && bankItems.find(x => normalizeLinkedInUrl(x.url) === candKey))
+      || null)
+    : null
+  // Reset del borrador al cambiar de candidato — patrón "adjust state during
+  // render" (sin effect, evita renders en cascada).
+  const [noteState, setNoteState] = useState({ rowId: null, text: '', savedAt: null })
+  if ((notesRow?.id ?? null) !== noteState.rowId) {
+    setNoteState({ rowId: notesRow?.id ?? null, text: notesRow?.notes || '', savedAt: null })
+  }
+  const noteText = noteState.text
+  const noteSavedAt = noteState.savedAt
+  const setNoteText = text => setNoteState(s => ({ ...s, text }))
+  const noteRef = useRef(null)
+  useEffect(() => {
+    // Abierto desde el icono 📝 de la tarjeta → llegar directo a las notas.
+    if (selectedCandidate?._openNotes && noteRef.current) {
+      noteRef.current.scrollIntoView({ block: 'center' })
+      noteRef.current.focus()
+    }
+  }, [selectedCandidate?._openNotes, notesRow?.id])
+  async function saveNote() {
+    if (!notesRow) return
+    const ok = await updateNotes(notesRow.id, noteText)
+    if (ok) setNoteState(s => ({ ...s, savedAt: new Date() }))
+  }
+
   return (
     <>
       {/* Candidate modal */}
@@ -43,7 +79,31 @@ export default function SourcingCandidateModal({
                 {selectedCandidate.location && <div className="flex items-center gap-2 bg-white/[0.03] rounded-lg px-3 py-2.5"><MapPin size={14} className="text-gray-500" /><span className="text-xs text-gray-300">{selectedCandidate.location}</span></div>}
                 {selectedCandidate.linkedin_url && <a href={selectedCandidate.linkedin_url} target="_blank" rel="noopener" className="flex items-center gap-2 bg-primary-light/5 rounded-lg px-3 py-2.5 hover:bg-primary-light/10 border border-primary-light/10"><ExternalLink size={14} className="text-primary-light" /><span className="text-xs text-primary-light">Ver LinkedIn</span></a>}
               </div>
-              {selectedCandidate.snippet && <div><p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Notas</p><p className="text-sm text-gray-300 whitespace-pre-wrap">{selectedCandidate.snippet}</p></div>}
+              {selectedCandidate.snippet && <div><p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Perfil</p><p className="text-sm text-gray-300 whitespace-pre-wrap">{selectedCandidate.snippet}</p></div>}
+
+              {/* Notas del candidato (sourcing_bank.notes) — editable */}
+              {notesRow && (
+                <div className="rounded-xl p-3.5" style={{ background: 'rgba(251,191,36,0.05)', border: '1px solid rgba(251,191,36,0.15)' }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <StickyNote size={14} className="text-amber-300" />
+                    <p className="text-xs font-semibold text-white">Notas</p>
+                  </div>
+                  <textarea ref={noteRef} value={noteText} onChange={e => setNoteText(e.target.value)}
+                    rows={3} placeholder="Observaciones sobre este candidato (QA, contexto, seguimiento)…"
+                    className="w-full text-sm text-gray-200 bg-black/30 border border-white/[0.08] rounded-lg p-2.5 resize-y placeholder:text-gray-600 focus:outline-none focus:border-amber-400/40" />
+                  <div className="mt-2 flex items-center gap-2">
+                    <button onClick={saveNote} disabled={savingNotesId === notesRow.id || (noteText.trim() === (notesRow.notes || '').trim())}
+                      className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg font-medium text-amber-200 bg-amber-400/15 hover:bg-amber-400/25 disabled:opacity-40">
+                      {savingNotesId === notesRow.id ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle size={12} />} Guardar
+                    </button>
+                    {noteSavedAt && (
+                      <span className="text-[11px] text-emerald-400">
+                        Guardado {noteSavedAt.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Mensaje de outreach con IA */}
               <div className="rounded-xl p-3.5" style={{ background: 'rgba(0,169,157,0.05)', border: '1px solid rgba(0,169,157,0.15)' }}>
@@ -107,7 +167,7 @@ export default function SourcingCandidateModal({
               })()}
               {(() => {
                 // Si el candidato ya vive en el banco → puede inscribirse a una secuencia (Fase 5)
-                const bankRow = bankItems.find(x => x.url && (x.url === selectedCandidate.url || x.url === selectedCandidate.linkedin_url) && x.source !== 'descartado')
+                const bankRow = bankItems.find(x => x.url && candKey && normalizeLinkedInUrl(x.url) === candKey && x.source !== 'descartado')
                 return bankRow ? (
                   <button onClick={() => setEnrollTarget({ type: 'bank', id: bankRow.id, name: bankRow.full_name || bankRow.title })}
                     className="ml-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white flex items-center gap-1.5"

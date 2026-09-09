@@ -1,12 +1,29 @@
-import { ExternalLink, Plus, Loader2, CheckCircle, Download, Star, Archive, Trash2, Workflow, Mail } from 'lucide-react'
+import { useState } from 'react'
+import { ExternalLink, Plus, Loader2, CheckCircle, Download, Star, Archive, Trash2, Workflow, Mail, StickyNote, Eye, EyeOff } from 'lucide-react'
 import { verifyBadge, hasVerifyProblem, verifyTooltip } from '../../../lib/verifyBadge'
+import { isUnpromotable } from '../../../lib/promote'
+
+// verify_status que se OCULTAN por default (filtro "Confirmados"): la QA
+// tester perdió tiempo revisando perfiles que el sistema YA tenía en
+// cuarentena geográfica o descartados — no deben estorbar en el banco.
+const HIDDEN_STATUSES = new Set(['geo_desconocida', 'extranjero', 'descartado_qa'])
 
 // Banco de sourcing persistente por vacante: cards guardadas con badges de
 // score/verificación/contacto y acciones (promover a pipeline, secuencia,
-// abrir perfil, quitar) + export CSV.
-export default function SourcingBankList({ bank, outreach, setEnrollTarget }) {
+// notas, abrir perfil, quitar) + export CSV. Por default solo muestra los
+// CONFIRMADOS (sin cuarentena) con toggle "Ver todos".
+export default function SourcingBankList({ bank, outreach, setEnrollTarget, setSelectedCandidate }) {
   const { savedItems, exportBank, promoteToPipeline, promotingId, removeFromBank, removingId } = bank
   const { contactStatus } = outreach
+  const [showAll, setShowAll] = useState(false)
+
+  const confirmed = savedItems.filter(b => !HIDDEN_STATUSES.has(b.verify_status))
+  const hiddenCount = savedItems.length - confirmed.length
+  const visibleItems = showAll ? savedItems : confirmed
+
+  // Abre el modal del candidato directo en la sección de notas.
+  const openNotes = b => setSelectedCandidate?.({ ...b, linkedin_url: b.url, _openNotes: true })
+
   if (savedItems.length === 0) return null
   return (
     <div className="glass rounded-xl p-5">
@@ -20,13 +37,23 @@ export default function SourcingBankList({ bank, outreach, setEnrollTarget }) {
             <p className="text-[11px] text-gray-500">{savedItems.length} guardados · {savedItems.filter(b => b.candidate_id).length} en pipeline</p>
           </div>
         </div>
-        <button onClick={exportBank} className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-400 hover:text-white bg-white/[0.04] rounded-lg hover:bg-white/[0.08]">
-          <Download size={12} /> CSV
-        </button>
+        <div className="flex items-center gap-2">
+          {hiddenCount > 0 && (
+            <button onClick={() => setShowAll(v => !v)}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-400 hover:text-white bg-white/[0.04] rounded-lg hover:bg-white/[0.08]"
+              title="Perfiles en cuarentena geográfica o descartados por QA — el sistema los verifica de noche">
+              {showAll ? <><EyeOff size={12} /> Solo confirmados</> : <><Eye size={12} /> Ver todos ({hiddenCount} ocultos)</>}
+            </button>
+          )}
+          <button onClick={exportBank} className="flex items-center gap-1 px-3 py-1.5 text-xs text-gray-400 hover:text-white bg-white/[0.04] rounded-lg hover:bg-white/[0.08]">
+            <Download size={12} /> CSV
+          </button>
+        </div>
       </div>
       <div className="space-y-2">
-        {savedItems.map(b => {
+        {visibleItems.map(b => {
           const inPipeline = !!b.candidate_id
+          const blocked = isUnpromotable(b)
           return (
             <div key={b.id} className={`rounded-xl p-4 border transition-all ${inPipeline ? 'bg-emerald-500/[0.03] border-emerald-500/20' : 'bg-white/[0.02] border-white/[0.06] hover:border-amber-400/20'}`}>
               <div className="flex items-start gap-3">
@@ -71,11 +98,18 @@ export default function SourcingBankList({ bank, outreach, setEnrollTarget }) {
                   {inPipeline ? (
                     <span className="px-2 py-1 text-[11px] text-emerald-400 flex items-center gap-1"><CheckCircle size={13} /> Pipeline</span>
                   ) : (
-                    <button onClick={() => promoteToPipeline(b)} disabled={promotingId === b.id}
-                      className="px-2.5 py-1 text-[11px] bg-primary-light/15 text-primary-light rounded font-medium hover:bg-primary-light/25 disabled:opacity-40 flex items-center gap-1" title="Agregar al pipeline">
+                    <button onClick={() => !blocked && promoteToPipeline(b)} disabled={promotingId === b.id || blocked}
+                      className="px-2.5 py-1 text-[11px] bg-primary-light/15 text-primary-light rounded font-medium hover:bg-primary-light/25 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                      title={blocked ? 'En verificación de ubicación — no promovible' : 'Agregar al pipeline'}>
                       {promotingId === b.id ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />} Pipeline
                     </button>
                   )}
+                  <button onClick={() => openNotes(b)}
+                    className={`relative p-1.5 rounded-lg transition-all ${b.notes ? 'text-amber-300 hover:text-amber-200 hover:bg-amber-400/10' : 'text-gray-600 hover:text-amber-300 hover:bg-amber-400/10'}`}
+                    title={b.notes || 'Agregar nota'}>
+                    <StickyNote size={14} />
+                    {b.notes && <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                  </button>
                   <button onClick={() => setEnrollTarget({ type: 'bank', id: b.id, name: b.full_name || b.title })}
                     className="p-1.5 rounded-lg text-gray-600 hover:text-teal-400 hover:bg-teal-400/10 transition-all"
                     title="Inscribir en secuencia de outreach">

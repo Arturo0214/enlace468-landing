@@ -36,7 +36,7 @@
 import { getServiceClient } from './lib/supabase.mjs'
 import { enrichProfile, getDispatcher, slugOf } from './auto-source.mjs'
 import { normalizeText } from '../../src/lib/excludedCompanies.js'
-import { detectForeignLocation, hasMexicoSignal } from '../../src/lib/sourcingScore.js'
+import { detectForeignLocation, hasMexicoSignal, checkRoleFit } from '../../src/lib/sourcingScore.js'
 
 const BUDGET_MS = 26000       // límite duro de Netlify Functions
 const RESERVE_MS = 8000       // para si quedan <8s (update+log también cuestan)
@@ -227,7 +227,7 @@ export async function handler() {
   }
 
   const dispatcher = await getDispatcher()
-  const summary = { checked: 0, activo: 0, cambio_empleo: 0, muerto: 0, fantasma: 0, desactualizado: 0, extranjero: 0, geo_pendiente: 0, geo_rescatados: 0, skipped: 0 }
+  const summary = { checked: 0, activo: 0, cambio_empleo: 0, muerto: 0, fantasma: 0, desactualizado: 0, extranjero: 0, especializado: 0, geo_pendiente: 0, geo_rescatados: 0, skipped: 0 }
 
   // SECUENCIAL a propósito: 1 búsqueda dirigida por perfil, sin ráfagas que
   // quemen tráfico del proxy ni créditos de Serper de golpe.
@@ -262,6 +262,11 @@ export async function handler() {
           ? `subdominio ${sub}.` : detectForeignLocation(freshText)
         const mx = hasMexicoSignal(found.url || row.url, freshText)
 
+        // Fit de rol con el headline FRESCO (QA tester sep-2026): si hoy su
+        // título es especializado (Analista/Backoffice/PLD…) sin señal
+        // comercial → descartar, mismo patrón que extranjero.
+        const freshFit = checkRoleFit(splitHeadline(found.headline).title || '', found.description || '')
+
         if (foreignSignal) {
           // Extranjero confirmado → a la basura (nada se borra: queda marcado).
           const today = new Date().toISOString().slice(0, 10)
@@ -270,6 +275,14 @@ export async function handler() {
           update.verify_status = 'extranjero'
           update.verify_details = { ...prevDetails, foreign_signal: foreignSignal, checked_at: new Date().toISOString(), misses: 0 }
           summary.extranjero++
+          geoHandled = true
+        } else if (freshFit.verdict === 'specialized') {
+          const today = new Date().toISOString().slice(0, 10)
+          update.source = 'descartado'
+          update.notes = `${row.notes || ''} · auto-descartado: perfil especializado (${freshFit.signal}) ${today}`.replace(/^ · /, '')
+          update.verify_status = 'descartado_qa'
+          update.verify_details = { ...prevDetails, specialized_signal: freshFit.signal, checked_at: new Date().toISOString(), misses: 0 }
+          summary.especializado++
           geoHandled = true
         } else if (!mx && row.verify_status === 'geo_desconocida') {
           // Sigue sin señal → permanece en cuarentena; solo refresca el check.

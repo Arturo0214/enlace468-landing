@@ -11,7 +11,7 @@ import { Search, Globe, ExternalLink, Plus, Loader2, CheckCircle, Star, Save } f
 // van adentro) y no debe desmontarse mientras la pestaña Sourcing esté abierta.
 export default function GoogleResultsGrid({ search, bank }) {
   const { googleResults, activeSearch, searching, localResults, hasMore, loadingMore, exhausted, loadMore } = search
-  const { bankUrls, savedItems, savingAll, unsavedCount, savingUrl, saveToBank, saveAllToBank } = bank
+  const { hasUrl, savedItems, savingAll, unsavedCount, savingUrl, saveToBank, saveAllToBank } = bank
   const hasCards = googleResults.length > 0
   return (
     <>
@@ -35,7 +35,7 @@ export default function GoogleResultsGrid({ search, bank }) {
           </div>
           <div className="space-y-2">
             {googleResults.map((r, i) => {
-              const isSaved = bankUrls.has(r.url)
+              const isSaved = hasUrl(r.url)
               return (
                 <div key={i} className={`rounded-xl p-4 border transition-all group ${isSaved ? 'bg-emerald-500/[0.03] border-emerald-500/20' : 'bg-white/[0.02] border-white/[0.05] hover:border-primary-light/20 hover:bg-white/[0.04]'}`}>
                   <div className="flex items-start gap-3">

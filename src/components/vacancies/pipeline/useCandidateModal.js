@@ -43,6 +43,21 @@ export function useCandidateModal({ vacancyId, candidates, setCandidates }) {
     setModalCvUploading(false)
   }
 
+  // Notas del candidato (candidates.notes) — editable desde el modal del
+  // pipeline (pedido del dueño sep-2026: notas por candidato en todo el flujo).
+  const [savingCandidateNotes, setSavingCandidateNotes] = useState(false)
+  async function saveCandidateNotes(candidateId, notes) {
+    setSavingCandidateNotes(true)
+    const clean = notes?.trim() || null
+    const { error } = await supabase.from('candidates').update({ notes: clean }).eq('id', candidateId)
+    if (!error) {
+      setCandidates(prev => prev.map(vc => vc.candidate_id === candidateId ? { ...vc, candidates: { ...vc.candidates, notes: clean } } : vc))
+      setSelectedVC(prev => prev ? { ...prev, candidates: { ...prev.candidates, notes: clean } } : null)
+    }
+    setSavingCandidateNotes(false)
+    return !error
+  }
+
   async function markAsContacted(vc, method, url) {
     setSavingContact(true)
     const now = new Date().toISOString()
@@ -200,5 +215,6 @@ export function useCandidateModal({ vacancyId, candidates, setCandidates }) {
     firefliesNotes, calendarEvents, loadingGoogle, googleError,
     modalCvUploading, uploadCvForCandidate,
     markAsContacted, saveContactNote,
+    saveCandidateNotes, savingCandidateNotes,
   }
 }

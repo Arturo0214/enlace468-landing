@@ -55,6 +55,14 @@ const BADGES = {
     bg: 'rgba(239,68,68,0.15)',
     fg: '#f87171',
   },
+  // Descartado por QA (barrido de la tester sep-2026) o por el barrido
+  // automático de perfiles especializados — la razón vive en notes.
+  descartado_qa: {
+    label: 'Descartado (QA)',
+    icon: '🗑️',
+    bg: 'rgba(148,163,184,0.15)',
+    fg: '#94a3b8',
+  },
 }
 
 /** status → { label, icon, bg, fg } | null si no hay/no se reconoce. */
@@ -77,6 +85,7 @@ export function verifyTooltip(status, details) {
   if (d.new_title) parts.push(`Nuevo puesto: ${d.new_title}`)
   if (d.new_company) parts.push(`Nueva empresa: ${d.new_company}`)
   if (d.foreign_signal) parts.push(`Señal: ${d.foreign_signal}`)
+  if (d.specialized_signal) parts.push(`Señal: ${d.specialized_signal}`)
   if (status === 'link_muerto' && d.misses) parts.push(`${d.misses} corridas sin resultado`)
   if (d.checked_at) {
     try { parts.push(`Revisado: ${new Date(d.checked_at).toLocaleDateString('es-MX')}`) } catch { /* fecha inválida */ }

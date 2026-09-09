@@ -18,7 +18,7 @@
 
 import { buildSearchEngines } from './search-candidates.mjs'
 import { matchExcludedCompany, normalizeText } from '../../src/lib/excludedCompanies.js'
-import { buildTargets, scoreProspect, detectForeignLocation } from '../../src/lib/sourcingScore.js'
+import { buildTargets, scoreProspect, detectForeignLocation, normalizeLinkedInUrl } from '../../src/lib/sourcingScore.js'
 
 // Señales de que un perfil /in/ es una EMPRESA/marca, no una persona
 // (reporte de Karina 2026-08-28/31: "me manda consultorías, no personas" —
@@ -551,8 +551,10 @@ export async function runAutoSource({ vacancy: rawVacancy, excludeUrls = [], opt
   const excludeForeign = options.excludeForeign !== false
   // URLs ya conocidas (banco/bloqueados) → se excluyen server-side para devolver
   // solo candidatos NUEVOS (clave cuando el banco ya tiene decenas de perfiles).
-  const known = new Set((Array.isArray(excludeUrls) ? excludeUrls : [])
-    .map(u => String(u).split('?')[0].replace(/\/$/, '')))
+  // Clave CANÓNICA (normalizeLinkedInUrl): http/https, www/mx, %encoding y
+  // slash final ya no re-entran como "nuevos" (dedupe roto — QA tester
+  // sep-2026 descartó al mismo perfil ~3 veces).
+  const known = new Set((Array.isArray(excludeUrls) ? excludeUrls : []).map(normalizeLinkedInUrl))
 
   // Semillas lookalike: perfiles manuales de la vacante → queries extra y
   // boost de score a prospectos parecidos (título/empresa).
@@ -631,7 +633,7 @@ export async function runAutoSource({ vacancy: rawVacancy, excludeUrls = [], opt
       counts.found++
 
       // Salta los ya conocidos (banco/bloqueados) → solo devolvemos nuevos.
-      if (known.has((p.url || '').split('?')[0].replace(/\/$/, ''))) { counts.known++; continue }
+      if (known.has(normalizeLinkedInUrl(p.url))) { counts.known++; continue }
 
       // Filtro geográfico: (1) subdominio del SERP ≠ mx/www → vive en otro país;
       // (2) el texto menciona otro país de LatAm/España sin mencionar México.

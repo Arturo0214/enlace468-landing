@@ -31,7 +31,7 @@
 
 import { getServiceClient } from './lib/supabase.mjs'
 import { runAutoSource } from './auto-source.mjs'
-import { hasMexicoSignal, isForeignProfile, nameLooksLikeRole } from '../../src/lib/sourcingScore.js'
+import { hasMexicoSignal, isForeignProfile, nameLooksLikeRole, checkRoleFit, normalizeLinkedInUrl } from '../../src/lib/sourcingScore.js'
 
 // Auto-promoción al pipeline según vacancies.auto_promote_min_score.
 // ENCENDIDA (2026-09-08): el gating real es POR VACANTE — solo promueve si
@@ -85,19 +85,23 @@ function toBankRow(r, vacancy) {
 // "Asegúrate de que siempre se escojan buenos candidatos, si no, mándalos a la
 // basura" + "que no aparezca gente de otros países". Tres niveles sobre CADA
 // resultado ANTES de tocar el banco:
-//   basura      → nombre de rol/giro, no de persona → NO se inserta
-//   extranjero  → señal de otro país (doble candado sobre los campos finales;
-//                 runAutoSource ya filtra, pero aquí van title/company parseados)
-//                 → NO se inserta
-//   México      → visible normal
-//   sin señal   → se inserta en CUARENTENA (verify_status='geo_desconocida');
-//                 cron-verify-profiles la resuelve con búsqueda dirigida y la
-//                 rescata (señal MX) o la manda a la basura (extranjero).
-/** @returns 'garbage' | 'foreign' | 'mx' | 'unknown' */
+//   basura        → nombre de rol/giro, no de persona → NO se inserta
+//   extranjero    → señal de otro país (doble candado sobre los campos finales;
+//                   runAutoSource ya filtra, pero aquí van title/company parseados)
+//                   → NO se inserta
+//   especializado → el TÍTULO actual es de perfil técnico/analítico (Analista,
+//                   Backoffice, PLD, auditoría…) sin señal comercial — criterio
+//                   #1 del barrido de la QA tester sep-2026 → NO se inserta
+//   México        → visible normal
+//   sin señal     → se inserta en CUARENTENA (verify_status='geo_desconocida');
+//                   cron-verify-profiles la resuelve con búsqueda dirigida y la
+//                   rescata (señal MX) o la manda a la basura (extranjero).
+/** @returns 'garbage' | 'foreign' | 'specialized' | 'mx' | 'unknown' */
 function gateResult(r) {
   const name = r.full_name || r.title || ''
   if (nameLooksLikeRole(name)) return 'garbage'
   if (isForeignProfile(r.url, r.title, r.current_title, r.current_company, r.snippet)) return 'foreign'
+  if (checkRoleFit(r.current_title || r.title || '', r.snippet || '').verdict === 'specialized') return 'specialized'
   if (hasMexicoSignal(r.url, r.title, r.current_title, r.current_company, r.snippet)) return 'mx'
   return 'unknown'
 }
@@ -110,6 +114,7 @@ function applyGate(results, vacancy, gateCounts) {
     const verdict = gateResult(r)
     if (verdict === 'garbage') { gateCounts.garbage++; continue }
     if (verdict === 'foreign') { gateCounts.foreign++; continue }
+    if (verdict === 'specialized') { gateCounts.specialized++; continue }
     const row = toBankRow(r, vacancy)
     if (verdict === 'unknown') { row.verify_status = 'geo_desconocida'; gateCounts.quarantined++ }
     rows.push(row)
@@ -143,6 +148,12 @@ async function cleanupBank(supabase) {
       let reason = null
       if (nameLooksLikeRole(name)) reason = 'nombre de empresa/rol, no persona'
       else if (isForeignProfile(b.url, b.title, b.current_title, b.current_company, b.snippet)) reason = 'perfil extranjero'
+      else {
+        // Barrido de especializados sobre filas ya guardadas (criterio #1 de
+        // la QA tester): título analítico/técnico sin señal comercial.
+        const fit = checkRoleFit(b.current_title || b.title || '', b.snippet || '')
+        if (fit.verdict === 'specialized') reason = `perfil especializado (${fit.signal})`
+      }
       if (reason) {
         const notes = `${b.notes || ''} · auto-descartado: ${reason} ${today}`.replace(/^ · /, '')
         const { error: upErr } = await supabase.from('sourcing_bank')
@@ -282,11 +293,15 @@ export async function handler() {
     try {
       // URLs conocidas: banco de la vacante + descartados de toda la org
       // (mismo criterio que el front) → solo se persisten candidatos nuevos.
+      // FORMA CANÓNICA (normalizeLinkedInUrl): la tester descartó al mismo
+      // perfil ~3 veces porque http/https, www/mx, %encoding y slash final
+      // re-entraban como URLs "distintas". runAutoSource compara con la misma
+      // clave canónica.
       const bankUrls = await fetchUrls(() =>
         supabase.from('sourcing_bank').select('url').eq('vacancy_id', v.id))
       const orgDiscarded = await fetchUrls(() =>
         supabase.from('sourcing_bank').select('url').eq('organization_id', v.organization_id).eq('source', 'descartado'))
-      const excludeUrls = [...new Set([...bankUrls, ...orgDiscarded])]
+      const excludeUrls = [...new Set([...bankUrls, ...orgDiscarded].map(normalizeLinkedInUrl))]
 
       const { results, counts } = await runAutoSource({
         vacancy: {
@@ -303,8 +318,8 @@ export async function handler() {
         },
       })
 
-      // GATE DE CALIDAD: basura/extranjeros fuera, sin señal MX → cuarentena.
-      const gateCounts = { garbage: 0, foreign: 0, quarantined: 0 }
+      // GATE DE CALIDAD: basura/extranjeros/especializados fuera, sin señal MX → cuarentena.
+      const gateCounts = { garbage: 0, foreign: 0, specialized: 0, quarantined: 0 }
       const gatedRows = applyGate(results, v, gateCounts)
 
       let inserted = []
@@ -321,8 +336,8 @@ export async function handler() {
       if (AUTO_PROMOTE_ENABLED) promo = await autoPromote(supabase, v, inserted)
 
       const filtered = Math.max(0, (counts.found || 0) - (counts.known || 0) - results.length)
-      console.log(`[cron-auto-source] "${v.title}": found=${counts.found} known=${counts.known} filtered=${filtered} returned=${results.length} garbage=${gateCounts.garbage} foreign=${gateCounts.foreign} quarantined=${gateCounts.quarantined} new=${inserted.length}${AUTO_PROMOTE_ENABLED ? ` promoted=${promo.promoted} enrolled=${promo.enrolled}` : ''}`)
-      summary.push({ vacancy_id: v.id, title: v.title, found: counts.found, returned: results.length, garbage: gateCounts.garbage, foreign: gateCounts.foreign, quarantined: gateCounts.quarantined, new: inserted.length, promoted: promo.promoted, enrolled: promo.enrolled })
+      console.log(`[cron-auto-source] "${v.title}": found=${counts.found} known=${counts.known} filtered=${filtered} returned=${results.length} garbage=${gateCounts.garbage} foreign=${gateCounts.foreign} specialized=${gateCounts.specialized} quarantined=${gateCounts.quarantined} new=${inserted.length}${AUTO_PROMOTE_ENABLED ? ` promoted=${promo.promoted} enrolled=${promo.enrolled}` : ''}`)
+      summary.push({ vacancy_id: v.id, title: v.title, found: counts.found, returned: results.length, garbage: gateCounts.garbage, foreign: gateCounts.foreign, specialized: gateCounts.specialized, quarantined: gateCounts.quarantined, new: inserted.length, promoted: promo.promoted, enrolled: promo.enrolled })
     } catch (e) {
       console.error(`[cron-auto-source] error en "${v.title}": ${e.message}`)
       summary.push({ vacancy_id: v.id, title: v.title, error: e.message })

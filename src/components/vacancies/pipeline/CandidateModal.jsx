@@ -1,4 +1,5 @@
-import { Plus, Star, X, Mail, Phone, MapPin, ExternalLink, Briefcase, Calendar, Tag, Clock, MessageCircle, Send, Loader2, CheckCircle, ArrowUpRight, ArrowDownLeft, FileText, Video, Link2, AlertTriangle, Workflow } from 'lucide-react'
+import { useState } from 'react'
+import { Plus, Star, X, Mail, Phone, MapPin, ExternalLink, Briefcase, Calendar, Tag, Clock, MessageCircle, Send, Loader2, CheckCircle, ArrowUpRight, ArrowDownLeft, FileText, Video, Link2, AlertTriangle, Workflow, StickyNote } from 'lucide-react'
 import { scoreColor } from './stages'
 
 // Modal de detalle del candidato: info + CV + contactar + entrevistas
@@ -14,9 +15,21 @@ export default function CandidateModal({ modal, stages, onEnroll }) {
     interviewNotes, loadingNotes,
     firefliesNotes, calendarEvents, loadingGoogle, googleError,
     modalCvUploading, uploadCvForCandidate,
+    saveCandidateNotes, savingCandidateNotes,
   } = modal
         const c = selectedVC.candidates || {}
         const currentStage = stages.find(s => s.id === selectedVC.stage)
+        // Notas del candidato (candidates.notes) — editable en el modal. Reset
+        // al cambiar de candidato con el patrón "adjust state during render"
+        // (sin effect, evita renders en cascada).
+        const [notesState, setNotesState] = useState({ candId: null, text: '', savedAt: null })
+        if (selectedVC.candidate_id !== notesState.candId) {
+          setNotesState({ candId: selectedVC.candidate_id, text: c.notes || '', savedAt: null })
+        }
+        const candNotes = notesState.text
+        const candNotesSavedAt = notesState.savedAt
+        const setCandNotes = text => setNotesState(s => ({ ...s, text }))
+        const setCandNotesSavedAt = savedAt => setNotesState(s => ({ ...s, savedAt }))
         return (
           <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setSelectedVC(null)}>
             <div className="bg-theme-surface rounded-2xl w-full max-w-6xl max-h-[85vh] border border-white/10 flex" onClick={e => e.stopPropagation()}>
@@ -103,8 +116,26 @@ export default function CandidateModal({ modal, stages, onEnroll }) {
                   {/* Tags */}
                   {c.tags?.length > 0 && <div className="flex flex-wrap gap-1.5">{c.tags.map(t => <span key={t} className="text-[10px] px-2 py-0.5 rounded bg-white/5 text-gray-400"><Tag size={8} className="inline mr-1" />{t}</span>)}</div>}
 
-                  {/* Notes */}
-                  {c.notes && <div><p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Notas</p><p className="text-xs text-gray-300 whitespace-pre-wrap">{c.notes}</p></div>}
+                  {/* Notas del candidato — editables (candidates.notes) */}
+                  <div>
+                    <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 flex items-center gap-1"><StickyNote size={10} /> Notas</p>
+                    <textarea value={candNotes} onChange={e => setCandNotes(e.target.value)}
+                      rows={3} placeholder="Observaciones sobre este candidato…"
+                      className="w-full text-xs text-gray-300 bg-white/5 border border-white/10 rounded-lg p-2.5 resize-y placeholder:text-gray-600 focus:outline-none focus:border-amber-400/40" />
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <button
+                        onClick={async () => { if (await saveCandidateNotes(selectedVC.candidate_id, candNotes)) setCandNotesSavedAt(new Date()) }}
+                        disabled={savingCandidateNotes || candNotes.trim() === (c.notes || '').trim()}
+                        className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-lg font-medium text-amber-200 bg-amber-400/15 hover:bg-amber-400/25 disabled:opacity-40">
+                        {savingCandidateNotes ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />} Guardar
+                      </button>
+                      {candNotesSavedAt && (
+                        <span className="text-[11px] text-emerald-400">
+                          Guardado {candNotesSavedAt.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
                   {/* Secuencia de outreach (Fase 5) */}
                   <button onClick={() => onEnroll({ type: 'vc', id: selectedVC.id, name: c.full_name })}

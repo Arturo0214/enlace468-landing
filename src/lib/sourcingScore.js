@@ -200,6 +200,76 @@ export function nameLooksLikeRole(name) {
   return ROLE_NAME_RE.test(n)
 }
 
+// ── Fit de rol: especializado vs comercial (QA tester sep-2026) ────────────
+// La vacante es COMERCIAL (asesor/ventas) pero el sourcing traía perfiles
+// técnicos/analíticos: "Analista", "Backoffice", "Contabilidad y Análisis",
+// "PLD", auditoría… — el criterio de descarte MÁS frecuente del barrido de la
+// tester (13 de ~38). Señales de rol especializado (word boundary sobre texto
+// normalizado):
+export const SPECIALIZED_ROLE_SIGNALS = [
+  'analista', 'analyst', 'backoffice', 'back office',
+  'contabilidad', 'contador', 'contadora', 'accounting', 'accountant',
+  'auditor', 'auditora', 'auditoria', 'audit',
+  'pld', 'prevencion de lavado', 'aml', 'compliance', 'cumplimiento normativo',
+  'fp&a', 'fiscal', 'tesoreria', 'treasury', 'nomina', 'payroll',
+  'actuario', 'actuaria', 'actuarial', 'riesgo', 'riesgos', 'risk', 'risks',
+]
+// Señales de rol comercial — si el TÍTULO las trae, el perfil NO se descarta
+// por especializado ("Ejecutivo Comercial con experiencia en análisis" es
+// comercial, el análisis es un plus).
+export const COMMERCIAL_SIGNALS = [
+  'comercial', 'ventas', 'sales', 'asesor', 'asesora',
+  'ejecutivo de', 'ejecutiva de', 'business development',
+  'desarrollo de negocio', 'desarrollo de negocios', 'cartera de clientes',
+  'prospeccion', 'b2b', 'account executive', 'gerente comercial',
+  'promotor', 'promotora',
+]
+const signalRe = list => new RegExp(`\\b(?:${list.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`)
+const SPECIALIZED_RE = signalRe(SPECIALIZED_ROLE_SIGNALS)
+const COMMERCIAL_RE = signalRe(COMMERCIAL_SIGNALS)
+
+/**
+ * Veredicto de fit de rol para una vacante comercial.
+ * - 'specialized': el TÍTULO actual trae señal especializada y NINGUNA señal
+ *   comercial → descartable por el gate (criterio #1 de la QA tester).
+ * - 'commercial': el título o snippet traen señal comercial.
+ * - 'neutral': resto. Si la señal especializada viene SOLO del snippet, el
+ *   veredicto NO es 'specialized' (el gate no descarta) pero `snippetSignal`
+ *   la reporta para que scoreProspect penalice.
+ * @returns {{ verdict: 'specialized'|'commercial'|'neutral', signal: string|null, snippetSignal: string|null }}
+ */
+export function checkRoleFit(currentTitle, snippet) {
+  const title = normalizeText(currentTitle || '')
+  const snip = normalizeText(snippet || '')
+  const titleSpec = title.match(SPECIALIZED_RE)?.[0] || null
+  const titleComm = title.match(COMMERCIAL_RE)?.[0] || null
+  if (titleSpec && !titleComm) {
+    return { verdict: 'specialized', signal: titleSpec, snippetSignal: snip.match(SPECIALIZED_RE)?.[0] || null }
+  }
+  const comm = titleComm || snip.match(COMMERCIAL_RE)?.[0] || null
+  const snippetSignal = snip.match(SPECIALIZED_RE)?.[0] || null
+  if (comm) return { verdict: 'commercial', signal: comm, snippetSignal }
+  return { verdict: 'neutral', signal: snippetSignal, snippetSignal }
+}
+
+// ── Dedupe canónico de URLs de LinkedIn ────────────────────────────────────
+// La tester descartó al mismo perfil ~3 veces: variantes de URL (http/https,
+// www/mx, %C3%A1 vs á, slash final, query strings) re-entraban como "nuevos".
+// Esta clave canónica es la ÚNICA forma válida de comparar URLs de perfiles.
+/** lowercase, sin protocolo, sin subdominio (www/mx/…), %XX decodificado,
+ *  sin query/hash ni slash final. Idempotente. */
+export function normalizeLinkedInUrl(url) {
+  let u = String(url || '').trim()
+  if (!u) return ''
+  u = u.split('?')[0].split('#')[0]
+  try { u = decodeURIComponent(u) } catch { /* %-suelto inválido: se queda */ }
+  return u
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/^[a-z0-9-]{2,3}\./, '') // www. / mx. / pe. … ("linkedin." no matchea: 8 letras)
+    .replace(/\/+$/, '')
+}
+
 /** True if `text` contains `token` or any of its bilingual synonyms. */
 function hasTerm(text, token) {
   const group = SYNONYM_INDEX.get(token)
@@ -264,6 +334,13 @@ export function scoreProspect(vacancy, prospect = {}, targets = null) {
   if (targets.wantsSenior && isJunior) total -= 15
   else if (targets.wantsSenior && isSenior) total += 6
 
+  // Fit de rol comercial vs especializado (QA tester sep-2026): la vacante es
+  // comercial. Señal especializada (título → el gate lo descarta antes de
+  // llegar aquí; snippet → penalización) y señal comercial → boost.
+  const roleFit = checkRoleFit(prospect.current_title || prospect.title || '', prospect.snippet || '')
+  if (roleFit.verdict === 'commercial') total += 8
+  else if (roleFit.verdict === 'specialized' || roleFit.snippetSignal) total -= 15
+
   // Perfil ubicado fuera de México → BLOQUEADO (score 0), salvo que la vacante
   // misma sea para ese país.
   const foreign = detectForeignLocation(text)
@@ -287,6 +364,8 @@ export function scoreProspect(vacancy, prospect = {}, targets = null) {
   if (missingComps.length) gaps.push(`Competencias no vistas: ${missingComps.slice(0, 2).join(', ')}`)
   if (targets.wantsSenior && isJunior) gaps.push('Perfil parece junior')
   if (titleHits.length && !titleHasRole) gaps.push('Su puesto actual no coincide (match solo por descripción)')
+  if (roleFit.verdict === 'commercial') strengths.push(`Señal comercial: ${roleFit.signal}`)
+  else if (roleFit.verdict === 'specialized' || roleFit.snippetSignal) gaps.push(`Perfil especializado (${roleFit.signal || roleFit.snippetSignal}), no comercial`)
   if (isForeign) gaps.push(`Ubicación fuera de México (${foreign})`)
 
   return {

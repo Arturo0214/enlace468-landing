@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../../../lib/supabase'
+import { normalizeLinkedInUrl } from '../../../../lib/sourcingScore'
 
 // Sourcing automático server-side: corrida manual rankeada (auto-source),
 // términos ganadores, umbral de score, y la config del sourcing nocturno
@@ -69,7 +70,9 @@ export default function useAutoSourcing({ vacancy, vacancyId, platform, excludeS
           platform: platform === 'all' ? 'linkedin' : platform,
           minScore: autoMinScore,
           excludeSector,
-          // banco de esta vacante + TODOS los descartados de la org → nunca repetir
+          // banco de esta vacante + TODOS los descartados de la org → nunca
+          // repetir (claves canónicas de normalizeLinkedInUrl; el server
+          // compara con la misma clave → variantes http/www/%enc no re-entran)
           excludeUrls: [...new Set([...bankUrls, ...blockedGlobal])],
           maxResults: 30,
         }),
@@ -93,7 +96,7 @@ export default function useAutoSourcing({ vacancy, vacancyId, platform, excludeS
   }
 
   async function saveAllAuto() {
-    const fresh = autoResults.filter(r => !bankUrls.has(r.url))
+    const fresh = autoResults.filter(r => !bankUrls.has(normalizeLinkedInUrl(r.url)))
     if (!fresh.length) return
     setSavingAll(true)
     try {
@@ -102,15 +105,15 @@ export default function useAutoSourcing({ vacancy, vacancyId, platform, excludeS
         .select()
       if (data?.length) {
         setBankItems(prev => {
-          const existing = new Set(prev.map(b => b.url))
-          return [...data.filter(d => !existing.has(d.url)), ...prev]
+          const existing = new Set(prev.map(b => normalizeLinkedInUrl(b.url)))
+          return [...data.filter(d => !existing.has(normalizeLinkedInUrl(d.url))), ...prev]
         })
       }
     } catch (e) { console.error(e) }
     finally { setSavingAll(false) }
   }
 
-  const autoUnsaved = autoResults.filter(r => !bankUrls.has(r.url)).length
+  const autoUnsaved = autoResults.filter(r => !bankUrls.has(normalizeLinkedInUrl(r.url))).length
 
   // ── Sourcing nocturno automático (toggle por vacante) ─────
   // El cron (cron-auto-source.mjs) corre L-V a las 4, 5 y 6am CDMX y solo

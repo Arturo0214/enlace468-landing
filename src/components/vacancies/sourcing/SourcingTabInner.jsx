@@ -63,7 +63,7 @@ export default function SourcingTab({ vacancy, profile, vacancyId, addedIds, set
       <AutoResultsList auto={auto} bank={bank} outreach={outreach} />
 
       {/* Banco de sourcing — persistent per-vacancy bank */}
-      <SourcingBankList bank={bank} outreach={outreach} setEnrollTarget={setEnrollTarget} />
+      <SourcingBankList bank={bank} outreach={outreach} setEnrollTarget={setEnrollTarget} setSelectedCandidate={setSelectedCandidate} />
 
       {/* Cards de Google + widget CSE (#gcs-box SIEMPRE montado) + empty state */}
       <GoogleResultsGrid search={search} bank={bank} />

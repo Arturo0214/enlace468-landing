@@ -8,6 +8,8 @@ import {
   nameLooksLikeRole,
   isForeignProfile,
   detectForeignLocation,
+  checkRoleFit,
+  normalizeLinkedInUrl,
 } from '../src/lib/sourcingScore.js'
 
 let passed = 0
@@ -93,13 +95,100 @@ test('isForeignProfile: mexicano con experiencia regional NO se descarta', () =>
   assert.equal(isForeignProfile('https://www.linkedin.com/in/x', 'Director regional', 'Responsable de México y Perú'), false)
 })
 
+// ── checkRoleFit: especializado vs comercial (barrido QA tester sep-2026) ──
+// El criterio de descarte MÁS frecuente (13 de ~38): la vacante es COMERCIAL
+// pero el sourcing traía Analistas, Backoffice, Contabilidad, PLD, auditoría.
+test('checkRoleFit: "Analista de Crédito" → specialized (caso real de la tester)', () => {
+  assert.equal(checkRoleFit('Analista de Crédito', '').verdict, 'specialized')
+})
+
+test('checkRoleFit: títulos especializados reales del barrido → specialized', () => {
+  for (const t of [
+    'Backoffice',
+    'Contabilidad y Análisis — Analista contable',
+    'Especialista en Prevención de Lavado de Dinero (PLD)',
+    'Auditor Interno',
+    'Analista de Riesgos',
+    'Accountant',
+    'Compliance Officer',
+  ]) assert.equal(checkRoleFit(t, '').verdict, 'specialized', `"${t}" no dio specialized`)
+})
+
+test('checkRoleFit: "Ejecutivo Comercial" → commercial', () => {
+  assert.equal(checkRoleFit('Ejecutivo Comercial', '').verdict, 'commercial')
+})
+
+test('checkRoleFit: "Ejecutivo Comercial con experiencia en análisis" NO se descarta', () => {
+  // Señal comercial en el título gana: el análisis es un plus, no el rol.
+  const fit = checkRoleFit('Ejecutivo Comercial con experiencia en análisis de riesgos', '')
+  assert.equal(fit.verdict, 'commercial')
+})
+
+test('checkRoleFit: título comercial + snippet de análisis → NO specialized', () => {
+  // "Consultor con experiencia en análisis financiero": el snippet menciona
+  // análisis pero el título NO es de rol especializado → no se descarta.
+  const fit = checkRoleFit('Consultor', 'Consultor con experiencia en análisis financiero y planeación')
+  assert.notEqual(fit.verdict, 'specialized')
+})
+
+test('checkRoleFit: señal especializada SOLO en snippet → neutral + snippetSignal (penaliza, no descarta)', () => {
+  const fit = checkRoleFit('Consultor independiente', 'Fue analista de riesgos en banca')
+  assert.equal(fit.verdict, 'neutral')
+  assert.equal(fit.snippetSignal, 'analista')
+})
+
+test('checkRoleFit: título neutro sin señales → neutral', () => {
+  const fit = checkRoleFit('Consultor Financiero', 'Planeación patrimonial')
+  assert.equal(fit.verdict, 'neutral')
+  assert.equal(fit.snippetSignal, null)
+})
+
+// ── normalizeLinkedInUrl: dedupe canónico (la tester descartó al mismo perfil ~3 veces) ──
+test('normalizeLinkedInUrl: variantes http/https/www/mx/slash → misma clave', () => {
+  const key = normalizeLinkedInUrl('https://www.linkedin.com/in/juan-perez')
+  assert.equal(normalizeLinkedInUrl('http://linkedin.com/in/juan-perez'), key)
+  assert.equal(normalizeLinkedInUrl('https://www.linkedin.com/in/juan-perez/'), key)
+  assert.equal(normalizeLinkedInUrl('https://mx.linkedin.com/in/juan-perez'), key)
+  assert.equal(normalizeLinkedInUrl('https://www.linkedin.com/in/juan-perez?trk=serp'), key)
+  assert.equal(key, 'linkedin.com/in/juan-perez')
+})
+
+test('normalizeLinkedInUrl: %C3%A1 y á → misma clave', () => {
+  assert.equal(
+    normalizeLinkedInUrl('https://www.linkedin.com/in/mar%C3%ADa-garc%C3%ADa'),
+    normalizeLinkedInUrl('https://mx.linkedin.com/in/maría-garcía/')
+  )
+})
+
+test('normalizeLinkedInUrl: idempotente y tolerante', () => {
+  const once = normalizeLinkedInUrl('HTTPS://WWW.LinkedIn.com/in/Jose-Lopez/')
+  assert.equal(normalizeLinkedInUrl(once), once)
+  assert.equal(normalizeLinkedInUrl(''), '')
+  assert.equal(normalizeLinkedInUrl(null), '')
+  // Un %-suelto inválido no truena
+  assert.equal(typeof normalizeLinkedInUrl('https://linkedin.com/in/x%zz'), 'string')
+})
+
 // ── Semántica del gate completo (mismo orden que cron-auto-source) ─────────
 function gate(r) {
   if (nameLooksLikeRole(r.full_name || r.title || '')) return 'garbage'
   if (isForeignProfile(r.url, r.title, r.current_title, r.current_company, r.snippet)) return 'foreign'
+  if (checkRoleFit(r.current_title || r.title || '', r.snippet || '').verdict === 'specialized') return 'specialized'
   if (hasMexicoSignal(r.url, r.title, r.current_title, r.current_company, r.snippet)) return 'mx'
   return 'unknown'
 }
+
+test('gate: perfil especializado NO se inserta (criterio #1 de la QA tester)', () => {
+  assert.equal(gate({
+    full_name: 'Laura Jimenez', url: 'https://www.linkedin.com/in/laura',
+    current_title: 'Analista de Crédito', snippet: 'Ciudad de México · 500+ contactos',
+  }), 'specialized')
+  // Comercial con análisis en el snippet pasa normal
+  assert.equal(gate({
+    full_name: 'Pedro Ruiz', url: 'https://www.linkedin.com/in/pedro',
+    current_title: 'Ejecutivo Comercial', snippet: 'Experiencia en análisis financiero · CDMX',
+  }), 'mx')
+})
 
 test('gate: los 4 destinos con casos reales de la auditoría', () => {
   assert.equal(gate({ full_name: 'Trade Finance Consultant', url: 'https://www.linkedin.com/in/tfc' }), 'garbage')

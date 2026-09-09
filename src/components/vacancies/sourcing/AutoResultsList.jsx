@@ -1,4 +1,5 @@
 import { ExternalLink, Loader2, Star, Save, Sparkles, Ban } from 'lucide-react'
+import { normalizeLinkedInUrl } from '../../../lib/sourcingScore'
 
 // Resultados del sourcing automático, rankeados por score de match.
 // Se ocultan los ya guardados en el banco o bloqueados globalmente.
@@ -7,7 +8,7 @@ export default function AutoResultsList({ auto, bank, outreach }) {
     autoRan, autoResults, autoLoading, autoError, autoCounts, autoMinScore,
     autoUnsaved, saveAllAuto,
   } = auto
-  const { bankUrls, blockedGlobal, savingAll, savingUrl, discardingUrl, saveToBank, blockResult } = bank
+  const { hasUrl, blockedGlobal, savingAll, savingUrl, discardingUrl, saveToBank, blockResult } = bank
   const { contactStatus } = outreach
   if (!autoRan) return null
   return (
@@ -45,7 +46,7 @@ export default function AutoResultsList({ auto, bank, outreach }) {
       <div className="space-y-2">
         {(() => {
           // Dedup: oculta los ya guardados o bloqueados (no reaparecen)
-          const visible = autoResults.filter(r => r.score >= autoMinScore && !bankUrls.has(r.url) && !blockedGlobal.has(r.url))
+          const visible = autoResults.filter(r => r.score >= autoMinScore && !hasUrl(r.url) && !blockedGlobal.has(normalizeLinkedInUrl(r.url)))
           if (!autoLoading && autoResults.length > 0 && visible.length === 0) {
             return <p className="text-xs text-gray-500 py-2">Todos los prospectos de esta búsqueda ya están guardados o bloqueados.</p>
           }

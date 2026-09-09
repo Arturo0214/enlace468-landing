@@ -43,7 +43,24 @@ export function checkForeign(item = {}) {
  * @returns {Promise<object|null>} el candidato creado (fila de candidates)
  * @throws si el perfil se detecta extranjero o si algún insert falla
  */
+// verify_status que hacen a un item del banco NO promovible al pipeline:
+// cuarentena geográfica sin resolver, extranjero confirmado o descartado por
+// QA. Única fuente de verdad — la usan promoteBankItem (guard duro) y el
+// banco del tab Sourcing (botón deshabilitado + filtro "Confirmados").
+export const UNPROMOTABLE_VERIFY_STATUSES = ['geo_desconocida', 'extranjero', 'descartado_qa']
+
+/** true si el item está en cuarentena/descartado y no debe promoverse. */
+export function isUnpromotable(item = {}) {
+  return UNPROMOTABLE_VERIFY_STATUSES.includes(item.verify_status)
+}
+
 export async function promoteBankItem(supabase, { item, vacancyId, profile }) {
+  // Guard de cuarentena (QA tester sep-2026: el banco dejaba promover perfiles
+  // que el sistema YA tenía en cuarentena geo_desconocida/extranjero).
+  if (isUnpromotable(item)) {
+    throw new Error('En verificación de ubicación — no promovible. Espera a que la verificación nocturna confirme el perfil.')
+  }
+
   // Guard anti-extranjeros: nada de perfiles fuera de México en el pipeline.
   // Quien llama muestra el mensaje tal cual al usuario.
   const { foreign, reason } = checkForeign(item)
