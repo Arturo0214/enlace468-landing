@@ -114,7 +114,10 @@ const FOREIGN_SIGNALS = [
   'hanoi', 'ho chi minh',
   // Medio Oriente, África y Oceanía
   'emiratos arabes', 'united arab emirates', 'dubai', 'abu dhabi', 'qatar',
-  'doha', 'arabia saudita', 'saudi arabia', 'riyadh', 'kuwait', 'israel',
+  'doha', 'arabia saudita', 'saudi arabia', 'riyadh', 'kuwait',
+  // 'israel' NO va aquí: es un nombre de pila MUY común en México y daba
+  // falsos positivos (ej. "Israel Fernández Beltrán", reporte Karina sep-2026).
+  // Un perfil realmente en Israel se detecta por el subdominio il.linkedin.com.
   'tel aviv', 'egipto', 'egypt', 'el cairo', 'cairo', 'sudafrica',
   'south africa', 'johannesburgo', 'johannesburg', 'cape town', 'nigeria',
   'kenia', 'kenya', 'nairobi', 'marruecos', 'morocco', 'australia', 'sydney',

@@ -26,7 +26,11 @@ export function checkForeign(item = {}) {
   if (sub && sub !== 'mx' && sub !== 'www') {
     return { foreign: true, reason: `perfil de LinkedIn de otro país (subdominio "${sub}.")` }
   }
-  const text = [item.title, item.full_name, item.current_title, item.current_company, item.snippet, item.notes, item.location]
+  // NO escanear el nombre de la persona (full_name ni title, que en el banco
+  // suele SER el nombre) en busca de países: nombres de pila como Israel o Kenia
+  // son país Y nombre mexicano común → falsos positivos (reporte Karina
+  // sep-2026). El país se detecta por puesto/empresa/ubicación/snippet.
+  const text = [item.current_title, item.current_company, item.snippet, item.notes, item.location]
     .filter(Boolean)
     .join(' ')
   const signal = detectForeignLocation(text)
