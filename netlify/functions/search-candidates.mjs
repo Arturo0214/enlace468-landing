@@ -167,7 +167,7 @@ export function extractCandidatesFromHTML(html, stats = { excluded: 0 }) {
 
     // Bloquea perfiles ubicados fuera de México (subdominio de país del URL
     // original, o mención de otro país en el texto extraído).
-    if (isForeignProfile(originalUrls.get(profileUrl) || profileUrl, currentTitle, snippet, location)) {
+    if (isForeignProfile(originalUrls.get(profileUrl) || profileUrl, currentTitle, snippet, location, { name: fullName })) {
       stats.foreign = (stats.foreign || 0) + 1
       continue
     }
@@ -317,7 +317,7 @@ export async function handler(event) {
         const exclLabel = matchExcludedCompany(current_company, current_title, p.headline, p.description, full_name)
         if (exclLabel) { stats.excluded++; dbg?.push(`EXCL [${exclLabel}] ${full_name} | ${(p.headline || '').slice(0, 60)}`); continue }
         const foreign = (p.country && p.country !== 'mx' && p.country !== 'www')
-          || detectForeignLocation(`${p.headline || ''} ${p.description || ''}`)
+          || detectForeignLocation(`${p.headline || ''} ${p.description || ''}`, full_name)
         if (foreign) { stats.foreign++; continue }
         let relevance = 0
         if (canJudgeRelevance) {

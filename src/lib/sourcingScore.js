@@ -140,22 +140,40 @@ const MEXICO_SIGNALS = [
 const wordRe = w => new RegExp(`\\b${w}\\b`)
 
 /** Devuelve la señal de país extranjero encontrada, o null si el texto menciona
- *  México o no hay señal. Espera texto crudo (se normaliza adentro). */
-export function detectForeignLocation(text) {
-  const t = normalizeText(text)
+ *  México o no hay señal. Espera texto crudo (se normaliza adentro).
+ *
+ *  `name` (opcional): el nombre de la persona. Sus tokens se ELIMINAN del texto
+ *  antes de buscar países, para que un nombre de pila/apellido que coincide con
+ *  un país o ciudad (Israel, Kenia, Milán, Colombia, China…) NUNCA dispare un
+ *  falso positivo (reporte Karina sep-2026: "aplica lo mismo para todos los que
+ *  tengan nombre de país pero no sean de otro país"). El país real vive en la
+ *  ubicación/empresa, no en el nombre. */
+export function detectForeignLocation(text, name = '') {
+  let t = normalizeText(text)
   if (!t) return null
+  if (name) {
+    for (const tok of normalizeText(name).split(/\s+/)) {
+      if (tok.length > 2) t = t.replace(new RegExp(`\\b${tok.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g'), ' ')
+    }
+  }
   if (MEXICO_SIGNALS.some(w => wordRe(w).test(t))) return null
   return FOREIGN_SIGNALS.find(w => wordRe(w).test(t)) || null
 }
 
 /** BLOQUEO de perfiles extranjeros: true si la URL de LinkedIn viene de un
  *  subdominio de otro país (pe., cl., ar…) o si el texto delata otro país.
- *  Compartido por el server (auto-source, search-candidates) y el front. */
+ *  Compartido por el server (auto-source, search-candidates) y el front.
+ *
+ *  El último argumento puede ser un objeto `{ name }` para excluir el nombre de
+ *  la persona de la detección (ver detectForeignLocation). */
 export function isForeignProfile(url, ...texts) {
   const m = String(url || '').match(/https?:\/\/([a-z]{2,3})\.linkedin\.com/i)
   const sub = m ? m[1].toLowerCase() : null
   if (sub && sub !== 'mx' && sub !== 'www') return true
-  return !!detectForeignLocation(texts.filter(Boolean).join(' '))
+  let name = ''
+  const last = texts[texts.length - 1]
+  if (last && typeof last === 'object') { name = last.name || ''; texts = texts.slice(0, -1) }
+  return !!detectForeignLocation(texts.filter(Boolean).join(' '), name)
 }
 
 /** SEÑAL POSITIVA de México: subdominio mx.linkedin.com o alguna mención de

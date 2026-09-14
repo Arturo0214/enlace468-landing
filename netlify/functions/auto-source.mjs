@@ -639,7 +639,7 @@ export async function runAutoSource({ vacancy: rawVacancy, excludeUrls = [], opt
       // (2) el texto menciona otro país de LatAm/España sin mencionar México.
       if (excludeForeign) {
         const foreignSubdomain = p.country && p.country !== 'mx' && p.country !== 'www'
-        const foreignText = detectForeignLocation(`${p.headline || ''} ${p.description || ''}`)
+        const foreignText = detectForeignLocation(`${p.headline || ''} ${p.description || ''}`, p.name)
         if (foreignSubdomain || foreignText) { counts.foreign++; continue }
       }
 
@@ -750,7 +750,7 @@ export async function runAutoSource({ vacancy: rawVacancy, excludeUrls = [], opt
       const ct = parts[1] || r.current_title
       const cc = parts[2] || r.current_company
       // La búsqueda dirigida puede revelar que vive en otro país → bloqueado.
-      if (excludeForeign && detectForeignLocation(`${p.headline || ''} ${p.description || ''}`)) {
+      if (excludeForeign && detectForeignLocation(`${p.headline || ''} ${p.description || ''}`, r.full_name)) {
         dropped.add(r.url)
         counts.foreign++
         return

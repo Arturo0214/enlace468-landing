@@ -101,7 +101,7 @@ function toBankRow(r, vacancy) {
 function gateResult(r) {
   const name = r.full_name || r.title || ''
   if (nameLooksLikeRole(name)) return 'garbage'
-  if (isForeignProfile(r.url, r.title, r.current_title, r.current_company, r.snippet)) return 'foreign'
+  if (isForeignProfile(r.url, r.title, r.current_title, r.current_company, r.snippet, { name: r.full_name })) return 'foreign'
   // Veto de sector (aseguradoras/inversiones/seguros — no contratable)
   if (matchExcludedCompany(r.current_company, r.current_title, r.title, r.snippet, r.full_name)) return 'vetoed'
   if (checkRoleFit(r.current_title || r.title || '', r.snippet || '').verdict === 'specialized') return 'specialized'
@@ -151,7 +151,7 @@ async function cleanupBank(supabase) {
       const name = b.full_name || b.title || ''
       let reason = null
       if (nameLooksLikeRole(name)) reason = 'nombre de empresa/rol, no persona'
-      else if (isForeignProfile(b.url, b.title, b.current_title, b.current_company, b.snippet)) reason = 'perfil extranjero'
+      else if (isForeignProfile(b.url, b.title, b.current_title, b.current_company, b.snippet, { name: b.full_name })) reason = 'perfil extranjero'
       else if (matchExcludedCompany(b.current_company, b.current_title, b.title, b.snippet, b.full_name)) {
         reason = `sector vetado (${matchExcludedCompany(b.current_company, b.current_title, b.title, b.snippet, b.full_name)})`
       }

@@ -259,7 +259,7 @@ export async function handler() {
         const subM = String(found.url || '').match(/https?:\/\/([a-z]{2,3})\.linkedin\.com/i)
         const sub = subM ? subM[1].toLowerCase() : null
         const foreignSignal = (sub && sub !== 'mx' && sub !== 'www')
-          ? `subdominio ${sub}.` : detectForeignLocation(freshText)
+          ? `subdominio ${sub}.` : detectForeignLocation(freshText, row.full_name)
         const mx = hasMexicoSignal(found.url || row.url, freshText)
 
         // Fit de rol con el headline FRESCO (QA tester sep-2026): si hoy su
