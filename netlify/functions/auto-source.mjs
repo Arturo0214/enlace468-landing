@@ -329,20 +329,29 @@ export function parseSerpProfiles(html) {
  *  proxy — es la fuente PRIMARIA cuando hay SERPER_API_KEY. 1 crédito por
  *  búsqueda de 10 resultados; num 20-100 usa 2. Si no hay key o falla,
  *  se cae al scraping de motores de siempre. */
-let serperBlocked = false // cuentas free rechazan site:/inurl: → no reintentar
-export async function serperSearch(query, num = 30) {
+let serperBlocked = false // solo si falla la forma más barata (num=10, pág 1)
+// num DEBE ser ≤10: la cuenta free de Serper rechaza num>10 con el MISMO
+// mensaje "Query pattern not allowed for free accounts" que los operadores
+// prohibidos — el default 30 activaba serperBlocked en el primer query y
+// mataba Serper para todo el proceso (found=0 crónico, sep-2026). 10
+// resultados = 1 crédito; más cosecha se pide con `page`.
+export async function serperSearch(query, num = 10, page = 1) {
   const key = process.env.SERPER_API_KEY
   if (!key || serperBlocked) return null
   try {
+    const body = { q: query, gl: 'mx', hl: 'es', num: Math.min(num, 10) }
+    if (page > 1) body.page = page
     const res = await fetch('https://google.serper.dev/search', {
       method: 'POST',
       headers: { 'X-API-KEY': key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: query, gl: 'mx', hl: 'es', num }),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(8000),
     })
     if (res.status === 400) {
       const err = await res.json().catch(() => ({}))
-      if (/not allowed for free/i.test(err.message || '')) serperBlocked = true
+      // Bloquear Serper del todo SOLO si la forma barata (pág 1) es rechazada;
+      // un 400 de paginación no debe apagar la fuente primaria.
+      if (page === 1 && /not allowed for free/i.test(err.message || '')) serperBlocked = true
       return null
     }
     if (!res.ok) return null
@@ -472,8 +481,8 @@ export async function enrichProfile(slug, dispatcher) {
  *  results). Engines that genuinely block simply return 0 candidates. */
 export async function scrapeQuery(query, dispatcher, dbg, offset = 0) {
   // Serper primero: Google real vía API, no se degrada ni bloquea.
-  // (solo para la página 1: Serper pagina distinto)
-  const viaSerper = offset === 0 ? await serperSearch(query) : null
+  // offset → page de Serper (10 resultados/página, 1 crédito c/u).
+  const viaSerper = await serperSearch(query, 10, offset + 1)
   if (viaSerper?.length) { dbg?.push(`Serper: ${viaSerper.length} perfiles`); return viaSerper }
   // Brave primero (es el que devuelve datos server-side) → evita perder segundos
   // en motores que fallan antes de llegar a él. offset = página de Brave (0-9).

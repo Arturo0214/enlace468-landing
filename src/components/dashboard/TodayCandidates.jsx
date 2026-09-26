@@ -29,7 +29,11 @@ export default function TodayCandidates() {
     let cancelled = false
     ;(async () => {
       try {
-        const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString()
+        // 7 días, no 24h: si el sourcing nocturno falla unos días (proxy caído)
+        // la bandeja se veía VACÍA aunque el banco tuviera opciones sin revisar
+        // (reporte Karina 2026-09-25). Promovidos/descartados salen igual, así
+        // que esto solo re-muestra lo pendiente de decisión.
+        const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
         const { data, error } = await supabase
           .from('sourcing_bank')
           .select('*, vacancies(title)')
@@ -84,7 +88,7 @@ export default function TodayCandidates() {
       <div className="glass rounded-xl px-5 py-3 mb-6 flex items-center gap-3">
         <Sunrise size={16} style={{ color: '#00A99D' }} className="flex-shrink-0" />
         <p className="text-xs text-gray-400">
-          <span className="font-semibold text-white">Candidatos de hoy — 0 nuevos.</span>{' '}
+          <span className="font-semibold text-white">Candidatos automáticos — 0 pendientes.</span>{' '}
           El sourcing nocturno corre L-V a las 4-6am (CDMX); actívalo con el switch "Sourcing nocturno automático" en la pestaña Sourcing de tus vacantes.
           {quarantined > 0 && <span className="text-gray-500"> {quarantined} más en verificación de ubicación.</span>}
         </p>
@@ -112,8 +116,8 @@ export default function TodayCandidates() {
             <Sunrise size={17} style={{ color: '#00A99D' }} />
           </div>
           <div className="text-left">
-            <h2 className="font-display font-semibold text-white">Candidatos de hoy</h2>
-            <p className="text-[11px] text-gray-500">{items.length} nuevo{items.length === 1 ? '' : 's'} del sourcing nocturno · rankeados por score</p>
+            <h2 className="font-display font-semibold text-white">Candidatos automáticos</h2>
+            <p className="text-[11px] text-gray-500">{items.length} pendiente{items.length === 1 ? '' : 's'} de revisar (últimos 7 días) · rankeados por score</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
