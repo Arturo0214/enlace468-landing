@@ -330,6 +330,10 @@ export function parseSerpProfiles(html) {
  *  búsqueda de 10 resultados; num 20-100 usa 2. Si no hay key o falla,
  *  se cae al scraping de motores de siempre. */
 let serperBlocked = false // solo si falla la forma más barata (num=10, pág 1)
+// Último fallo de Serper que huele a créditos agotados (403 o mensaje con
+// "credit"): el cron lo lee para avisar por la campanita. Un éxito lo limpia.
+let serperCreditsIssue = null
+export function getSerperCreditsIssue() { return serperCreditsIssue }
 // num DEBE ser ≤10: la cuenta free de Serper rechaza num>10 con el MISMO
 // mensaje "Query pattern not allowed for free accounts" que los operadores
 // prohibidos — el default 30 activaba serperBlocked en el primer query y
@@ -352,10 +356,18 @@ export async function serperSearch(query, num = 10, page = 1) {
       // Bloquear Serper del todo SOLO si la forma barata (pág 1) es rechazada;
       // un 400 de paginación no debe apagar la fuente primaria.
       if (page === 1 && /not allowed for free/i.test(err.message || '')) serperBlocked = true
+      if (/credit/i.test(err.message || '')) serperCreditsIssue = { status: 400, message: err.message }
       return null
     }
-    if (!res.ok) return null
+    if (!res.ok) {
+      if (res.status === 403 || res.status === 429) {
+        const err = await res.json().catch(() => ({}))
+        serperCreditsIssue = { status: res.status, message: err.message || 'sin detalle' }
+      }
+      return null
+    }
     const data = await res.json()
+    serperCreditsIssue = null
     const out = []
     const seen = new Set()
     for (const r of data.organic || []) {

@@ -30,7 +30,7 @@
 // se loggea y se sigue con la siguiente.
 
 import { getServiceClient } from './lib/supabase.mjs'
-import { runAutoSource } from './auto-source.mjs'
+import { runAutoSource, getSerperCreditsIssue } from './auto-source.mjs'
 import { hasMexicoSignal, isForeignProfile, nameLooksLikeRole, checkRoleFit, normalizeLinkedInUrl } from '../../src/lib/sourcingScore.js'
 import { matchExcludedCompany } from '../../src/lib/excludedCompanies.js'
 
@@ -357,6 +357,34 @@ export async function handler() {
         .update({ last_auto_sourced_at: new Date().toISOString() }).eq('id', v.id)
       if (tsErr) console.error(`[cron-auto-source] no se pudo actualizar last_auto_sourced_at de "${v.title}": ${tsErr.message}`)
     }
+  }
+
+  // Alerta de créditos Serper (campanita, 1 por día): si la fuente primaria
+  // reportó error de créditos O el sourcing no encontró NADA en crudo con la
+  // key configurada, el equipo debe enterarse (recargar en serper.dev) antes
+  // de que la bandeja se seque en silencio.
+  try {
+    const creditsIssue = getSerperCreditsIssue()
+    const totalFound = summary.reduce((a, r) => a + (r.found || 0), 0)
+    if (process.env.SERPER_API_KEY && summary.length && (creditsIssue || totalFound === 0)) {
+      const todayIso = new Date().toISOString().slice(0, 10)
+      const { data: dup } = await supabase.from('notifications').select('id')
+        .eq('type', 'serper_alert').gte('created_at', todayIso).limit(1)
+      if (!dup?.length) {
+        await supabase.from('notifications').insert({
+          organization_id: vacancies[0].organization_id,
+          recipient_id: null,
+          type: 'serper_alert',
+          title: 'Serper con problemas — sourcing degradado',
+          body: creditsIssue
+            ? `Serper respondió HTTP ${creditsIssue.status}: ${creditsIssue.message}. Revisa el saldo en serper.dev — sin créditos el sourcing cae a los motores gratis (mucho menor caudal).`
+            : 'El sourcing nocturno no encontró NADA (found=0) con SERPER_API_KEY configurada. Probable saldo agotado — revisa serper.dev.',
+        })
+        console.log('[cron-auto-source] alerta de Serper emitida')
+      }
+    }
+  } catch (e) {
+    console.error(`[cron-auto-source] alerta Serper falló: ${e.message}`)
   }
 
   // Limpieza del banco al final del tick (tolerante: no tumba la corrida).
