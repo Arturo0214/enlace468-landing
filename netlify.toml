@@ -14,10 +14,12 @@
 [functions."cron-daily-digest"]
   schedule = "0 13 * * 1-5"
 
-# Higiene de base (Fase 4): re-verificación de perfiles con el scraper propio.
-# 8 UTC = 2am CDMX, diario — no empalma con el sourcing (10-12) ni el digest (13).
+# Higiene de base (Fase 4): re-verificación de perfiles (Serper + scraper).
+# 6 corridas por madrugada 6-9,12-13 UTC = 12-3am + 6-7am CDMX: con Serper el
+# sourcing mete hasta ~180/día y UNA corrida de ~15 dejaba crecer la cuarentena
+# más rápido de lo que drenaba (2026-09-26). Deja libres 10-12 (sourcing).
 [functions."cron-verify-profiles"]
-  schedule = "0 8 * * *"
+  schedule = "0 6,7,8,9,12,13 * * *"
 
 # Motor de secuencias (Fase 5): cada 20 min de 14-23 UTC = 8am-5pm CDMX, L-V.
 # SOLO horario laboral — anti-ban: jamás enviar de madrugada ni en fin de semana.
