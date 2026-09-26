@@ -310,6 +310,15 @@ export async function handler() {
         supabase.from('sourcing_bank').select('url').eq('organization_id', v.organization_id).eq('source', 'descartado'))
       const excludeUrls = [...new Set([...bankUrls, ...orgDiscarded].map(normalizeLinkedInUrl))]
 
+      // ROTACIÓN de términos: el motor solo usa 4 search_terms por llamada;
+      // sin rotar, cada corrida manda LOS MISMOS 4 y re-encuentra el mismo
+      // estanque (neto decae a 0). La hora UTC decide el offset → las corridas
+      // del día cubren términos distintos y el neto diario se sostiene.
+      // En modo emprendedor además rota el "sabor" [0] (término con ciudad).
+      const allTerms = v.search_terms || []
+      const termOff = allTerms.length ? (new Date().getUTCHours() * 4) % allTerms.length : 0
+      const rotatedTerms = [...allTerms.slice(termOff), ...allTerms.slice(0, termOff)]
+
       const { results, counts } = await runAutoSource({
         vacancy: {
           title: v.title, location: v.location, department: v.department,
@@ -321,7 +330,7 @@ export async function handler() {
           platform: 'linkedin',
           minScore: CRON_MIN_SCORE,
           maxResults: CRON_MAX_RESULTS,
-          searchTerms: v.search_terms || [],
+          searchTerms: rotatedTerms,
           // Modo emprendedores (Ingrid): queries dirigidas a fundadores/dueños +
           // boost. Se activa por env ENTREPRENEUR_MODE o por flag de la vacante.
           onlyEntrepreneurs: process.env.ENTREPRENEUR_MODE === '1' || v.entrepreneur_mode === true,

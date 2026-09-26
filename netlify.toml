@@ -5,21 +5,23 @@
 [functions]
   directory = "netlify/functions"
 
-# Sourcing nocturno automático: 10/11/12 UTC = 4/5/6am CDMX (UTC-6 fijo), L-V.
-# Tres corridas escalonadas acumulan volumen con motores gratuitos.
+# Sourcing nocturno automático: 9-14 UTC = 3-8am CDMX (UTC-6 fijo), DIARIO.
+# 6 corridas escalonadas × 2 vacantes × ~25 netos + rotación de términos por
+# hora = meta 150+/día (pedido 2026-09-26). Serper como fuente primaria
+# (~130 créditos/día); si el saldo se agota cae a motores gratis + campanita.
 [functions."cron-auto-source"]
-  schedule = "0 10,11,12 * * 1-5"
+  schedule = "0 9,10,11,12,13,14 * * *"
 
 # Digest matutino: 13 UTC = 7am CDMX, L-V (después de las corridas nocturnas).
 [functions."cron-daily-digest"]
   schedule = "0 13 * * 1-5"
 
 # Higiene de base (Fase 4): re-verificación de perfiles (Serper + scraper).
-# 6 corridas por madrugada 6-9,12-13 UTC = 12-3am + 6-7am CDMX: con Serper el
-# sourcing mete hasta ~180/día y UNA corrida de ~15 dejaba crecer la cuarentena
-# más rápido de lo que drenaba (2026-09-26). Deja libres 10-12 (sourcing).
+# 6 corridas diarias SIN empalmar con el sourcing (9-14): 5-8 UTC = 11pm-2am
+# CDMX y 15-16 UTC = 9-10am. Con Serper el sourcing mete 150+/día y una sola
+# corrida de ~15 dejaba crecer la cuarentena más rápido de lo que drenaba.
 [functions."cron-verify-profiles"]
-  schedule = "0 6,7,8,9,12,13 * * *"
+  schedule = "0 5,6,7,8,15,16 * * *"
 
 # Motor de secuencias (Fase 5): cada 20 min de 14-23 UTC = 8am-5pm CDMX, L-V.
 # SOLO horario laboral — anti-ban: jamás enviar de madrugada ni en fin de semana.
