@@ -7,8 +7,12 @@
 
 // Arranque conservador: 5/día. Tras 1 semana sin warnings de LinkedIn se
 // puede subir a 15 (cambiar SOLO esta constante).
-export const LINKEDIN_DAILY_LIMIT = 5
-export const LINKEDIN_WEEKLY_LIMIT = 80
+// 20/día y 120/semana: ritmo seguro para UNA cuenta madura de LinkedIn
+// (subido de 5/80 para la campaña de prospección PPR, 2026-09-26). OJO: la
+// cuota es POR ORG — al conectar más cuentas (Flavio/Ingrid/Karina) hay que
+// hacerla por cuenta (Fase 2 de prospección).
+export const LINKEDIN_DAILY_LIMIT = 20
+export const LINKEDIN_WEEKLY_LIMIT = 120
 
 const HOUR_MS = 60 * 60 * 1000
 

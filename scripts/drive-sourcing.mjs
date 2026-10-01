@@ -30,19 +30,19 @@ function toBankRow(r, vacancy) {
     score_details: hasScore ? { strengths: r.strengths || [], gaps: r.gaps || [] } : null,
   }
 }
-function gateResult(r) {
+function gateResult(r, prospecting = false) {
   const name = r.full_name || r.title || ''
   if (nameLooksLikeRole(name)) return 'garbage'
   if (isForeignProfile(r.url, r.title, r.current_title, r.current_company, r.snippet, { name: r.full_name })) return 'foreign'
   if (matchExcludedCompany(r.current_company, r.current_title, r.title, r.snippet, r.full_name)) return 'vetoed'
-  if (checkRoleFit(r.current_title || r.title || '', r.snippet || '').verdict === 'specialized') return 'specialized'
+  if (!prospecting && checkRoleFit(r.current_title || r.title || '', r.snippet || '').verdict === 'specialized') return 'specialized'
   if (hasMexicoSignal(r.url, r.title, r.current_title, r.current_company, r.snippet)) return 'mx'
   return 'unknown'
 }
 function applyGate(results, vacancy, c) {
   const rows = []
   for (const r of results) {
-    const v = gateResult(r)
+    const v = gateResult(r, vacancy.prospecting_mode === true)
     if (v === 'garbage') { c.garbage++; continue }
     if (v === 'foreign') { c.foreign++; continue }
     if (v === 'vetoed') { c.vetoed++; continue }
@@ -137,7 +137,7 @@ async function main() {
   const sb = getServiceClient()
   const ids = process.env.DRIVE_IDS ? process.env.DRIVE_IDS.split(',') : null
   let q = sb.from('vacancies')
-    .select('id, organization_id, title, location, department, company_name, description, challenges, competencies, search_terms, auto_promote_min_score, entrepreneur_mode')
+    .select('id, organization_id, title, location, department, company_name, description, challenges, competencies, search_terms, auto_promote_min_score, entrepreneur_mode, prospecting_mode')
     .eq('auto_source_enabled', true).eq('status', 'open')
   if (ids) q = q.in('id', ids)
   const { data: vacancies, error } = await q

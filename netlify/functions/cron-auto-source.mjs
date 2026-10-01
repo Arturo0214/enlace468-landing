@@ -97,14 +97,17 @@ function toBankRow(r, vacancy) {
 //   sin señal     → se inserta en CUARENTENA (verify_status='geo_desconocida');
 //                   cron-verify-profiles la resuelve con búsqueda dirigida y la
 //                   rescata (señal MX) o la manda a la basura (extranjero).
-/** @returns 'garbage' | 'foreign' | 'specialized' | 'mx' | 'unknown' */
-function gateResult(r) {
+/** @returns 'garbage' | 'foreign' | 'specialized' | 'mx' | 'unknown'
+ *  prospecting=true (campañas de VENTA PPR/fiscal): el target ES el perfil
+ *  especializado (médico, dueño con "fiscal"…) → se salta ese descarte. El
+ *  veto de seguros se mantiene: ahí es COMPETENCIA, no prospecto. */
+function gateResult(r, prospecting = false) {
   const name = r.full_name || r.title || ''
   if (nameLooksLikeRole(name)) return 'garbage'
   if (isForeignProfile(r.url, r.title, r.current_title, r.current_company, r.snippet, { name: r.full_name })) return 'foreign'
-  // Veto de sector (aseguradoras/inversiones/seguros — no contratable)
+  // Veto de sector (aseguradoras/seguros): no contratable NI prospecto (competencia)
   if (matchExcludedCompany(r.current_company, r.current_title, r.title, r.snippet, r.full_name)) return 'vetoed'
-  if (checkRoleFit(r.current_title || r.title || '', r.snippet || '').verdict === 'specialized') return 'specialized'
+  if (!prospecting && checkRoleFit(r.current_title || r.title || '', r.snippet || '').verdict === 'specialized') return 'specialized'
   if (hasMexicoSignal(r.url, r.title, r.current_title, r.current_company, r.snippet)) return 'mx'
   return 'unknown'
 }
@@ -114,7 +117,7 @@ function gateResult(r) {
 function applyGate(results, vacancy, gateCounts) {
   const rows = []
   for (const r of results) {
-    const verdict = gateResult(r)
+    const verdict = gateResult(r, vacancy.prospecting_mode === true)
     if (verdict === 'garbage') { gateCounts.garbage++; continue }
     if (verdict === 'foreign') { gateCounts.foreign++; continue }
     if (verdict === 'vetoed') { gateCounts.vetoed = (gateCounts.vetoed || 0) + 1; continue }
@@ -137,10 +140,14 @@ async function cleanupBank(supabase) {
   const sinceIso = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
   const PAGE = 200
   const today = new Date().toISOString().slice(0, 10)
+  // Vacantes de prospección: sus filas NO se descartan por "especializado"
+  // (el médico/contador ES el prospecto).
+  const { data: pv } = await supabase.from('vacancies').select('id').eq('prospecting_mode', true)
+  const prospectingIds = new Set((pv || []).map(v => v.id))
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
       .from('sourcing_bank')
-      .select('id, title, full_name, current_title, current_company, snippet, url, notes, verify_status')
+      .select('id, vacancy_id, title, full_name, current_title, current_company, snippet, url, notes, verify_status')
       .eq('source', 'auto-sourced')
       .is('candidate_id', null)
       .gte('created_at', sinceIso)
@@ -155,9 +162,10 @@ async function cleanupBank(supabase) {
       else if (matchExcludedCompany(b.current_company, b.current_title, b.title, b.snippet, b.full_name)) {
         reason = `sector vetado (${matchExcludedCompany(b.current_company, b.current_title, b.title, b.snippet, b.full_name)})`
       }
-      else {
+      else if (!prospectingIds.has(b.vacancy_id)) {
         // Barrido de especializados sobre filas ya guardadas (criterio #1 de
-        // la QA tester): título analítico/técnico sin señal comercial.
+        // la QA tester) — excepto campañas de prospección, donde el perfil
+        // especializado ES el target.
         const fit = checkRoleFit(b.current_title || b.title || '', b.snippet || '')
         if (fit.verdict === 'specialized') reason = `perfil especializado (${fit.signal})`
       }
@@ -276,7 +284,7 @@ export async function handler() {
 
   const { data: vacancies, error } = await supabase
     .from('vacancies')
-    .select('id, organization_id, title, location, department, company_name, description, challenges, competencies, search_terms, auto_promote_min_score, entrepreneur_mode')
+    .select('id, organization_id, title, location, department, company_name, description, challenges, competencies, search_terms, auto_promote_min_score, entrepreneur_mode, prospecting_mode')
     .eq('auto_source_enabled', true)
     .eq('status', 'open')
     .order('last_auto_sourced_at', { ascending: true, nullsFirst: true })
