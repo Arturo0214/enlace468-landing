@@ -119,10 +119,17 @@ export function usePipeline(vacancyId) {
         await evaluateCandidate(vcId, candidate)
       }
 
-      // When someone is hired, reject all others
+      // When someone is hired, OFRECER rechazar a los demás — con confirmación.
+      // Antes era automático y sin aviso: al registrar una clave T barría a
+      // cientos de leads vivos (contactados/agendados) a rechazado y cerraba
+      // la vacante (incidente Karina 2026-10-02, 890 leads restaurados a mano).
       if (newStage === 'hired') {
         const others = candidates.filter(c => c.id !== vcId && !['hired', 'rejected'].includes(c.stage))
-        if (others.length > 0) {
+        const confirmed = others.length > 0 && window.confirm(
+          `🎉 ¡Clave registrada!\n\n¿Rechazar a los otros ${others.length} candidatos activos y CERRAR la vacante?\n\n` +
+          'Acepta solo si la vacante quedó cubierta.\nCancela para conservarlos en su fase (p. ej. si sigues contactando candidatos para más claves).'
+        )
+        if (confirmed) {
           const now = new Date().toISOString()
           const otherIds = others.map(c => c.id)
           // En lotes de 80: con cientos de ids la URL crece a ~10KB y los
