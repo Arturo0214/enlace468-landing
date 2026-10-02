@@ -79,6 +79,8 @@ const CITY_ROTATION = {
   '63ca7468-e58f-4d2f-935c-5c9cdfce8b74': ['Monterrey','Saltillo','Chihuahua','Torreon','Hermosillo','Culiacan','Tijuana','San Luis Potosi','Durango','Mexicali'],
   'c596fba3-790c-4ba1-9341-1d295514cffe': ['Ciudad de Mexico','Puebla','Queretaro','Toluca','Cuernavaca','Pachuca','Morelia','Leon','Estado de Mexico','Tlaxcala'],
   'bbbbbbbb-2222-2222-2222-bbbbbbbbbbbb': ['Guadalajara','Ciudad de Mexico','Monterrey','Puebla','Queretaro','Merida','Leon','Cancun','Tijuana','Aguascalientes'],
+  // Prospección fiscal PyME (dueños/fundadores)
+  'cccccccc-2222-4222-8222-cccccccccc02': ['Ciudad de Mexico','Guadalajara','Monterrey','Queretaro','Puebla','Merida','Leon','Tijuana','Cancun','San Luis Potosi'],
 }
 
 async function driveVacancy(sb, v) {
