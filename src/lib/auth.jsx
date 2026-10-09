@@ -7,6 +7,7 @@ export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [trialExpired, setTrialExpired] = useState(false)
   const profileRef = useRef(null)
   const fetchingRef = useRef(false)
 
@@ -20,6 +21,19 @@ export function AuthProvider({ children }) {
       .select('*, organizations(*)')
       .eq('id', userId)
       .single()
+
+    // Acceso de prueba vencido (profiles.trial_expires_at): se cierra la
+    // sesión y LoginPage muestra el aviso. NULL = usuario normal.
+    if (data?.trial_expires_at && new Date(data.trial_expires_at) < new Date()) {
+      await supabase.auth.signOut()
+      setTrialExpired(true)
+      setSession(null)
+      setProfile(null)
+      profileRef.current = null
+      setLoading(false)
+      fetchingRef.current = false
+      return
+    }
 
     setProfile(data)
     profileRef.current = data
@@ -83,7 +97,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signInWithGoogle, signOut, getProviderToken }}>
+    <AuthContext.Provider value={{ session, profile, loading, trialExpired, signInWithGoogle, signOut, getProviderToken }}>
       {children}
     </AuthContext.Provider>
   )

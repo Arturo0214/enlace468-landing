@@ -3,7 +3,7 @@ import { useAuth } from '../../lib/auth'
 import { useEffect, useState } from 'react'
 
 export default function LoginPage() {
-  const { session, loading, signInWithGoogle } = useAuth()
+  const { session, loading, signInWithGoogle, trialExpired } = useAuth()
   const navigate = useNavigate()
   const [emailMode, setEmailMode] = useState(false)
   const [email, setEmail] = useState('')
@@ -66,6 +66,12 @@ export default function LoginPage() {
           <p className="text-gray-400 text-center text-sm mb-8">
             {emailMode ? 'Ingresa tus credenciales' : 'Conecta tu cuenta para acceder al dashboard'}
           </p>
+
+          {trialExpired && !error && (
+            <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-sm">
+              Tu acceso de prueba expiró. Escríbenos para activar tu cuenta completa.
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
