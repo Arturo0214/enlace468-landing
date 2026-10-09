@@ -46,6 +46,17 @@ export async function handler(event) {
   // Búsqueda dirigida a ESE perfil para traer su headline/rol/empresa/ubicación.
   const query = `site:linkedin.com/in/${slug}`
   const engines = buildSearchEngines(query)
+  // SOLO acepta el resultado cuyo slug es EXACTAMENTE el pedido (comparando
+  // decodificado, para slugs con acentos). Antes caía al primer resultado de
+  // la búsqueda y registraba los datos de OTRA persona — "me está registrando
+  // perfiles que no son" / perfiles de Aguascalientes marcados como EUA
+  // (reporte Karina 2026-10-08). Sin match exacto → card parcial del slug.
+  const targetSlug = slug.toLowerCase()
+  const slugOf = u => {
+    const m = String(u || '').match(/\/in\/([^/?#]+)/i)
+    if (!m) return null
+    try { return decodeURIComponent(m[1]).toLowerCase() } catch { return m[1].toLowerCase() }
+  }
   let match = null
   for (const engine of engines) {
     try {
@@ -54,8 +65,7 @@ export async function handler(event) {
       const html = await res.text()
       if (html.length < 500) continue
       const profiles = parseSerpProfiles(html)
-      // Prefiere el que coincide con el slug; si no, el primero.
-      match = profiles.find(p => p.url.toLowerCase().includes(slug.toLowerCase())) || profiles[0]
+      match = profiles.find(p => slugOf(p.url) === targetSlug) || null
       if (match) break
     } catch { /* siguiente motor */ }
   }
@@ -77,7 +87,7 @@ export async function handler(event) {
     current_title: parts[1] || null,
     current_company: parts[2] || null,
     location: pickLocation(match.description || ''),
-    url: match.url || canonical,
+    url: canonical, // siempre la forma canónica — evita variantes /en o mx. duplicadas en el banco
     snippet: [match.headline, match.description].filter(Boolean).join(' · '),
   }
   return { statusCode: 200, headers, body: JSON.stringify({ ok: true, profile }) }

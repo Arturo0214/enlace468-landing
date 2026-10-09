@@ -289,6 +289,10 @@ export function normalizeLinkedInUrl(url) {
     .replace(/^https?:\/\//, '')
     .replace(/^[a-z0-9-]{2,3}\./, '') // www. / mx. / pe. … ("linkedin." no matchea: 8 letras)
     .replace(/\/+$/, '')
+    // Sufijo de idioma de perfiles públicos (/in/slug/en, /in/slug/en-us…):
+    // misma persona que /in/slug — sin esto el descartado reaparecía como
+    // "nuevo" vía la variante /en (reporte Karina 2026-10-08).
+    .replace(/(\/in\/[^/]+)\/[a-z]{2}(?:-[a-z]{2})?$/, '$1')
 }
 
 /** True if `text` contains `token` or any of its bilingual synonyms. */
