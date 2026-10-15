@@ -34,14 +34,31 @@ export default function TodayCandidates() {
         // (reporte Karina 2026-09-25). Promovidos/descartados salen igual, así
         // que esto solo re-muestra lo pendiente de decisión.
         const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
-        const { data, error } = await supabase
+
+        // Las campañas de PROSPECCIÓN (prospecting_mode: ventas de Arturo) NO
+        // son candidatos de reclutamiento — contaminaban y SATURABAN la bandeja
+        // de Karina/Ingrid (reporte 2026-10-15: "no aparecen opciones"). Se
+        // excluyen para que el feed sea puro reclutamiento.
+        const { data: prospVacs } = await supabase
+          .from('vacancies').select('id')
+          .eq('organization_id', profile.organization_id).eq('prospecting_mode', true)
+        const prospIds = (prospVacs || []).map(v => v.id)
+
+        // ORDEN por created_at (lo más NUEVO primero): "Candidatos de hoy" debe
+        // mostrar lo recién sourceado. Antes ordenaba por score, y como los
+        // frescos entran con score=null caían al fondo y el tope de 1000 filas
+        // de Supabase los TRUNCABA → la bandeja parecía vacía pese a haber banco.
+        let q = supabase
           .from('sourcing_bank')
           .select('*, vacancies(title)')
           .eq('organization_id', profile.organization_id)
           .eq('source', 'auto-sourced') // los descartados cambian de source → quedan fuera
           .is('candidate_id', null)     // los ya promovidos quedan fuera
           .gte('created_at', since)
-          .order('score', { ascending: false, nullsFirst: false })
+        if (prospIds.length) q = q.not('vacancy_id', 'in', `(${prospIds.join(',')})`)
+        const { data, error } = await q
+          .order('created_at', { ascending: false })
+          .limit(600)
         if (error) throw error
         if (!cancelled) {
           const visible = (data || []).filter(i => !HIDDEN_STATUSES.has(i.verify_status))
