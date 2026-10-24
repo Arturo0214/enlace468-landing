@@ -33,6 +33,7 @@ export const STAGE_LEVELS = {
   contacted: 1,
   screening: 2,
   interviewing: 3,
+  career_interview: 3, // misma altura que entrevista en el pronóstico (no renumera)
   evaluated: 4,
   shortlist: 4,
   presented: 5,

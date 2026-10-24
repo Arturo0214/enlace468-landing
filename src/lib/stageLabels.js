@@ -16,6 +16,7 @@ export const DEFAULT_STAGE_LABELS = {
   contacted: 'Contactado',
   screening: 'Filtro inicial',
   interviewing: 'Entrevista',
+  career_interview: 'Entrevista de carrera',
   evaluated: 'Evaluado',
   presented: 'Presentado',
   shortlist: 'Finalista',

@@ -20,12 +20,17 @@ const STAGE_COLORS = {
 
 const FUNNEL_ORDER = ['sourced', 'contacted', 'screening', 'interviewing', 'shortlist', 'presented', 'offer', 'hired']
 
+// Mapa orden→etapa (para el cross-tab por reclutador: etapa MÁXIMA alcanzada)
+const ORDER_TO_KEY = { 0: 'sourced', 1: 'contacted', 2: 'screening', 3: 'interviewing', 4: 'career_interview', 5: 'evaluated', 6: 'presented', 7: 'offer', 8: 'hired' }
+const SOURCE_LABELS = { linkedin: 'LinkedIn', referral: 'Referido', jobboard: 'Bolsa de trabajo', internal: 'Interno', other: 'Otro', 'web-sourced': 'Web', manual: 'Manual' }
+const SOURCE_COLORS = { linkedin: 'bg-blue-500', referral: 'bg-amber-500', jobboard: 'bg-cyan-500', internal: 'bg-purple-500', other: 'bg-gray-500', 'web-sourced': 'bg-emerald-500', manual: 'bg-pink-500' }
+
 // Orden de avance para el funnel HISTÓRICO (feedback Karina 2026-08-28: el
 // reporte solo mostraba dónde está cada quien HOY; un entrevistado que luego
 // fue rechazado desaparecía del conteo de entrevistas). 'evaluated' y
 // 'shortlist' son la misma altura del embudo (el pipeline usa una, el reporte
 // histórico las funde).
-const STAGE_ORDER = { sourced: 0, contacted: 1, screening: 2, interviewing: 3, evaluated: 4, shortlist: 4, presented: 5, offer: 6, hired: 7 }
+const STAGE_ORDER = { sourced: 0, contacted: 1, screening: 2, interviewing: 3, career_interview: 4, evaluated: 5, shortlist: 5, presented: 6, offer: 7, hired: 8 }
 // Las etiquetas visibles salen de useStageLabels(); 'evaluated' funde
 // evaluado + finalista en el embudo histórico (misma altura).
 const FUNNEL_STEPS = [
@@ -33,10 +38,11 @@ const FUNNEL_STEPS = [
   { key: 'contacted', order: 1 },
   { key: 'screening', order: 2 },
   { key: 'interviewing', order: 3 },
-  { key: 'evaluated', order: 4 },
-  { key: 'presented', order: 5 },
-  { key: 'offer', order: 6 },
-  { key: 'hired', order: 7 },
+  { key: 'career_interview', order: 4 },
+  { key: 'evaluated', order: 5 },
+  { key: 'presented', order: 6 },
+  { key: 'offer', order: 7 },
+  { key: 'hired', order: 8 },
 ]
 
 // Formatea un ETA en semanas: si es menor a 1 semana, en días.
@@ -93,37 +99,57 @@ export default function ExecutiveReport({ vacancy, candidates }) {
     return () => { alive = false }
   }, [])
 
-  // Process metrics
-  const metrics = useMemo(() => {
-    if (!candidates?.length) return null
+  // ── Corte temporal (día / semana / mes / año) ──
+  // Acota candidatos (por created_at) e historia (por changed_at) al periodo
+  // seleccionado; las métricas y el embudo se recalculan sobre ese subconjunto.
+  const [period, setPeriod] = useState('all')
+  const periodStart = useMemo(() => {
+    if (period === 'all') return null
+    const d = new Date()
+    if (period === 'day') d.setHours(0, 0, 0, 0)
+    else if (period === 'week') d.setDate(d.getDate() - 7)
+    else if (period === 'month') d.setMonth(d.getMonth() - 1)
+    else if (period === 'year') d.setFullYear(d.getFullYear() - 1)
+    return d
+  }, [period])
+  const periodCandidates = useMemo(() => {
+    if (!periodStart) return candidates || []
+    const min = periodStart.getTime()
+    return (candidates || []).filter(c => { const t = new Date(c.created_at).getTime(); return !Number.isNaN(t) && t >= min })
+  }, [candidates, periodStart])
+  const periodHistory = useMemo(() => {
+    if (!periodStart) return history
+    const min = periodStart.getTime()
+    return (history || []).filter(h => { const t = new Date(h.changed_at).getTime(); return !Number.isNaN(t) && t >= min })
+  }, [history, periodStart])
 
-    const total = candidates.length
-    const rejected = candidates.filter(c => c.stage === 'rejected').length
+  // Process metrics (sobre el periodo seleccionado)
+  const metrics = useMemo(() => {
+    const list = periodCandidates
+    if (!list?.length) return null
+
+    const total = list.length
+    const rejected = list.filter(c => c.stage === 'rejected').length
     const active = total - rejected
-    const hired = candidates.filter(c => c.stage === 'hired').length
+    const hired = list.filter(c => c.stage === 'hired').length
 
     // Funnel counts
     const funnel = {}
-    candidates.forEach(vc => {
-      funnel[vc.stage] = (funnel[vc.stage] || 0) + 1
-    })
+    list.forEach(vc => { funnel[vc.stage] = (funnel[vc.stage] || 0) + 1 })
 
     // ── Funnel HISTÓRICO: hasta dónde llegó cada candidato ──
     const maxByVc = {}
-    candidates.forEach(vc => {
-      const o = STAGE_ORDER[vc.stage]
-      if (o != null) maxByVc[vc.id] = o
-    })
-    ;(history || []).forEach(h => {
+    list.forEach(vc => { const o = STAGE_ORDER[vc.stage]; if (o != null) maxByVc[vc.id] = o })
+    ;(periodHistory || []).forEach(h => {
       const o = STAGE_ORDER[h.to_stage]
       if (o != null) maxByVc[h.vacancy_candidate_id] = Math.max(maxByVc[h.vacancy_candidate_id] ?? -1, o)
     })
-    const rejectedIds = new Set(candidates.filter(c => c.stage === 'rejected').map(c => c.id))
+    const rejectedIds = new Set(list.filter(c => c.stage === 'rejected').map(c => c.id))
     const reachedOrders = Object.entries(maxByVc)
     const histFunnel = FUNNEL_STEPS.map(step => {
       const reached = reachedOrders.filter(([, o]) => o >= step.order).length
       const rejectedAfter = reachedOrders.filter(([id, o]) => o === step.order && rejectedIds.has(id)).length
-      const current = candidates.filter(c =>
+      const current = list.filter(c =>
         c.stage === step.key || (step.key === 'evaluated' && c.stage === 'shortlist')
       ).length
       return { ...step, reached, rejectedAfter, current }
@@ -131,26 +157,19 @@ export default function ExecutiveReport({ vacancy, candidates }) {
 
     // Source distribution
     const sources = {}
-    candidates.forEach(vc => {
-      const src = vc.source || vc.candidates?.source || 'other'
-      sources[src] = (sources[src] || 0) + 1
-    })
+    list.forEach(vc => { const src = vc.source || vc.candidates?.source || 'other'; sources[src] = (sources[src] || 0) + 1 })
 
     // Shortlist: top candidates by match_score
-    const shortlist = [...candidates]
+    const shortlist = [...list]
       .filter(c => c.match_score != null && c.stage !== 'rejected')
       .sort((a, b) => b.match_score - a.match_score)
       .slice(0, 5)
 
-    // Average days in process
-    const avgDays = candidates.length > 0
-      ? Math.round(
-          candidates.reduce((sum, c) => {
-            const start = new Date(c.created_at)
-            return sum + Math.floor((Date.now() - start.getTime()) / (1000 * 60 * 60 * 24))
-          }, 0) / candidates.length
-        )
-      : 0
+    // Días promedio en proceso (robusto a created_at inválido → evita NaN)
+    const dias = list
+      .map(c => { const t = new Date(c.created_at).getTime(); return Number.isNaN(t) ? null : Math.floor((Date.now() - t) / 86400000) })
+      .filter(v => v != null)
+    const avgDays = dias.length ? Math.round(dias.reduce((a, b) => a + b, 0) / dias.length) : 0
 
     // Conversion rate sourced -> presentado, sobre el HISTÓRICO (quien llegó a
     // presentado cuenta aunque después haya sido rechazado).
@@ -158,7 +177,87 @@ export default function ExecutiveReport({ vacancy, candidates }) {
     const conversionRate = total > 0 ? Math.round((reachedPresented / total) * 100) : 0
 
     return { total, active, rejected, hired, funnel, histFunnel, sources, shortlist, avgDays, conversionRate }
-  }, [candidates, history])
+  }, [periodCandidates, periodHistory])
+
+  // ── Perfiles que más convierten (por puesto actual del candidato) ──
+  // "Convierte" = el candidato llegó al menos a 'presented' (histórico). Agrupa
+  // por current_title, pide mínimo 2 candidatos por perfil y ordena por tasa.
+  const profileStats = useMemo(() => {
+    const list = periodCandidates
+    if (!list?.length) return []
+    const maxByVc = {}
+    list.forEach(vc => { const o = STAGE_ORDER[vc.stage]; if (o != null) maxByVc[vc.id] = o })
+    ;(periodHistory || []).forEach(h => { const o = STAGE_ORDER[h.to_stage]; if (o != null) maxByVc[h.vacancy_candidate_id] = Math.max(maxByVc[h.vacancy_candidate_id] ?? -1, o) })
+    const PRES = STAGE_ORDER.presented
+    const groups = {}
+    list.forEach(vc => {
+      const key = (vc.candidates?.current_title || '').trim() || 'Sin puesto'
+      const g = groups[key] || (groups[key] = { profile: key, total: 0, converted: 0, hired: 0 })
+      g.total++
+      const o = maxByVc[vc.id] ?? -1
+      if (o >= PRES) g.converted++
+      if (o >= STAGE_ORDER.hired) g.hired++
+    })
+    return Object.values(groups)
+      .map(g => ({ ...g, rate: g.total ? g.converted / g.total : 0 }))
+      .filter(g => g.total >= 2)
+      .sort((a, b) => b.rate - a.rate || b.converted - a.converted || b.total - a.total)
+      .slice(0, 8)
+  }, [periodCandidates, periodHistory])
+
+  // ── Desempeño por reclutador (Karina / Flavio / Ingrid…) ──
+  // Cruza assigned_to (quién sourceó) con la dimensión elegida: etapa máxima
+  // alcanzada, fuente o disposición. Permite ver, p.ej., que de un reclutador
+  // solo entran referidos y de otro salen Clave T.
+  const [recDim, setRecDim] = useState('stage')
+  const [recruiterNames, setRecruiterNames] = useState({})
+  useEffect(() => {
+    const ids = [...new Set((candidates || []).map(c => c.assigned_to).filter(Boolean))]
+    if (!ids.length) return
+    let alive = true
+    supabase.from('profiles').select('id, full_name').in('id', ids)
+      .then(({ data }) => {
+        if (!alive) return
+        const m = {}
+        ;(data || []).forEach(p => { m[p.id] = p.full_name })
+        setRecruiterNames(m)
+      })
+    return () => { alive = false }
+  }, [candidates])
+
+  const recruiterStats = useMemo(() => {
+    const list = periodCandidates
+    if (!list?.length) return []
+    const maxByVc = {}
+    list.forEach(vc => { const o = STAGE_ORDER[vc.stage]; if (o != null) maxByVc[vc.id] = o })
+    ;(periodHistory || []).forEach(h => { const o = STAGE_ORDER[h.to_stage]; if (o != null) maxByVc[h.vacancy_candidate_id] = Math.max(maxByVc[h.vacancy_candidate_id] ?? -1, o) })
+    const PRES = STAGE_ORDER.presented, HIRED = STAGE_ORDER.hired
+    const byRec = {}
+    list.forEach(vc => {
+      const rid = vc.assigned_to || 'sin'
+      const r = byRec[rid] || (byRec[rid] = { id: rid, total: 0, converted: 0, hired: 0, stage: {}, source: {}, disposition: {} })
+      r.total++
+      const o = maxByVc[vc.id] ?? -1
+      if (o >= PRES) r.converted++
+      if (o >= HIRED) r.hired++
+      const sKey = ORDER_TO_KEY[o] || 'sourced'
+      r.stage[sKey] = (r.stage[sKey] || 0) + 1
+      const src = vc.source || vc.candidates?.source || 'other'
+      r.source[src] = (r.source[src] || 0) + 1
+      const disp = vc.disposition || 'sin'
+      r.disposition[disp] = (r.disposition[disp] || 0) + 1
+    })
+    return Object.values(byRec).sort((a, b) => b.hired - a.hired || b.converted - a.converted || b.total - a.total)
+  }, [periodCandidates, periodHistory])
+
+  // Etiqueta + color de una categoría según la dimensión elegida
+  const catMeta = (dim, key) => {
+    if (dim === 'stage') return { label: stepLabel(key), color: STAGE_COLORS[key] || 'bg-gray-500' }
+    if (dim === 'source') return { label: SOURCE_LABELS[key] || key, color: SOURCE_COLORS[key] || 'bg-gray-500' }
+    if (key === 'sin') return { label: 'Sin ruteo', color: 'bg-gray-600' }
+    const d = getDisposition(key)
+    return { label: d?.label || key, color: d?.color?.dot || 'bg-gray-500' }
+  }
 
   // ── Ruteo / disposición de candidatos (FASE C) ──
   // Cuántos candidatos hay por disposición + recuperación de no-aptos. El
@@ -322,6 +421,40 @@ export default function ExecutiveReport({ vacancy, candidates }) {
         )}
       </motion.div>
 
+      {/* Corte por periodo (día / semana / mes / año) */}
+      {candidates?.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+          className="glass rounded-xl p-3 flex items-center justify-between gap-3 flex-wrap no-print"
+        >
+          <span className="text-[11px] text-gray-500 uppercase tracking-wider font-semibold pl-1 flex items-center gap-1.5">
+            <CalendarClock size={13} className="text-primary-light" /> Corte por periodo
+          </span>
+          <div className="flex items-center gap-1 bg-white/[0.03] rounded-lg p-0.5">
+            {[['day', 'Hoy'], ['week', 'Semana'], ['month', 'Mes'], ['year', 'Año'], ['all', 'Todo']].map(([val, lbl]) => (
+              <button
+                key={val}
+                onClick={() => setPeriod(val)}
+                className={`px-3 py-1.5 text-[11px] font-medium rounded-md transition-colors ${period === val ? 'bg-primary-light text-white' : 'text-gray-500 hover:text-gray-300'}`}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Sin datos en el periodo elegido (pero sí hay candidatos en total) */}
+      {candidates?.length > 0 && !metrics && (
+        <div className="glass rounded-xl p-8 text-center">
+          <CalendarClock size={28} className="mx-auto text-gray-700 mb-3" />
+          <p className="text-sm text-gray-500">No hay candidatos en este periodo.</p>
+          <p className="text-xs text-gray-600 mt-1">Prueba con un rango mayor (Mes, Año o Todo).</p>
+        </div>
+      )}
+
       {/* Process metrics */}
       {metrics && (
         <>
@@ -427,6 +560,118 @@ export default function ExecutiveReport({ vacancy, candidates }) {
               </div>
             )}
           </motion.div>
+
+          {/* Perfiles que más convierten (por puesto actual del candidato) */}
+          {profileStats.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.105 }}
+              className="glass rounded-xl p-5"
+            >
+              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                <TrendingUp size={13} className="text-emerald-400" /> Perfiles que mas convierten
+              </h2>
+              <p className="text-[10px] text-gray-600 mb-4">
+                Por puesto actual del candidato · "convierte" = llego a {stepLabel('presented')} o mas. Minimo 2 candidatos por perfil.
+              </p>
+              <div className="space-y-1.5">
+                {profileStats.map(g => (
+                  <div key={g.profile} className="flex items-center gap-3">
+                    <span className="text-[10px] text-gray-400 w-40 truncate text-right" title={g.profile}>{g.profile}</span>
+                    <div className="flex-1 h-5 bg-white/[0.03] rounded-md overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.max(g.rate * 100, g.converted > 0 ? 8 : 2)}%` }}
+                        transition={{ duration: 0.6, delay: 0.1 }}
+                        className="h-full bg-emerald-500 rounded-md flex items-center justify-end pr-2"
+                      >
+                        {g.converted > 0 && <span className="text-[9px] font-bold text-white">{Math.round(g.rate * 100)}%</span>}
+                      </motion.div>
+                    </div>
+                    <span className="text-[10px] text-gray-600 w-28">
+                      {g.converted}/{g.total} conv.{g.hired > 0 && <span className="text-emerald-400"> · {g.hired} clave</span>}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Desempeño por reclutador — cross-tab interactivo (Karina/Flavio/Ingrid) */}
+          {recruiterStats.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.108 }}
+              className="glass rounded-xl p-5"
+            >
+              <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <Users size={13} className="text-primary-light" /> Desempeno por reclutador
+                </h2>
+                <div className="flex items-center gap-1 bg-white/[0.03] rounded-lg p-0.5 no-print">
+                  {[['stage', 'Etapa alcanzada'], ['source', 'Fuente'], ['disposition', 'Disposicion']].map(([val, lbl]) => (
+                    <button
+                      key={val}
+                      onClick={() => setRecDim(val)}
+                      className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors ${recDim === val ? 'bg-primary-light text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                    >
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="text-[10px] text-gray-600 mb-4">
+                Cada barra es un reclutador; los segmentos muestran su distribucion por {recDim === 'stage' ? 'etapa maxima alcanzada' : recDim === 'source' ? 'fuente del candidato' : 'disposicion'}.
+                Cambia la dimension arriba y pasa el cursor para ver el detalle.
+              </p>
+              <div className="space-y-3">
+                {recruiterStats.map(r => {
+                  const entries = Object.entries(r[recDim]).sort((a, b) => b[1] - a[1])
+                  const name = recruiterNames[r.id] || (r.id === 'sin' ? 'Sin asignar' : '—')
+                  return (
+                    <div key={r.id}>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-[11px] font-medium text-gray-300">{name}</span>
+                        <span className="text-[10px] text-gray-600">
+                          {r.total} cand. · {r.total ? Math.round(r.converted / r.total * 100) : 0}% conv.
+                          {r.hired > 0 && <span className="text-emerald-400"> · {r.hired} clave</span>}
+                        </span>
+                      </div>
+                      <div className="flex h-5 rounded-md overflow-hidden bg-white/[0.03]">
+                        {entries.map(([key, count]) => {
+                          const meta = catMeta(recDim, key)
+                          const pct = r.total ? (count / r.total * 100) : 0
+                          return (
+                            <div
+                              key={key}
+                              className={`${meta.color} h-full flex items-center justify-center`}
+                              style={{ width: `${pct}%` }}
+                              title={`${meta.label}: ${count} (${Math.round(pct)}%)`}
+                            >
+                              {pct >= 12 && <span className="text-[9px] font-bold text-white px-1 truncate">{count}</span>}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              {/* Leyenda de categorías presentes */}
+              <div className="flex flex-wrap gap-x-3 gap-y-1.5 mt-4 pt-3 border-t border-white/[0.04]">
+                {[...new Set(recruiterStats.flatMap(r => Object.keys(r[recDim])))].map(key => {
+                  const meta = catMeta(recDim, key)
+                  return (
+                    <span key={key} className="flex items-center gap-1 text-[9px] text-gray-500">
+                      <span className={`w-2.5 h-2.5 rounded-sm ${meta.color}`} /> {meta.label}
+                    </span>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )}
 
           {/* Ruteo de candidatos (FASE C): a dónde se rutearon los no-aptos y
               el valor del pipeline más allá de FC (recuperación de rechazados) */}
