@@ -154,12 +154,13 @@ async function fetchPipelineCandidates(supabase, cutoffIso, limit) {
 function mapBankRow(b) {
   return {
     table: 'sourcing_bank', id: b.id, url: b.url, notes: b.notes || null,
+    full_name: b.full_name || b.title || null, contact_status: b.contact_status || null,
     verify_status: b.verify_status, verify_details: b.verify_details,
     saved: { title: b.current_title, company: b.current_company, extraText: [b.full_name || b.title, b.snippet].filter(Boolean).join(' '), createdAt: b.created_at },
   }
 }
 
-const BANK_COLUMNS = 'id, title, url, snippet, full_name, current_title, current_company, notes, score, created_at, last_verified_at, verify_status, verify_details'
+const BANK_COLUMNS = 'id, title, url, snippet, full_name, current_title, current_company, notes, score, created_at, last_verified_at, verify_status, verify_details, contact_status'
 
 /** Lote (0) — PRIORIDAD MÁXIMA: cuarentena geográfica del gate de calidad
  *  (verify_status='geo_desconocida'). La búsqueda dirigida suele revelar la
@@ -256,18 +257,27 @@ export async function handler() {
       let geoHandled = false
       if (row.table === 'sourcing_bank') {
         const freshText = [found.headline, found.description].filter(Boolean).join(' ')
-        const subM = String(found.url || '').match(/https?:\/\/([a-z]{2,3})\.linkedin\.com/i)
-        const sub = subM ? subM[1].toLowerCase() : null
-        const foreignSignal = (sub && sub !== 'mx' && sub !== 'www')
-          ? `subdominio ${sub}.` : detectForeignLocation(freshText, row.full_name)
         const mx = hasMexicoSignal(found.url || row.url, freshText)
+        // OJO: el subdominio del URL (mx./es./in./www.linkedin.com) lo fija el
+        // locale del visitante o la geo del proxy de scraping, NO dónde vive la
+        // persona. Usarlo como señal de "extranjero" barría mexicanos reales
+        // (incidentes Karina/Ingrid: perfiles vivos descartados en masa). Solo
+        // creemos en señales de UBICACIÓN en el texto fresco, y nunca si hay
+        // señal de México.
+        const foreignSignal = mx ? null : detectForeignLocation(freshText, row.full_name)
 
         // Fit de rol con el headline FRESCO (QA tester sep-2026): si hoy su
         // título es especializado (Analista/Backoffice/PLD…) sin señal
         // comercial → descartar, mismo patrón que extranjero.
         const freshFit = checkRoleFit(splitHeadline(found.headline).title || '', found.description || '')
 
-        if (foreignSignal) {
+        // Blindaje: un perfil que el reclutador YA trabajó (le mandó invitación
+        // o mensaje → contact_status ≠ null) jamás se auto-descarta. La curación
+        // humana manda sobre el barrido automático; si está mal, el reclutador
+        // lo descarta a mano.
+        const worked = !!row.contact_status
+
+        if (foreignSignal && !worked) {
           // Extranjero confirmado → a la basura (nada se borra: queda marcado).
           const today = new Date().toISOString().slice(0, 10)
           update.source = 'descartado'
@@ -276,7 +286,7 @@ export async function handler() {
           update.verify_details = { ...prevDetails, foreign_signal: foreignSignal, checked_at: new Date().toISOString(), misses: 0 }
           summary.extranjero++
           geoHandled = true
-        } else if (freshFit.verdict === 'specialized') {
+        } else if (freshFit.verdict === 'specialized' && !worked) {
           const today = new Date().toISOString().slice(0, 10)
           update.source = 'descartado'
           update.notes = `${row.notes || ''} · auto-descartado: perfil especializado (${freshFit.signal}) ${today}`.replace(/^ · /, '')
