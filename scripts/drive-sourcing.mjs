@@ -42,7 +42,9 @@ function gateResult(r, prospecting = false) {
 function applyGate(results, vacancy, c) {
   const rows = []
   for (const r of results) {
-    const v = gateResult(r, vacancy.prospecting_mode === true)
+    // El gate "especializado" NO aplica en modo emprendedor NI prospecting: ahí
+    // buscamos career-changers / dueños / perfiles de otras industrias.
+    const v = gateResult(r, vacancy.prospecting_mode === true || vacancy.entrepreneur_mode === true)
     if (v === 'garbage') { c.garbage++; continue }
     if (v === 'foreign') { c.foreign++; continue }
     if (v === 'vetoed') { c.vetoed++; continue }

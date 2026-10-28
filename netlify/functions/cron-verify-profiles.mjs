@@ -155,12 +155,13 @@ function mapBankRow(b) {
   return {
     table: 'sourcing_bank', id: b.id, url: b.url, notes: b.notes || null,
     full_name: b.full_name || b.title || null, contact_status: b.contact_status || null,
+    vacancy_id: b.vacancy_id,
     verify_status: b.verify_status, verify_details: b.verify_details,
     saved: { title: b.current_title, company: b.current_company, extraText: [b.full_name || b.title, b.snippet].filter(Boolean).join(' '), createdAt: b.created_at },
   }
 }
 
-const BANK_COLUMNS = 'id, title, url, snippet, full_name, current_title, current_company, notes, score, created_at, last_verified_at, verify_status, verify_details, contact_status'
+const BANK_COLUMNS = 'id, vacancy_id, title, url, snippet, full_name, current_title, current_company, notes, score, created_at, last_verified_at, verify_status, verify_details, contact_status'
 
 /** Lote (0) — PRIORIDAD MÁXIMA: cuarentena geográfica del gate de calidad
  *  (verify_status='geo_desconocida'). La búsqueda dirigida suele revelar la
@@ -227,6 +228,19 @@ export async function handler() {
     return { statusCode: 200, body: JSON.stringify({ ok: true, checked: 0 }) }
   }
 
+  // Vacantes "suaves": en modo emprendedor o prospecting el objetivo son perfiles
+  // que HOY no están en un rol comercial (career-changers, dueños, especialistas
+  // de otras industrias). Ahí el gate de "rol especializado" NO aplica — el driver
+  // de sourcing ya lo salta, pero el cron lo aplicaba igual y barría a los
+  // candidatos correctos (330 falsos positivos descartado_qa, oct-2026). Se
+  // construye el set una sola vez por corrida.
+  const softGate = new Set()
+  try {
+    const { data: softVacs } = await supabase.from('vacancies')
+      .select('id').or('entrepreneur_mode.eq.true,prospecting_mode.eq.true')
+    for (const v of softVacs || []) softGate.add(v.id)
+  } catch (e) { console.error('[cron-verify-profiles] no se pudo leer modos de vacante:', e.message) }
+
   const dispatcher = await getDispatcher()
   const summary = { checked: 0, activo: 0, cambio_empleo: 0, muerto: 0, fantasma: 0, desactualizado: 0, extranjero: 0, especializado: 0, geo_pendiente: 0, geo_rescatados: 0, skipped: 0 }
 
@@ -286,7 +300,7 @@ export async function handler() {
           update.verify_details = { ...prevDetails, foreign_signal: foreignSignal, checked_at: new Date().toISOString(), misses: 0 }
           summary.extranjero++
           geoHandled = true
-        } else if (freshFit.verdict === 'specialized' && !worked) {
+        } else if (freshFit.verdict === 'specialized' && !worked && !softGate.has(row.vacancy_id)) {
           const today = new Date().toISOString().slice(0, 10)
           update.source = 'descartado'
           update.notes = `${row.notes || ''} · auto-descartado: perfil especializado (${freshFit.signal}) ${today}`.replace(/^ · /, '')
