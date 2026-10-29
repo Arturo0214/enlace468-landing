@@ -141,7 +141,8 @@ async function cleanupBank(supabase) {
   const PAGE = 200
   const today = new Date().toISOString().slice(0, 10)
   // Vacantes de prospección: sus filas NO se descartan por "especializado"
-  // (el médico/contador ES el prospecto).
+  // (el médico/contador ES el prospecto). En el resto (incluido modo emprendedor)
+  // el filtro SÍ aplica — es el criterio #1 de la depuración de Karina.
   const { data: pv } = await supabase.from('vacancies').select('id').eq('prospecting_mode', true)
   const prospectingIds = new Set((pv || []).map(v => v.id))
   for (let from = 0; ; from += PAGE) {

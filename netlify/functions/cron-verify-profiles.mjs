@@ -228,16 +228,15 @@ export async function handler() {
     return { statusCode: 200, body: JSON.stringify({ ok: true, checked: 0 }) }
   }
 
-  // Vacantes "suaves": en modo emprendedor o prospecting el objetivo son perfiles
-  // que HOY no están en un rol comercial (career-changers, dueños, especialistas
-  // de otras industrias). Ahí el gate de "rol especializado" NO aplica — el driver
-  // de sourcing ya lo salta, pero el cron lo aplicaba igual y barría a los
-  // candidatos correctos (330 falsos positivos descartado_qa, oct-2026). Se
-  // construye el set una sola vez por corrida.
+  // Vacantes de prospección (prospecting_mode): el médico/contador especializado
+  // ES el prospecto, así que el gate de "rol especializado" NO aplica ahí — mismo
+  // criterio que cleanupBank en cron-auto-source. En el resto (incluido modo
+  // emprendedor/Socio Director) el filtro de especializados SÍ aplica: es el
+  // criterio #1 de la depuración de Karina (quitar cascajo). Set una vez por corrida.
   const softGate = new Set()
   try {
     const { data: softVacs } = await supabase.from('vacancies')
-      .select('id').or('entrepreneur_mode.eq.true,prospecting_mode.eq.true')
+      .select('id').eq('prospecting_mode', true)
     for (const v of softVacs || []) softGate.add(v.id)
   } catch (e) { console.error('[cron-verify-profiles] no se pudo leer modos de vacante:', e.message) }
 
