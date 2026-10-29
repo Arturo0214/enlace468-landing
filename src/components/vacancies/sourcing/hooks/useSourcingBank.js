@@ -32,15 +32,23 @@ export default function useSourcingBank({ profile, vacancy, vacancyId, platform,
   const savedItems = bankItems.filter(b => b.source !== 'descartado')
 
   // Carga los candidatos DESCARTADOS de toda la organización → nunca reaparecen
-  // en ninguna búsqueda (no solo en esta vacante).
+  // en ninguna búsqueda (no solo en esta vacante). Paginado: PostgREST regresa
+  // máximo 1000 filas por query y los descartes viejos se caían del Set.
   useEffect(() => {
     const orgId = profile?.organization_id
     if (!orgId) return
     let cancelled = false
     ;(async () => {
-      const { data } = await supabase.from('sourcing_bank').select('url')
-        .eq('organization_id', orgId).eq('source', 'descartado')
-      if (!cancelled) setBlockedGlobal(new Set((data || []).map(b => normalizeLinkedInUrl(b.url))))
+      const urls = []
+      const PAGE = 1000
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase.from('sourcing_bank').select('url')
+          .eq('organization_id', orgId).eq('source', 'descartado').range(from, from + PAGE - 1)
+        if (error || !data?.length) break
+        urls.push(...data.map(b => b.url))
+        if (data.length < PAGE) break
+      }
+      if (!cancelled) setBlockedGlobal(new Set(urls.map(normalizeLinkedInUrl)))
     })()
     return () => { cancelled = true }
   }, [profile?.organization_id])
@@ -87,9 +95,10 @@ export default function useSourcingBank({ profile, vacancy, vacancyId, platform,
     if (hasUrl(result.url)) return
     setSavingUrl(result.url)
     try {
-      const { data } = await supabase.from('sourcing_bank').insert(resultToBankRow(result)).select().single()
+      const { data, error } = await supabase.from('sourcing_bank').insert(resultToBankRow(result)).select().single()
+      if (error) throw error
       if (data) setBankItems(prev => [data, ...prev])
-    } catch (e) { console.error(e) }
+    } catch (e) { console.error(e); toast.error('No se pudo guardar en el banco: ' + (e.message || '')) }
     finally { setSavingUrl(null) }
   }
 
@@ -158,17 +167,29 @@ export default function useSourcingBank({ profile, vacancy, vacancyId, platform,
 
   // Bloquear/descartar un candidato: lo persiste en el banco como 'descartado'
   // para que NO vuelva a aparecer en futuras búsquedas de esta vacante.
+  // Sin ignoreDuplicates: si la fila ya existía (guardada/importada antes), el
+  // merge fuerza source='descartado' — con ignoreDuplicates el descarte se
+  // perdía en silencio y el perfil reaparecía en la siguiente sesión.
   async function blockResult(result) {
     setDiscardingUrl(result.url)
     try {
       const row = { ...resultToBankRow(result), source: 'descartado' }
-      const { data } = await supabase.from('sourcing_bank')
-        .upsert(row, { onConflict: 'vacancy_id,url', ignoreDuplicates: true }).select().single()
-      // Aunque ignoreDuplicates no devuelva fila, lo agregamos localmente para ocultarlo ya
+      const { data, error } = await supabase.from('sourcing_bank')
+        .upsert(row, { onConflict: 'vacancy_id,url' }).select().single()
+      if (error) throw error
       const key = normalizeLinkedInUrl(result.url)
-      setBankItems(prev => prev.some(b => normalizeLinkedInUrl(b.url) === key) ? prev : [(data || row), ...prev])
+      setBankItems(prev => {
+        const idx = prev.findIndex(b => normalizeLinkedInUrl(b.url) === key)
+        if (idx === -1) return [(data || row), ...prev]
+        const next = [...prev]
+        next[idx] = data || { ...next[idx], source: 'descartado' }
+        return next
+      })
       setBlockedGlobal(prev => new Set([...prev, key])) // bloqueo global inmediato
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      console.error(e)
+      toast.error('No se pudo descartar el perfil: ' + (e.message || 'error desconocido'))
+    }
     finally { setDiscardingUrl(null) }
   }
 
@@ -186,7 +207,14 @@ export default function useSourcingBank({ profile, vacancy, vacancyId, platform,
       const data = await res.json()
       if (!res.ok || !data.profile) { setImportMsg({ type: 'err', text: data.hint || data.error || 'No se pudo importar.' }); return }
       const p = data.profile
-      if (hasUrl(p.url)) { setImportMsg({ type: 'err', text: 'Ese perfil ya está en el banco de esta vacante.' }); return }
+      const key = normalizeLinkedInUrl(p.url)
+      const existente = bankItems.find(b => normalizeLinkedInUrl(b.url) === key)
+      // Solo bloquea si ya está GUARDADO; un perfil descartado antes SÍ se puede
+      // re-agregar a mano (se "revive" como manual — antes chocaba con el UNIQUE
+      // y el alta manual fallaba sin avisar).
+      if (existente && existente.source !== 'descartado') {
+        setImportMsg({ type: 'err', text: 'Ese perfil ya está en el banco de esta vacante.' }); return
+      }
       if (excludeSector && matchExcludedCompany(p.current_company, p.current_title, p.snippet, p.full_name)) {
         setImportMsg({ type: 'err', text: 'Ese perfil es del sector asegurador/inversiones (exclusión activa).' }); return
       }
@@ -197,10 +225,24 @@ export default function useSourcingBank({ profile, vacancy, vacancyId, platform,
         full_name: p.full_name, current_title: p.current_title, current_company: p.current_company,
         source: 'manual', created_by: profile.id, // pegado a mano por el reclutador
       }
-      const { data: saved } = await supabase.from('sourcing_bank').insert(row).select().single()
-      if (saved) setBankItems(prev => [saved, ...prev])
+      let saved
+      if (existente) {
+        // Revivir el descartado: misma fila, ahora manual
+        const { data: upd, error } = await supabase.from('sourcing_bank')
+          .update({ source: 'manual', full_name: row.full_name, current_title: row.current_title, current_company: row.current_company, snippet: row.snippet })
+          .eq('id', existente.id).select().single()
+        if (error) { setImportMsg({ type: 'err', text: 'No se pudo guardar: ' + error.message }); return }
+        saved = upd
+        setBankItems(prev => prev.map(b => b.id === existente.id ? saved : b))
+        setBlockedGlobal(prev => { const n = new Set(prev); n.delete(key); return n })
+      } else {
+        const { data: ins, error } = await supabase.from('sourcing_bank').insert(row).select().single()
+        if (error) { setImportMsg({ type: 'err', text: 'No se pudo guardar: ' + error.message }); return }
+        saved = ins
+        setBankItems(prev => [saved, ...prev])
+      }
       setImportUrl('')
-      setImportMsg({ type: 'ok', text: `Importado: ${p.full_name}${p.current_title ? ' · ' + p.current_title : ''}${data.partial ? ' (datos limitados)' : ''}` })
+      setImportMsg({ type: 'ok', text: `${existente ? 'Re-agregado' : 'Importado'}: ${p.full_name}${p.current_title ? ' · ' + p.current_title : ''}${data.partial ? ' (datos limitados)' : ''}` })
     } catch (e) {
       setImportMsg({ type: 'err', text: 'No se pudo conectar con el importador.' })
     } finally { setImporting(false) }

@@ -42,6 +42,11 @@ const ACTION_PLAN_MAP = {
     'recruiter_pro_basic', 'recruiter_pro_pro',
     'enterprise_starter', 'enterprise_growth', 'enterprise_partner',
   ],
+  use_campaigns: [
+    'enterprise_starter', 'enterprise_growth', 'enterprise_partner',
+    'recruiter_pro_pro',
+    'talent_desk_pro',
+  ],
 }
 
 // Roles that bypass all feature gates

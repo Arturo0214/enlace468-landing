@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Search, Upload, Globe, Database, ExternalLink, Plus, FileSpreadsheet, UserPlus, Loader2, CheckCircle, User, Briefcase, MapPin, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import { EXCLUDED_LABELS_SHORT } from '../../lib/excludedCompanies'
 
 const searchTemplates = [
   { label: 'Consultor Financiero CDMX', query: '"consultor financiero" OR "asesor financiero" "CDMX"' },
@@ -221,6 +222,12 @@ export default function CandidateSourcing() {
                 ))}
               </div>
             </div>
+
+            {/* Empresas excluidas del sourcing (sector asegurador / inversiones) */}
+            <p className="mt-4 text-[11px] text-gray-500 leading-relaxed">
+              <span className="text-gray-400 font-medium">Excluidas del sourcing:</span>{' '}
+              {EXCLUDED_LABELS_SHORT} y otras aseguradoras / casas de inversión. Los perfiles de estas empresas no aparecerán en los resultados.
+            </p>
           </div>
 
           {/* Error */}
