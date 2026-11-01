@@ -79,10 +79,11 @@ export function AuthProvider({ children }) {
   }
 
   async function signInWithGoogle() {
+    const redirectBase = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8888'
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: 'http://localhost:8888/dashboard',
+        redirectTo: `${redirectBase}/dashboard`,
         scopes: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/calendar.readonly',
       },
     })

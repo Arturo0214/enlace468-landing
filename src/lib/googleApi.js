@@ -214,6 +214,36 @@ export async function getCalendarEvents(token, daysBack = 30, daysForward = 14) 
 }
 
 /**
+ * Lee los eventos de UN calendario (por calendarId) en un rango.
+ * calendarId = 'primary' para el usuario actual, o el correo de otra persona
+ * (solo funciona si esa persona compartió su calendario con el usuario).
+ * Lanza un Error con .status para poder distinguir 403/404 (no compartido).
+ */
+export async function getCalendarEventsRange(token, calendarId, timeMinISO, timeMaxISO) {
+  const res = await fetch(
+    `${CALENDAR_BASE}/calendars/${encodeURIComponent(calendarId)}/events?timeMin=${encodeURIComponent(timeMinISO)}&timeMax=${encodeURIComponent(timeMaxISO)}&maxResults=250&singleEvents=true&orderBy=startTime`,
+    { headers: headers(token) }
+  )
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const e = new Error(err.error?.message || `Calendar API error: ${res.status}`)
+    e.status = res.status
+    throw e
+  }
+  const data = await res.json()
+  return (data.items || []).map(ev => ({
+    id: ev.id,
+    title: ev.summary || '(sin título)',
+    start: ev.start?.dateTime || ev.start?.date,
+    end: ev.end?.dateTime || ev.end?.date,
+    allDay: !ev.start?.dateTime,
+    meetLink: ev.hangoutLink || ev.conferenceData?.entryPoints?.[0]?.uri || '',
+    location: ev.location || '',
+    status: ev.status,
+  }))
+}
+
+/**
  * Match a calendar event to a candidate
  */
 export function matchEventToCandidate(event, candidateName) {

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Calendar, Clock, User, Video, ChevronLeft, ChevronRight, Flag, CheckCircle2, ChevronDown, Users } from 'lucide-react'
+import { Calendar, Clock, User, Video, ChevronLeft, ChevronRight, Flag, CheckCircle2, ChevronDown, Users, CalendarClock, Link2, MapPin } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/auth'
+import { getCalendarEventsRange } from '../../lib/googleApi'
 import { entregaUrgencia, urgenciaStyle, esActiva, parseLocalDate, ENTREGAS_EMAILS, isEntregasMember } from '../../lib/entregas'
 
 const stageLabels = { phone_screen: 'Filtro telefonico', technical: 'Tecnica', cultural: 'Cultural', final: 'Final', client: 'Cliente' }
@@ -15,7 +16,7 @@ const PERSON_PALETTE = ['#00A99D', '#4A6FC9', '#E0A449', '#C084FC']
 const firstName = (n) => (n || '').split(' ')[0]
 
 export default function CalendarView() {
-  const { profile } = useAuth()
+  const { profile, getProviderToken, signInWithGoogle } = useAuth()
   const [interviews, setInterviews] = useState([])
   const [entregas, setEntregas] = useState([])
   const [admins, setAdmins] = useState([])
@@ -24,6 +25,11 @@ export default function CalendarView() {
   const [selectedDate, setSelectedDate] = useState(null)
   const [calOwner, setCalOwner] = useState('')      // '' hasta resolver, luego 'todos' | id
   const [menuOpen, setMenuOpen] = useState(false)
+  // Google Calendar real
+  const [gEvents, setGEvents] = useState([])        // [{...ev, owner_id}]
+  const [gStatus, setGStatus] = useState({})        // owner_id -> 'ok'|'denied'|'error'
+  const [gLoading, setGLoading] = useState(false)
+  const [needConnect, setNeedConnect] = useState(false)
 
   const esMiembro = isEntregasMember(profile)
 
@@ -69,6 +75,46 @@ export default function CalendarView() {
   const firstDay = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const today = new Date()
+
+  // ── Google Calendar real (del usuario y, si lo compartieron, de los demás) ──
+  useEffect(() => {
+    if (!esMiembro || !calOwner || admins.length === 0) return
+    let cancel = false
+    ;(async () => {
+      const token = getProviderToken()
+      if (!token) { setNeedConnect(true); setGEvents([]); setGStatus({}); return }
+      setNeedConnect(false); setGLoading(true)
+      const targets = calOwner === 'todos' ? admins : admins.filter(a => a.id === calOwner)
+      const timeMin = new Date(year, month, 1 - 7).toISOString()
+      const timeMax = new Date(year, month + 1, 7).toISOString()
+      const status = {}; const all = []; let auth401 = false
+      await Promise.all(targets.map(async t => {
+        const calId = t.id === profile.id ? 'primary' : t.email
+        try {
+          const evs = await getCalendarEventsRange(token, calId, timeMin, timeMax)
+          status[t.id] = 'ok'
+          evs.forEach(ev => all.push({ ...ev, owner_id: t.id }))
+        } catch (e) {
+          if (e.status === 401) auth401 = true
+          status[t.id] = (e.status === 403 || e.status === 404) ? 'denied' : 'error'
+        }
+      }))
+      if (cancel) return
+      setGEvents(all); setGStatus(status); setGLoading(false)
+      if (auth401) setNeedConnect(true)
+    })()
+    return () => { cancel = true }
+  }, [calOwner, admins, year, month, profile, esMiembro]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function gEventDate(ev) {
+    return ev.allDay ? parseLocalDate(ev.start) : new Date(ev.start)
+  }
+  function getGoogleForDay(day) {
+    return gEvents.filter(ev => {
+      const d = gEventDate(ev)
+      return d && d.getFullYear() === year && d.getMonth() === month && d.getDate() === day
+    })
+  }
 
   function getInterviewsForDay(day) {
     return interviews.filter(i => {
@@ -164,9 +210,13 @@ export default function CalendarView() {
               const day = i + 1
               const dayInterviews = getInterviewsForDay(day)
               const dayEntregas = getEntregasForDay(day)
+              const dayGoogle = getGoogleForDay(day)
               const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day
               const isSelected = selectedDate === day
-              const ownersDelDia = verTodos ? [...new Set(dayEntregas.map(e => e.owner_id))] : []
+              // "Ocupados" ese día = quien tenga entrega o evento real de Google (para empatar los 3)
+              const ownersBusy = verTodos
+                ? [...new Set([...dayEntregas.map(e => e.owner_id), ...dayGoogle.map(e => e.owner_id)])]
+                : []
 
               return (
                 <button
@@ -179,18 +229,23 @@ export default function CalendarView() {
                   }`}
                 >
                   <span className={isToday ? 'font-bold' : ''}>{day}</span>
-                  {(dayInterviews.length > 0 || dayEntregas.length > 0) && (
+                  {(dayInterviews.length > 0 || dayEntregas.length > 0 || dayGoogle.length > 0) && (
                     <div className="flex justify-center gap-0.5 mt-1 flex-wrap">
                       {dayInterviews.slice(0, 2).map((_, j) => (
                         <div key={`i${j}`} className="w-1.5 h-1.5 rounded-full bg-primary" />
                       ))}
-                      {verTodos
-                        ? ownersDelDia.slice(0, 3).map(oid => (
-                            <div key={`o${oid}`} className="w-1.5 h-1.5 rounded-full" style={{ background: colorOf(oid) }} />
-                          ))
-                        : dayEntregas.slice(0, 3).map((e, j) => (
+                      {verTodos ? (
+                        ownersBusy.slice(0, 3).map(oid => (
+                          <div key={`o${oid}`} className="w-1.5 h-1.5 rounded-full" style={{ background: colorOf(oid) }} />
+                        ))
+                      ) : (
+                        <>
+                          {dayEntregas.slice(0, 2).map((e, j) => (
                             <div key={`e${j}`} className="w-1.5 h-1.5 rounded-full" style={{ background: urgenciaStyle(entregaUrgencia(e)).dot }} />
                           ))}
+                          {dayGoogle.length > 0 && <div className="w-1.5 h-1.5 rounded-full bg-gray-400" title="Eventos de agenda" />}
+                        </>
+                      )}
                     </div>
                   )}
                 </button>
@@ -324,6 +379,66 @@ export default function CalendarView() {
               })()}
             </div>
           </div>
+
+          {/* Agenda real de Google */}
+          {esMiembro && (
+            <div className="glass rounded-xl">
+              <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <CalendarClock size={16} className="text-primary-light" />
+                <h3 className="font-display font-semibold text-white">Agenda real · Google</h3>
+                {gLoading && <div className="ml-auto animate-spin rounded-full h-4 w-4 border-2 border-primary-light border-t-transparent" />}
+              </div>
+              <div className="p-4">
+                {needConnect ? (
+                  <div className="text-center py-5">
+                    <CalendarClock size={28} className="mx-auto text-gray-600 mb-2" />
+                    <p className="text-gray-400 text-sm mb-3">Conecta tu Google Calendar para ver tu agenda real aquí.</p>
+                    <button onClick={() => signInWithGoogle()} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/80 text-white text-sm font-medium">
+                      <Link2 size={15} /> Conectar Google Calendar
+                    </button>
+                  </div>
+                ) : (() => {
+                  const now = new Date()
+                  const base = selectedDate ? getGoogleForDay(selectedDate)
+                    : gEvents.filter(ev => gEventDate(ev) >= new Date(now.getFullYear(), now.getMonth(), now.getDate()))
+                  const lista = [...base].sort((a, b) => gEventDate(a) - gEventDate(b)).slice(0, selectedDate ? 50 : 8)
+                  const denied = admins.filter(a => gStatus[a.id] === 'denied')
+                  return (
+                    <>
+                      {lista.length === 0 ? (
+                        <p className="text-center text-sm text-gray-500 py-5">{selectedDate ? 'Sin eventos este día' : 'Sin eventos próximos'}</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {lista.map(ev => (
+                            <div key={`${ev.owner_id}-${ev.id}`} className="flex gap-2.5 bg-white/[0.03] rounded-lg p-2.5 border border-white/5">
+                              <span className="w-1 rounded-full flex-shrink-0" style={{ background: colorOf(ev.owner_id) }} />
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm text-white truncate">{ev.title}</div>
+                                <div className="text-[11px] text-gray-500 flex items-center gap-2 flex-wrap mt-0.5">
+                                  <span className="flex items-center gap-1"><Clock size={10} />
+                                    {ev.allDay ? 'Todo el día'
+                                      : gEventDate(ev).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                  {verTodos && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full" style={{ background: colorOf(ev.owner_id) }} />{nameOf(ev.owner_id)}</span>}
+                                  {ev.location && <span className="flex items-center gap-1 truncate max-w-[120px]"><MapPin size={10} />{ev.location}</span>}
+                                  {ev.meetLink && <a href={ev.meetLink} target="_blank" rel="noopener" className="flex items-center gap-1 text-accent"><Video size={10} />Meet</a>}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {denied.length > 0 && (
+                        <p className="text-[11px] text-gold-light/80 mt-3 leading-snug">
+                          {denied.map(a => firstName(a.full_name)).join(' y ')} {denied.length > 1 ? 'no han' : 'no ha'} compartido su Google Calendar contigo. Pídele(s) compartirlo para verlo aquí.
+                        </p>
+                      )}
+                    </>
+                  )
+                })()}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
