@@ -3,6 +3,18 @@
 // así que una entrega vencida aparece como URGENTE al día siguiente y
 // escala solita cada día que pasa, sin necesidad de un cron.
 
+// Acceso a Entregas: SOLO estos 3 (no todos los admins). Si cambia el equipo,
+// actualiza esta lista Y el helper public.user_is_entregas_member() en la BD.
+export const ENTREGAS_EMAILS = [
+  'flavio.rodriguez@grupointegraccion.com',
+  'ingrid.escobar@grupointegraccion.com',
+  'osvaldosuarezcruz@gmail.com',
+]
+
+export function isEntregasMember(profile) {
+  return !!profile?.email && ENTREGAS_EMAILS.includes(profile.email.toLowerCase())
+}
+
 const DAY = 86400000
 
 // 'YYYY-MM-DD' se interpreta como fecha LOCAL (medianoche) para evitar

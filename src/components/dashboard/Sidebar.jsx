@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { LayoutDashboard, Briefcase, Users, GraduationCap, Calendar, Settings, LogOut, ChevronsLeft, ChevronsRight, Shield, Sparkles, Zap, CreditCard, Package, UserCircle, Building2, Megaphone, Eraser, Workflow, ClipboardCheck } from 'lucide-react'
 import { useAuth } from '../../lib/auth'
+import { isEntregasMember } from '../../lib/entregas'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Inicio', end: true },
@@ -68,7 +69,7 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }) 
               {!collapsed && label}
             </NavLink>
           ))}
-          {(profile?.role === 'super_admin' || profile?.role === 'admin') && (
+          {isEntregasMember(profile) && (
             <>
               <div className="my-2 border-t border-white/5" />
               <NavLink to={entregasItem.to} onClick={onClose} title={collapsed ? entregasItem.label : undefined}
@@ -80,6 +81,11 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }) 
                 <entregasItem.icon size={18} />
                 {!collapsed && entregasItem.label}
               </NavLink>
+            </>
+          )}
+          {(profile?.role === 'super_admin' || profile?.role === 'admin') && (
+            <>
+              <div className="my-2 border-t border-white/5" />
               <NavLink to={enterpriseItem.to} onClick={onClose} title={collapsed ? enterpriseItem.label : undefined}
                 className={({ isActive }) =>
                   `flex items-center gap-3 rounded-lg text-[13px] font-medium transition-all ${
