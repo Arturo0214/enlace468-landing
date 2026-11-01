@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Briefcase, Users, GraduationCap, Calendar, Settings, LogOut, ChevronsLeft, ChevronsRight, Shield, Sparkles, Zap, CreditCard, Package, UserCircle, Building2, Megaphone, Eraser, Workflow } from 'lucide-react'
+import { LayoutDashboard, Briefcase, Users, GraduationCap, Calendar, Settings, LogOut, ChevronsLeft, ChevronsRight, Shield, Sparkles, Zap, CreditCard, Package, UserCircle, Building2, Megaphone, Eraser, Workflow, ClipboardCheck } from 'lucide-react'
 import { useAuth } from '../../lib/auth'
 
 const navItems = [
@@ -17,6 +17,7 @@ const navItems = [
   { to: '/dashboard/settings', icon: Settings, label: 'Configuracion' },
 ]
 
+const entregasItem = { to: '/dashboard/entregas', icon: ClipboardCheck, label: 'Entregas' }
 const adminItem = { to: '/dashboard/admin', icon: Shield, label: 'Admin Panel' }
 const subscriptionsItem = { to: '/dashboard/subscriptions', icon: CreditCard, label: 'Suscripciones' }
 const enterpriseItem = { to: '/dashboard/enterprise', icon: Building2, label: 'Enterprise' }
@@ -70,6 +71,15 @@ export default function Sidebar({ open, onClose, collapsed, onToggleCollapse }) 
           {(profile?.role === 'super_admin' || profile?.role === 'admin') && (
             <>
               <div className="my-2 border-t border-white/5" />
+              <NavLink to={entregasItem.to} onClick={onClose} title={collapsed ? entregasItem.label : undefined}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-lg text-[13px] font-medium transition-all ${
+                    collapsed ? 'justify-center px-2 py-2' : 'px-3 py-2'
+                  } ${isActive ? 'bg-accent/10 text-accent' : 'text-accent/60 hover:text-accent hover:bg-accent/5'}`
+                }>
+                <entregasItem.icon size={18} />
+                {!collapsed && entregasItem.label}
+              </NavLink>
               <NavLink to={enterpriseItem.to} onClick={onClose} title={collapsed ? enterpriseItem.label : undefined}
                 className={({ isActive }) =>
                   `flex items-center gap-3 rounded-lg text-[13px] font-medium transition-all ${

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Calendar, Clock, User, Video, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar, Clock, User, Video, ChevronLeft, ChevronRight, Flag, CheckCircle2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { entregaUrgencia, urgenciaStyle, esActiva, parseLocalDate } from '../../lib/entregas'
 
 const stageLabels = { phone_screen: 'Filtro telefonico', technical: 'Tecnica', cultural: 'Cultural', final: 'Final', client: 'Cliente' }
 const statusColors = { scheduled: 'bg-accent/20 text-accent', completed: 'bg-green-500/20 text-green-400', cancelled: 'bg-red-500/20 text-red-400', no_show: 'bg-gold/20 text-gold' }
@@ -10,18 +11,27 @@ const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 
 
 export default function CalendarView() {
   const [interviews, setInterviews] = useState([])
+  const [entregas, setEntregas] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(null)
 
-  useEffect(() => { loadInterviews() }, [])
+  useEffect(() => { loadData() }, [])
 
-  async function loadInterviews() {
-    const { data } = await supabase
-      .from('interviews')
-      .select('*, vacancy_candidates(*, candidates(full_name), vacancies(title))')
-      .order('scheduled_at', { ascending: true })
-    setInterviews(data || [])
+  async function loadData() {
+    const [iv, en] = await Promise.all([
+      supabase
+        .from('interviews')
+        .select('*, vacancy_candidates(*, candidates(full_name), vacancies(title))')
+        .order('scheduled_at', { ascending: true }),
+      // admin_entregas: RLS devuelve [] si el usuario no es admin
+      supabase
+        .from('admin_entregas')
+        .select('*, owner:profiles!admin_entregas_owner_id_fkey(full_name)')
+        .order('due_date', { ascending: true }),
+    ])
+    setInterviews(iv.data || [])
+    setEntregas(en.data || [])
     setLoading(false)
   }
 
@@ -38,14 +48,29 @@ export default function CalendarView() {
     })
   }
 
+  function getEntregasForDay(day) {
+    return entregas.filter(e => {
+      const d = parseLocalDate(e.due_date)
+      return d && d.getFullYear() === year && d.getMonth() === month && d.getDate() === day
+    })
+  }
+
   function prevMonth() { setCurrentDate(new Date(year, month - 1, 1)) }
   function nextMonth() { setCurrentDate(new Date(year, month + 1, 1)) }
 
   const selectedInterviews = selectedDate ? getInterviewsForDay(selectedDate) : []
+  const selectedEntregas = selectedDate ? getEntregasForDay(selectedDate) : []
 
   const upcomingInterviews = interviews
     .filter(i => new Date(i.scheduled_at) >= today && i.status === 'scheduled')
     .slice(0, 5)
+
+  // Entregas activas ordenadas por urgencia (vencidas primero)
+  const upcomingEntregas = entregas
+    .filter(esActiva)
+    .map(e => ({ ...e, _u: entregaUrgencia(e) }))
+    .sort((a, b) => a._u.sort - b._u.sort)
+    .slice(0, 6)
 
   return (
     <div>
@@ -73,6 +98,7 @@ export default function CalendarView() {
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1
               const dayInterviews = getInterviewsForDay(day)
+              const dayEntregas = getEntregasForDay(day)
               const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day
               const isSelected = selectedDate === day
 
@@ -87,10 +113,14 @@ export default function CalendarView() {
                   }`}
                 >
                   <span className={isToday ? 'font-bold' : ''}>{day}</span>
-                  {dayInterviews.length > 0 && (
+                  {(dayInterviews.length > 0 || dayEntregas.length > 0) && (
                     <div className="flex justify-center gap-0.5 mt-1">
                       {dayInterviews.slice(0, 3).map((_, j) => (
-                        <div key={j} className="w-1.5 h-1.5 rounded-full bg-primary" />
+                        <div key={`i${j}`} className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      ))}
+                      {dayEntregas.slice(0, 3).map((e, j) => (
+                        <div key={`e${j}`} className="w-1.5 h-1.5 rounded-full"
+                          style={{ background: urgenciaStyle(entregaUrgencia(e)).dot }} />
                       ))}
                     </div>
                   )}
@@ -156,6 +186,52 @@ export default function CalendarView() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Entregas */}
+          <div className="glass rounded-xl">
+            <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <CheckCircle2 size={16} className="text-accent" />
+              <h3 className="font-display font-semibold text-white">
+                {selectedDate ? 'Entregas de este dia' : 'Entregas pendientes'}
+              </h3>
+            </div>
+            <div className="p-4">
+              {(() => {
+                const lista = selectedDate
+                  ? selectedEntregas.map(e => ({ ...e, _u: entregaUrgencia(e) }))
+                  : upcomingEntregas
+                if (loading) return <div className="text-center py-6"><div className="animate-spin rounded-full h-6 w-6 border-2 border-accent border-t-transparent mx-auto" /></div>
+                if (lista.length === 0) return (
+                  <div className="text-center py-6">
+                    <CheckCircle2 size={32} className="mx-auto text-gray-600 mb-2" />
+                    <p className="text-gray-500 text-sm">{selectedDate ? 'Sin entregas este dia' : 'Sin entregas pendientes'}</p>
+                  </div>
+                )
+                return (
+                  <div className="space-y-2.5">
+                    {lista.map(e => {
+                      const s = urgenciaStyle(e._u)
+                      return (
+                        <div key={e.id} className={`bg-white/[0.03] rounded-lg p-3 border ${s.card} flex gap-2.5`}>
+                          <div className={`w-1 rounded-full flex-shrink-0 ${s.bar} ${s.pulse ? 'animate-pulse' : ''}`} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              {e.priority === 'high' && <Flag size={12} className="text-red-400 flex-shrink-0" />}
+                              <span className="text-sm font-medium text-white truncate">{e.title}</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${s.badge}`}>{e._u.label}</span>
+                              <span className="text-[10px] text-gray-500">{e.owner?.full_name?.split(' ')[0] || 'Admin'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
             </div>
           </div>
         </div>

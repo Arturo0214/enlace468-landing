@@ -1,0 +1,2 @@
+-- Placeholder: migración aplicada vía dashboard de Supabase (fuera del repo).
+-- Archivo stub para sincronizar el historial local con remoto. No ejecuta DDL.
