@@ -20,6 +20,7 @@ import AcademyDashboard from './components/academy/AcademyDashboard'
 import ResourceViewer from './components/academy/ResourceViewer'
 import CalendarView from './components/dashboard/CalendarView'
 import EntregasView from './components/dashboard/EntregasView'
+import EntregaDetalle from './components/dashboard/EntregaDetalle'
 import SettingsPage from './components/dashboard/SettingsPage'
 import AdminPanel from './components/dashboard/AdminPanel'
 import SubscriptionsDashboard from './components/dashboard/SubscriptionsDashboard'
@@ -95,6 +96,7 @@ function App() {
         <Route path="academy/:resourceId" element={<ResourceViewer />} />
         <Route path="calendar" element={<CalendarView />} />
         <Route path="entregas" element={<EntregasView />} />
+        <Route path="entregas/:id" element={<EntregaDetalle />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="admin" element={<AdminPanel />} />
         <Route path="subscriptions" element={<SubscriptionsDashboard />} />

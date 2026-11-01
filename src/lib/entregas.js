@@ -120,6 +120,19 @@ export function urgenciaStyle(u) {
   }
 }
 
+export function fmtBytes(n) {
+  if (!n && n !== 0) return ''
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`
+  return `${(n / 1024 / 1024).toFixed(1)} MB`
+}
+
+// Formatea fecha + hora en es-MX
+export function fmtFechaHora(ts) {
+  if (!ts) return '—'
+  return new Date(ts).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
 // Formatea fecha larga en es-MX a partir de 'YYYY-MM-DD'
 export function fmtFecha(dateStr) {
   const d = parseLocalDate(dateStr)
